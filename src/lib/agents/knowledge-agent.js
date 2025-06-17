@@ -1,10 +1,18 @@
 import dotenv from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
 
-dotenv.config({ path: '.env.local' })
+// Only load .env.local in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: '.env.local' })
+}
+
+const apiKey = process.env.ANTHROPIC_API_KEY
+if (!apiKey) {
+  throw new Error('ANTHROPIC_API_KEY is not set. Please set it in your environment variables.')
+}
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
+  apiKey
 })
 
 /**
