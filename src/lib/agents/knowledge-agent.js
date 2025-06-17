@@ -1,13 +1,6 @@
 import dotenv from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
 
-// Debug logging
-console.log('NODE_ENV:', process.env.NODE_ENV)
-console.log('ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY)
-if (process.env.ANTHROPIC_API_KEY) {
-  console.log('ANTHROPIC_API_KEY first few chars:', process.env.ANTHROPIC_API_KEY.substring(0, 4) + '...')
-}
-
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' })
@@ -17,6 +10,11 @@ const apiKey = process.env.ANTHROPIC_API_KEY
 if (!apiKey) {
   throw new Error('ANTHROPIC_API_KEY is not set. Please set it in your environment variables.')
 }
+
+// Debug logging right before creating the Anthropic client
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY)
+console.log('ANTHROPIC_API_KEY first 10 chars:', process.env.ANTHROPIC_API_KEY?.substring(0, 10))
 
 let anthropic
 try {
