@@ -1,6 +1,13 @@
 import dotenv from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
 
+// Debug logging
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY)
+if (process.env.ANTHROPIC_API_KEY) {
+  console.log('ANTHROPIC_API_KEY first few chars:', process.env.ANTHROPIC_API_KEY.substring(0, 4) + '...')
+}
+
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' })
@@ -11,9 +18,15 @@ if (!apiKey) {
   throw new Error('ANTHROPIC_API_KEY is not set. Please set it in your environment variables.')
 }
 
-const anthropic = new Anthropic({
-  apiKey
-})
+let anthropic
+try {
+  anthropic = new Anthropic({
+    apiKey
+  })
+} catch (err) {
+  console.error('Error creating Anthropic client:', err)
+  throw err
+}
 
 /**
  * Calls Anthropic Claude to get corporate ownership knowledge for a product/brand.
