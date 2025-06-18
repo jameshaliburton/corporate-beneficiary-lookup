@@ -32,19 +32,40 @@ try {
  * @param {string} brandName
  * @returns {Promise<Object>} Structured ownership data
  */
-export async function getOwnershipKnowledge(productName, brandName) {
-  const prompt = `You are a corporate ownership research assistant. Given a product and brand, identify the ultimate financial beneficiary (company that ultimately profits), the country where profits go, the ownership structure (direct, subsidiary, licensing, franchise, etc), and your confidence (0-100). If there are complexities (like licensing or regional subsidiaries), explain them. Respond in the following JSON format:
+/**
+ * Enhanced corporate ownership research with European/Swedish market awareness
+ */
+export async function getOwnershipKnowledge(productName, brandName, source = null, regionHint = null) {
+  // Enhanced prompt with European market awareness
+  const prompt = `You are a corporate ownership research assistant with expertise in global markets, especially European and Swedish companies. 
 
+Given a product and brand, identify the ultimate financial beneficiary (company that ultimately profits), the country where profits go, the ownership structure, and your confidence level.
+
+SPECIAL FOCUS: Pay attention to Swedish/Nordic companies like:
+- ICA (Swedish retailer)
+- Coop (Swedish/Nordic retailer) 
+- H&M (Swedish fashion)
+- IKEA (Swedish furniture)
+- Volvo (Swedish, now Chinese-owned)
+- Spotify (Swedish)
+- Electrolux (Swedish)
+
+Consider European ownership structures and subsidiaries of global companies operating in Europe.
+
+If this appears to be a Swedish store brand (ICA, Coop, etc.), research the specific ownership structure.
+
+Respond in JSON format:
 {
-  financial_beneficiary: "<company>",
-  beneficiary_country: "<country>",
-  confidence_score: <0-100>,
-  ownership_structure_type: "<structure>",
-  reasoning: "<brief explanation>"
+  "financial_beneficiary": "<company>",
+  "beneficiary_country": "<country>",
+  "confidence_score": <0-100>,
+  "ownership_structure_type": "<direct/subsidiary/licensing/franchise>",
+  "reasoning": "<brief explanation including any European/Swedish context>"
 }
 
 Product: ${productName}
-Brand: ${brandName}
+Brand: ${brandName}${source ? `\nData Source: ${source}` : ''}${regionHint ? `\nRegion Hint: ${regionHint}` : ''}
+
 Answer:`
 
   try {
@@ -55,11 +76,13 @@ Answer:`
         { role: 'user', content: prompt }
       ]
     })
+    
     const text = response.content?.[0]?.text || ''
     const match = text.match(/\{[\s\S]*\}/)
     if (!match) {
       throw new Error('No JSON found in LLM response: ' + text)
     }
+    
     const ownership = JSON.parse(match[0].replace(/([a-zA-Z0-9_]+):/g, '"$1":'))
     return ownership
   } catch (err) {
@@ -72,4 +95,4 @@ Answer:`
       reasoning: 'Error: ' + err.message
     }
   }
-} 
+}
