@@ -77,4 +77,17 @@ export async function logScan(barcode: string, resultType: string): Promise<Scan
     throw error
   }
   return data as ScanLog
+}
+
+export async function upsertProduct(productData: ProductData): Promise<ProductData | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .upsert([productData], { onConflict: 'barcode' })
+    .select()
+    .maybeSingle()
+  if (error) {
+    console.error('Error upserting product:', error)
+    throw error
+  }
+  return data as ProductData
 } 
