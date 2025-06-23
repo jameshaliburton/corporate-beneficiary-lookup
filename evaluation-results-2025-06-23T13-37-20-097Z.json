@@ -1,0 +1,397 @@
+{
+  "timestamp": "2025-06-23T13:37:20.097Z",
+  "summary": {
+    "totalCases": 5,
+    "totalTests": 20,
+    "passedTests": 12,
+    "successRate": 60
+  },
+  "metrics": {
+    "totalQueries": 5,
+    "successfulQueries": 2,
+    "failedQueries": 3,
+    "successRate": 40,
+    "avgResponseTime": 70536,
+    "avgSourceQuality": 60,
+    "ignoredViableSources": 4,
+    "usedWebResearch": 5,
+    "warningTypes": {
+      "regionalAssumptions": 0,
+      "circularOwnership": 0,
+      "conflictingInformation": 0,
+      "lowQualitySources": 0,
+      "insufficientEvidence": 0,
+      "noCountryEvidence": 2,
+      "noStructureEvidence": 2
+    },
+    "avgWarningsPerQuery": 0.8,
+    "jsonParsing": {
+      "attempts": 5,
+      "successes": 5,
+      "failures": 0,
+      "successRate": 100,
+      "failureRate": 0,
+      "strategies": {
+        "direct": 5,
+        "cleaned": 0,
+        "fieldExtraction": 0,
+        "templateReconstruction": 0
+      },
+      "retryAttempts": 0,
+      "retryRate": 0,
+      "fallbackResponses": 0,
+      "fallbackRate": 0,
+      "errorPatterns": {}
+    },
+    "sourceTypes": {},
+    "querySuccessBySource": {},
+    "confidenceDistribution": {
+      "30": 1,
+      "50": 1,
+      "60": 2,
+      "70": 1
+    },
+    "responseTimesByResult": {
+      "success": 0,
+      "failure": 0
+    }
+  },
+  "results": [
+    {
+      "testCase": {
+        "barcode": "7310865004703",
+        "product_name": "ICA Basic Solrosolja",
+        "brand": "ICA",
+        "expected": {
+          "financial_beneficiary": "ICA Gruppen AB",
+          "beneficiary_country": "Sweden",
+          "ownership_structure_type": "Public",
+          "min_confidence": 70
+        }
+      },
+      "result": {
+        "financial_beneficiary": "ICA Gruppen AB",
+        "beneficiary_country": "Sweden",
+        "beneficiary_flag": "🇸🇪",
+        "ownership_structure_type": "Public",
+        "confidence_score": 64,
+        "ownership_flow": [],
+        "sources": [
+          "https://www.bloomberg.com/profile/company/ICA:SS",
+          "https://www.icagruppen.se/en/about-ica-gruppen/our-business/our-history/"
+        ],
+        "reasoning": "Based on the information from Bloomberg and ICA Gruppen's own website, the ICA brand appears to be owned by ICA Gruppen AB, a publicly traded company headquartered in Sweden. ICA Gruppen was formed from the merger of several ICA-related entities and traces its history back to 1917. The company operates retail stores and other businesses related to the ICA brand. While the full ownership structure is not detailed, ICA Gruppen's public status and transparency around its history provides strong evidence that it is the ultimate financial beneficiary of the ICA brand.\n\nWarnings:\n- No direct evidence for beneficiary country\n- No direct evidence for ownership structure type\n\nEvidence Strength:\n- Ownership Evidence: 11\n- Country Evidence: 0\n- Structure Evidence: 0\n\nWarnings:\n- No direct evidence for beneficiary country\n- No direct evidence for ownership structure type",
+        "web_research_used": true,
+        "web_sources_count": 13,
+        "evaluation": {
+          "queryId": "query_1750685485716_2u003jb3v",
+          "timestamp": "2025-06-23T13:31:25.716Z",
+          "brand": "ICA",
+          "product_name": "ICA Basic Solrosolja",
+          "hints": {},
+          "webResearchAvailable": true,
+          "webResearchUsed": true,
+          "webSourcesCount": 13,
+          "viableSourcesIgnored": 10,
+          "sourceQualityScore": 60,
+          "confidenceAccuracy": null,
+          "responseTime": 72699,
+          "failureReason": null,
+          "sourceUsagePattern": {
+            "available": 13,
+            "used": 2,
+            "ignored": 10,
+            "ignoredUrls": [
+              "https://www.sec.gov/about/divisions-offices/division-investment-management/investment-company-registration-regulation-package",
+              "https://investor.fluor.com/news/news-details/1997/ICA-Fluor-Daniel-Consortium-Awarded-Billion-Dollar-Nitrogen-Production-Facility-Contract-In-Mexico-10-20-1997/default.aspx",
+              "https://www.icaboston.org/about/annual-report/",
+              "https://www.ica.gov.sg/about-us/our-people",
+              "https://ica.coop/en/about-us/our-structure/alliance-organigram",
+              "https://www.sec.gov/rules-regulations/investment-company-act-notices-orders",
+              "https://adviserinfo.sec.gov/firm/summary/311419",
+              "https://www.ica-ip.pt/en/ica/what-we-do/company-registration/",
+              "https://ica.coop/en/about-us/our-structure/alliance-organigram",
+              "https://www.ica-ip.pt/en/ica/what-we-do/company-registration/"
+            ]
+          },
+          "hallucinationIndicators": [
+            "suspicious_reasoning_pattern",
+            "ignored_web_research"
+          ]
+        }
+      },
+      "validations": [
+        "✅ Financial beneficiary correct",
+        "✅ Beneficiary country correct",
+        "✅ Ownership structure type correct",
+        "❌ Confidence score too low: got 64, expected >= 70"
+      ]
+    },
+    {
+      "testCase": {
+        "barcode": "7310130007540",
+        "product_name": "Apoteket Alvedon",
+        "brand": "Apoteket",
+        "expected": {
+          "financial_beneficiary": "Swedish Government",
+          "beneficiary_country": "Sweden",
+          "ownership_structure_type": "State-owned",
+          "min_confidence": 70
+        }
+      },
+      "result": {
+        "financial_beneficiary": "Unknown",
+        "beneficiary_country": "Unknown",
+        "beneficiary_flag": "🏳️",
+        "ownership_structure_type": "Unknown",
+        "confidence_score": 50,
+        "ownership_flow": [],
+        "sources": [
+          "https://www.apoteket.se/om-apoteket/Kalendarium/ekonomiska-rapporter/",
+          "https://www.apoteket.se/globalassets/om-apoteket/ekonomiska-rapporter/apoteket-ab-ars--och-hallbarhetsredovisning-2023.pdf",
+          "https://www.unpri.org/signatory-directory/apoteket-abs-pensionsstiftelse/5036.article",
+          "https://hedgenordic.com/2023/03/the-hedge-fund-cure-for-apotekets-pension-fund/"
+        ],
+        "reasoning": "The available evidence from Apoteket's own financial reports and third-party sources suggests that Apoteket AB is a state-owned company, but the ultimate financial beneficiary is not clearly identified. The company appears to have a pension fund, Apoteket AB:s Pensionsstiftelse, which may play a role in the ownership structure, but its relationship to the ultimate ownership is unclear. More detailed information on the company's ownership and governance would be needed to conclusively determine the financial beneficiary.",
+        "web_research_used": true,
+        "web_sources_count": 13,
+        "evaluation": {
+          "queryId": "query_1750685559297_dyk8pnazg",
+          "timestamp": "2025-06-23T13:32:39.297Z",
+          "brand": "Apoteket",
+          "product_name": "Apoteket Alvedon",
+          "hints": {},
+          "webResearchAvailable": true,
+          "webResearchUsed": true,
+          "webSourcesCount": 13,
+          "viableSourcesIgnored": 8,
+          "sourceQualityScore": 30,
+          "confidenceAccuracy": null,
+          "responseTime": 73269,
+          "failureReason": null,
+          "sourceUsagePattern": {
+            "available": 13,
+            "used": 4,
+            "ignored": 8,
+            "ignoredUrls": [
+              "https://adway.ai/insights/ai-driven-talent-acquisition-strategy-apoteket-case-study",
+              "https://www.apoteket.se/globalassets/om-apoteket/pdfer/ekonomiska-rapporter/2011/apoteket_2011_en.pdf",
+              "https://en.wikipedia.org/wiki/Apoteket_Hjorten",
+              "https://leadiq.com/c/apoteket/5a1d8959240000240062cb3d/email-format",
+              "https://www.apoteket.se/produkt/alvedon-filmdragerad-tablett-500-mg-20-st-blister-243170/",
+              "https://www.apoteket.se/contentassets/cc75dc907d01412eae905cb2eb761226/apo_feberskolan_broschyr_engelska_a5.pdf",
+              "https://adway.ai/insights/ai-driven-talent-acquisition-strategy-apoteket-case-study",
+              "https://leadiq.com/c/apoteket/5a1d8959240000240062cb3d/email-format"
+            ]
+          },
+          "hallucinationIndicators": []
+        }
+      },
+      "validations": [
+        "❌ Financial beneficiary incorrect: got \"Unknown\", expected \"Swedish Government\"",
+        "❌ Beneficiary country incorrect: got \"Unknown\", expected \"Sweden\"",
+        "❌ Ownership structure type incorrect: got \"Unknown\", expected \"State-owned\"",
+        "❌ Confidence score too low: got 50, expected >= 70"
+      ]
+    },
+    {
+      "testCase": {
+        "barcode": "7310865088307",
+        "product_name": "Coop Änglamark Organic Milk",
+        "brand": "Coop",
+        "expected": {
+          "financial_beneficiary": "KF (Kooperativa Förbundet)",
+          "beneficiary_country": "Sweden",
+          "ownership_structure_type": "Cooperative",
+          "min_confidence": 70
+        }
+      },
+      "result": {
+        "financial_beneficiary": "Unknown",
+        "beneficiary_country": "Unknown",
+        "beneficiary_flag": "🏳️",
+        "ownership_structure_type": "Cooperative",
+        "confidence_score": 70,
+        "ownership_flow": [],
+        "sources": [
+          "https://www.thenews.coop/merger-and-acquisitions-in-the-us-agri-co-op-sector/",
+          "https://www.co-operative.coop/investors/reports"
+        ],
+        "reasoning": "Based on the information gathered, the brand 'Coop' appears to be owned by a cooperative organization, likely a consumer or agricultural cooperative. The sources indicate that cooperatives in the US agriculture sector have been involved in mergers and acquisitions, and the Co-op Group publishes investor reports, suggesting it is a sizable cooperative business. However, the ultimate financial beneficiary and the specific ownership structure of the 'Coop Änglamark Organic Milk' brand are not clearly established in the available evidence. More detailed information on the corporate structure and ownership chain would be needed to determine the ultimate financial beneficiary with a higher degree of confidence.\n\nEvidence Strength:\n- Ownership Evidence: 0\n- Country Evidence: 0\n- Structure Evidence: 2",
+        "web_research_used": true,
+        "web_sources_count": 13,
+        "evaluation": {
+          "queryId": "query_1750685632764_koadv067a",
+          "timestamp": "2025-06-23T13:33:52.764Z",
+          "brand": "Coop",
+          "product_name": "Coop Änglamark Organic Milk",
+          "hints": {},
+          "webResearchAvailable": true,
+          "webResearchUsed": true,
+          "webSourcesCount": 13,
+          "viableSourcesIgnored": 9,
+          "sourceQualityScore": 30,
+          "confidenceAccuracy": null,
+          "responseTime": 76538,
+          "failureReason": null,
+          "sourceUsagePattern": {
+            "available": 13,
+            "used": 2,
+            "ignored": 9,
+            "ignoredUrls": [
+              "https://www.marshmma.com/us/insights/details/agriculture-cooperative-mergers-and-acquisitions-risk-management.html",
+              "https://www.reddit.com/r/wallstreetbets/comments/1jtkv3c/rocket_companies_inc_mr_cooper_acquisition_and/",
+              "https://investors.mrcoopergroup.com/CorporateProfile/default.aspx",
+              "https://www.nrucfc.coop/content/nrucfc/en/investor-relations.html",
+              "https://investors.mrcoopergroup.com/events-and-presentations/presentations/default.aspx",
+              "https://opencorporates.com/",
+              "https://blog.opencorporates.com/2025/05/28/why-is-it-so-hard-to-find-us-company-data/",
+              "https://www.marshmma.com/us/insights/details/agriculture-cooperative-mergers-and-acquisitions-risk-management.html",
+              "https://www.reddit.com/r/wallstreetbets/comments/1jtkv3c/rocket_companies_inc_mr_cooper_acquisition_and/"
+            ]
+          },
+          "hallucinationIndicators": [
+            "suspicious_reasoning_pattern"
+          ]
+        }
+      },
+      "validations": [
+        "❌ Financial beneficiary incorrect: got \"Unknown\", expected \"KF (Kooperativa Förbundet)\"",
+        "❌ Beneficiary country incorrect: got \"Unknown\", expected \"Sweden\"",
+        "✅ Ownership structure type correct",
+        "✅ Confidence score sufficient: 70"
+      ]
+    },
+    {
+      "testCase": {
+        "barcode": "4902201416894",
+        "product_name": "Kit Kat",
+        "brand": "Kit Kat",
+        "expected": {
+          "financial_beneficiary": "Nestlé S.A.",
+          "beneficiary_country": "Switzerland",
+          "ownership_structure_type": "Public",
+          "min_confidence": 80
+        }
+      },
+      "result": {
+        "financial_beneficiary": "Nestlé S.A.",
+        "beneficiary_country": "Switzerland",
+        "beneficiary_flag": "🇨🇭",
+        "ownership_structure_type": "Public",
+        "confidence_score": 64,
+        "ownership_flow": [],
+        "sources": [
+          "https://www.sec.gov/Archives/edgar/data/47111/000004711101500079/test_b10k.htm",
+          "https://www.bloomberg.com/news/articles/2023-10-03/nestle-s-nutrition-target-criticized-by-investor-lobby-group",
+          "https://www.reuters.com/business/retail-consumer/nestles-kitkat-signs-formula-1-deal-ceo-freixe-seeks-broader-appeal-2024-11-11/"
+        ],
+        "reasoning": "The available evidence indicates that the Kit Kat brand is owned by Nestlé S.A., a publicly traded multinational food and drink company headquartered in Switzerland. The SEC filing shows that Nestlé's subsidiary Rowntree Mackintosh Confectionery Limited holds the licensing agreement for the Kit Kat brand. Recent news articles from reputable sources like Bloomberg and Reuters also refer to Nestlé as the owner of the Kit Kat brand. While the ownership chain is not explicitly stated, the preponderance of evidence points to Nestlé as the ultimate financial beneficiary of the Kit Kat brand.\n\nWarnings:\n- No direct evidence for beneficiary country\n- No direct evidence for ownership structure type\n\nEvidence Strength:\n- Ownership Evidence: 15\n- Country Evidence: 0\n- Structure Evidence: 0\n\nWarnings:\n- No direct evidence for beneficiary country\n- No direct evidence for ownership structure type",
+        "web_research_used": true,
+        "web_sources_count": 10,
+        "evaluation": {
+          "queryId": "query_1750685709553_wsxqvvzus",
+          "timestamp": "2025-06-23T13:35:09.553Z",
+          "brand": "Kit Kat",
+          "product_name": "Kit Kat",
+          "hints": {},
+          "webResearchAvailable": true,
+          "webResearchUsed": true,
+          "webSourcesCount": 10,
+          "viableSourcesIgnored": 7,
+          "sourceQualityScore": 92,
+          "confidenceAccuracy": null,
+          "responseTime": 59280,
+          "failureReason": null,
+          "sourceUsagePattern": {
+            "available": 10,
+            "used": 3,
+            "ignored": 7,
+            "ignoredUrls": [
+              "https://opencorporates.com/companies/cw/58930",
+              "https://opencorporates.com/companies/cw/44027",
+              "https://www.bloomberg.com/news/articles/2017-05-17/kitkat-s-four-fingers-fourth-time-unlucky-in-trademark-row",
+              "https://www.bloomberg.com/news/articles/2019-02-19/nestle-s-taste-of-japan-is-coming-to-europe-with-kitkat-launch",
+              "https://bloomberg.com/authors/AWUMVk267mc/kat-hidalgo",
+              "https://www.bloomberg.com/news/articles/2024-04-30/cocoa-farmers-earn-more-in-kitkat-program-but-fall-far-short-of-living-income",
+              "https://www.bloomberg.com/profile/company/1498346Z:LN"
+            ]
+          },
+          "hallucinationIndicators": [
+            "ignored_web_research"
+          ]
+        }
+      },
+      "validations": [
+        "✅ Financial beneficiary correct",
+        "✅ Beneficiary country correct",
+        "✅ Ownership structure type correct",
+        "❌ Confidence score too low: got 64, expected >= 80"
+      ]
+    },
+    {
+      "testCase": {
+        "barcode": "0000000000000",
+        "product_name": "Unknown Product",
+        "brand": "Unknown Brand",
+        "expected": {
+          "financial_beneficiary": "Unknown",
+          "beneficiary_country": "Unknown",
+          "ownership_structure_type": "Unknown",
+          "min_confidence": 20
+        }
+      },
+      "result": {
+        "financial_beneficiary": "Unknown",
+        "beneficiary_country": "Unknown",
+        "beneficiary_flag": "🏳️",
+        "ownership_structure_type": "Unknown",
+        "confidence_score": 30,
+        "ownership_flow": [],
+        "sources": [
+          "https://knowledge.opencorporates.com/knowledge-base/fetching-a-company/",
+          "https://opencorporates.com/companies?company_type=UNKNOWN&q=MANX+LIMITED",
+          "https://opencorporates.com/companies/im?company_type=UNKNOWN&order=score&q=IRON",
+          "https://opencorporates.com/companies/im?company_type=UNKNOWN&order=score&q=BY",
+          "https://opencorporates.com/companies/im?company_type=UNKNOWN&q=TARA",
+          "https://opencorporates.com/companies/im?company_type=UNKNOWN&q=BW",
+          "https://www.thomsonreuters.com/en",
+          "https://www.reuters.com/breakingviews/bangladesh-becomes-global-firms-next-big-unknown-2024-08-06/",
+          "https://legal.thomsonreuters.com/en/products/company-investigator",
+          "https://www.reuters.com/sustainability/climate-energy/ghost-machine-rogue-communication-devices-found-chinese-inverters-2025-05-14/"
+        ],
+        "reasoning": "The available sources do not provide clear evidence on the ultimate financial beneficiary or ownership structure of the 'Unknown Brand'. The web research focused on OpenCorporates, a database of company information, as well as Thomson Reuters and Reuters news sources, but did not uncover definitive information about the ownership of this brand. Without access to official corporate records or other high-quality sources, the ownership structure, financial beneficiary, and location remain unknown. Additional research into the company's background and regulatory filings would be needed to determine these details with higher confidence.",
+        "web_research_used": true,
+        "web_sources_count": 10,
+        "evaluation": {
+          "queryId": "query_1750685768946_a7lwopx4j",
+          "timestamp": "2025-06-23T13:36:08.946Z",
+          "brand": "Unknown Brand",
+          "product_name": "Unknown Product",
+          "hints": {},
+          "webResearchAvailable": true,
+          "webResearchUsed": true,
+          "webSourcesCount": 10,
+          "viableSourcesIgnored": 0,
+          "sourceQualityScore": 87,
+          "confidenceAccuracy": null,
+          "responseTime": 70892,
+          "failureReason": null,
+          "sourceUsagePattern": {
+            "available": 10,
+            "used": 10,
+            "ignored": 0,
+            "ignoredUrls": []
+          },
+          "hallucinationIndicators": []
+        }
+      },
+      "validations": [
+        "✅ Financial beneficiary correct",
+        "✅ Beneficiary country correct",
+        "✅ Ownership structure type correct",
+        "✅ Confidence score sufficient: 30"
+      ]
+    }
+  ]
+}
