@@ -270,20 +270,15 @@ export default function Home() {
       <div className="w-full max-w-lg mx-auto flex flex-col items-center">
         {/* Header */}
         <div className="w-full text-center mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div></div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight drop-shadow-sm">
-              Corporate Beneficiary Lookup
+          <img src="/logo.png" alt="OwnedBy Logo" className="mx-auto mb-2 h-12" />
+          <div className="flex justify-center items-center mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight drop-shadow-sm mr-3">
+              OwnedBy
             </h1>
-            <a 
-              href="/dashboard" 
-              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded-md hover:bg-blue-50 transition-colors"
-            >
-              Dashboard
-            </a>
+            <span className="inline-block bg-yellow-200 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full align-middle shadow-sm">Beta</span>
           </div>
           <p className="text-gray-600 text-lg">
-            Scan barcodes to discover who ultimately benefits from your purchases
+            Discover who owns the companies behind your purchases
           </p>
         </div>
 

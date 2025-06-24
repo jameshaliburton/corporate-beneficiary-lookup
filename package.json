@@ -1,5 +1,5 @@
 {
-  "name": "corporate-beneficiary-testing",
+  "name": "ownedby",
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
@@ -9,10 +9,10 @@
     "start": "next start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["corporate-ownership", "beneficiary-research", "ai-analysis", "barcode-lookup"],
+  "author": "OwnedBy Team",
   "license": "ISC",
-  "description": "",
+  "description": "AI-powered corporate ownership research tool that helps users discover who owns the companies behind their purchases",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
     "@google-cloud/local-auth": "^3.0.1",
