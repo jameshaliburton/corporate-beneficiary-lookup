@@ -6,6 +6,7 @@ import { supabase } from '../supabase.ts'
 import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-mappings.js'
 import { getProductByBarcode, upsertProduct, ownershipResultToProductData } from '../database/products.js'
 import { emitProgress } from '../utils.ts'
+import { adaptedEvaluationFramework } from '../services/adapted-evaluation-framework.js'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -178,6 +179,18 @@ export async function AgentOwnershipResearch({
       evaluationMetrics.cachedResults++
       
       console.log(`[AgentOwnershipResearch] Cached result:`, cachedResult)
+      
+      // Log cached result to evaluation framework with timeout protection
+      try {
+        logAIResultToEvaluationFramework(cachedResult, executionTrace, {
+          responseTime: responseTime
+        }).catch(err => {
+          console.warn('[AgentOwnershipResearch] Evaluation logging failed (non-blocking):', err.message)
+        })
+      } catch (err) {
+        console.warn('[AgentOwnershipResearch] Evaluation logging error (non-blocking):', err.message)
+      }
+      
       return cachedResult
     }
     
@@ -247,6 +260,18 @@ export async function AgentOwnershipResearch({
       evaluationMetrics.responseTimesByResult.success.push(responseTime)
       
       console.log(`[AgentOwnershipResearch] Static mapping result:`, result)
+      
+      // Log static mapping result to evaluation framework with timeout protection
+      try {
+        logAIResultToEvaluationFramework(result, executionTrace, {
+          responseTime: responseTime
+        }).catch(err => {
+          console.warn('[AgentOwnershipResearch] Evaluation logging failed (non-blocking):', err.message)
+        })
+      } catch (err) {
+        console.warn('[AgentOwnershipResearch] Evaluation logging error (non-blocking):', err.message)
+      }
+      
       return result
     }
     
@@ -580,6 +605,22 @@ export async function AgentOwnershipResearch({
     trackEvaluationMetrics(validated, webResearchData, queryAnalysis)
 
     console.log(`[AgentOwnershipResearch] Research complete:`, validated)
+    
+    // Log AI result to evaluation framework with timeout protection
+    try {
+      logAIResultToEvaluationFramework(validated, executionTrace, {
+        overallScore: evaluationData.overallScore,
+        warnings: evaluationData.warnings,
+        sourceQualityScore: evaluationData.sourceQualityScore,
+        hallucinationIndicators: evaluationData.hallucinationIndicators,
+        responseTime: responseTime
+      }).catch(err => {
+        console.warn('[AgentOwnershipResearch] Evaluation logging failed (non-blocking):', err.message)
+      })
+    } catch (err) {
+      console.warn('[AgentOwnershipResearch] Evaluation logging error (non-blocking):', err.message)
+    }
+    
     return validated
 
   } catch (error) {
@@ -1950,4 +1991,62 @@ function getSourceType(url) {
   if (url.includes('wikipedia.org')) return 'wikipedia'
   if (url.includes('facebook.com') || url.includes('twitter.com') || url.includes('instagram.com')) return 'social_media'
   return 'other'
+} 
+
+/**
+ * Log AI result to evaluation framework with timeout protection
+ */
+async function logAIResultToEvaluationFramework(result, executionTrace, evaluationData = {}) {
+  try {
+    // Always log to evaluation framework (no longer conditional)
+    if (!process.env.GOOGLE_SHEETS_EVALUATION_ID) {
+      console.log('[AgentOwnershipResearch] No evaluation spreadsheet configured, skipping log')
+      return
+    }
+
+    // Generate test ID from barcode or brand
+    const testId = result.barcode ? `T${result.barcode.slice(-6)}` : `T${Date.now().toString().slice(-6)}`
+    
+    // Determine match result based on confidence and beneficiary
+    const matchResult = result.financial_beneficiary !== 'Unknown' && result.confidence_score >= 50 ? 'pass' : 'fail'
+    
+    // Calculate explainability score based on reasoning quality
+    const explainabilityScore = result.reasoning && result.reasoning.length > 100 ? 4 : 
+                               result.reasoning && result.reasoning.length > 50 ? 3 : 
+                               result.reasoning && result.reasoning.length > 20 ? 2 : 1
+
+    // Map to existing sheet structure
+    const evaluationResult = {
+      test_id: testId,
+      trace_id: executionTrace.query_id || `trace_${Date.now()}`,
+      agent_version: 'v1.4.0', // Update version as needed
+      actual_owner: result.financial_beneficiary || 'Unknown',
+      actual_country: result.beneficiary_country || 'Unknown',
+      actual_structure_type: result.ownership_structure_type || 'Unknown',
+      confidence_score: result.confidence_score || 0,
+      match_result: matchResult,
+      latency: (executionTrace.total_duration_ms / 1000).toFixed(1), // Convert to seconds
+      token_cost_estimate: Math.round((executionTrace.total_duration_ms / 1000) * 50), // Rough estimate
+      tool_errors: result.error || '',
+      explainability_score: explainabilityScore,
+      source_used: result.sources?.join(', ') || 'AI analysis',
+      prompt_snapshot: `Research ownership of ${result.brand || 'brand'} product`,
+      response_snippet: result.reasoning?.substring(0, 200) || 'No reasoning provided'
+    }
+
+    // Add timeout protection
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Evaluation logging timeout')), 5000) // 5 second timeout
+    })
+    
+    await Promise.race([
+      adaptedEvaluationFramework.addEvaluationResult(evaluationResult),
+      timeoutPromise
+    ])
+    
+    console.log(`[AgentOwnershipResearch] Logged evaluation result for test: ${testId}`)
+  } catch (error) {
+    console.warn('[AgentOwnershipResearch] Failed to log evaluation result (non-blocking):', error.message)
+    // Don't throw - this is optional logging
+  }
 } 

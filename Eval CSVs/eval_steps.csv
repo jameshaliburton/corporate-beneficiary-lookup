@@ -1,0 +1,4 @@
+trace_id,step_order,step_name,input,output_snippet,outcome,notes
+abc123,1,barcode_lookup,1234567890123,ICA Solrosolja,success,
+abc123,2,web_search,ICA Solrosolja ownership,ICA Gruppen AB is the parent,success,
+abc123,3,llm_analysis,web results,Owned by ICA Gruppen AB,success,

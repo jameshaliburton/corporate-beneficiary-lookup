@@ -14,6 +14,10 @@ export async function emitProgress(queryId: string, stage: string, status: 'star
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
     const url = `${baseUrl}/api/progress`
     
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout
+    
     await fetch(url, {
       method: 'POST',
       headers: {
@@ -25,8 +29,11 @@ export async function emitProgress(queryId: string, stage: string, status: 'star
         status,
         data,
         error
-      })
+      }),
+      signal: controller.signal
     })
+    
+    clearTimeout(timeoutId)
   } catch (err) {
     // Silently fail - progress tracking is not critical
     console.debug('[Progress] Failed to emit progress update:', err)

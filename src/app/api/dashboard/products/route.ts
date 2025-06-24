@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFilteredProducts } from '../../../../lib/database/products.js'
+import { getFilteredProducts } from '../../../../lib/database/products'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(result.data)
+    return NextResponse.json({
+      products: result.data,
+      total: result.data.length
+    })
 
   } catch (error) {
     console.error('[Dashboard API] Products fetch error:', error)

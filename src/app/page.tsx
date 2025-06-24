@@ -42,6 +42,8 @@ interface ProgressUpdate {
   data?: any;
   error?: string;
   timestamp?: string;
+  reasoning?: string;
+  description?: string;
 }
 
 export default function Home() {

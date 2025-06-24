@@ -297,4 +297,13 @@ Building an AI-powered system to research and reveal the ultimate financial bene
 ---
 
 *Last Updated: [Current Date]*
-*Next Review: [Weekly]* 
+*Next Review: [Weekly]*
+
+## TODO: Real-Time Progress Tracking
+
+- **Issue:** Real-time progress tracking via `emitProgress` is currently disabled/bypassed because network/server issues (e.g., server not running, endpoint unreachable) caused agent hangs during CLI/test runs.
+- **Action:** Revisit and implement a robust, non-blocking, environment-aware solution for progress tracking.
+    - Should not block or hang the agent if the server is unavailable.
+    - Should work seamlessly in both dev (Next.js running) and CLI/test (no server) environments.
+    - Consider using a feature flag, environment check, or fallback mechanism.
+- **Status:** Deferred. Agent and tests run with progress tracking off for now. 

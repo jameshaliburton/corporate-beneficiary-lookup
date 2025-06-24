@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getProductStats } from '../../../../lib/database/products.js'
+import { getProductStats } from '../../../../lib/database/products'
 import { getOwnershipMappingStats } from '../../../../lib/database/ownership-mappings.js'
-import { getFilteredProductStats } from '../../../../lib/database/products.js'
+import { getFilteredProductStats } from '../../../../lib/database/products'
 
 export async function GET(request: NextRequest) {
   try {

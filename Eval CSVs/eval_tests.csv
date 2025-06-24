@@ -1,0 +1,2 @@
+test_id,barcode,product_name,expected_owner,expected_country,expected_structure_type,expected_confidence,human_query,evaluation_strategy,evidence_expectation,source_hints,notes
+T001,1234567890123,ICA Solrosolja,ICA Gruppen AB,Sweden,Public,90,Who owns ICA Solrosolja?,"Check official brand page, look for ownership structure or financial filings",Company registry or investor relations statement,"ica.se, allabolag.se, bloomberg.com",Commonly confused with private label oils

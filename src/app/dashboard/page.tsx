@@ -94,6 +94,52 @@ interface DashboardStats {
   }
 }
 
+interface EvaluationStats {
+  total_cases: number
+  active_cases: number
+  total_human_ratings: number
+  total_ai_results: number
+  average_human_score: number
+  average_ai_score: number
+}
+
+interface EvaluationCase {
+  case_id: string
+  task_type: string
+  input_context: string
+  expected_behavior: string
+  notes: string
+  status: string
+  created_date: string
+  updated_date: string
+}
+
+interface HumanRating {
+  case_id: string
+  evaluator: string
+  score: string
+  reasoning: string
+  timestamp: string
+  confidence_accuracy: string
+  reasoning_quality: string
+  hallucination_detected: string
+  improvement_suggestions: string
+}
+
+interface AIResult {
+  case_id: string
+  agent_version: string
+  output: string
+  evaluation_score: string
+  logs: string
+  timestamp: string
+  execution_trace: string
+  confidence_score: string
+  sources_used: string
+  fallback_reason: string
+  total_duration_ms: string
+}
+
 interface FilterState {
   search: string
   country: string
@@ -195,59 +241,125 @@ export default function DashboardPage() {
     maxConfidence: 100
   })
 
+  // Evaluation framework state
+  const [evaluationStats, setEvaluationStats] = useState<EvaluationStats | null>(null)
+  const [evaluationCases, setEvaluationCases] = useState<EvaluationCase[]>([])
+  const [humanRatings, setHumanRatings] = useState<HumanRating[]>([])
+  const [aiResults, setAiResults] = useState<AIResult[]>([])
+  const [evaluationLoading, setEvaluationLoading] = useState(false)
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
+  const [caseComparison, setCaseComparison] = useState<any>(null)
+
   useEffect(() => {
     loadDashboardData()
+    loadEvaluationData()
   }, [filters])
 
   const loadDashboardData = async () => {
     setLoading(true)
     try {
-      // Build query parameters for products
-      const productParams = new URLSearchParams({
+      const params = new URLSearchParams({
+        page: filters.page.toString(),
         limit: filters.limit.toString(),
-        offset: (filters.page * filters.limit).toString(),
-        sort_by: filters.sortBy,
-        sort_order: filters.sortOrder
+        search: filters.search,
+        country: filters.country,
+        resultType: filters.resultType,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        minConfidence: filters.minConfidence.toString(),
+        maxConfidence: filters.maxConfidence.toString()
       })
 
-      if (filters.search) productParams.append('search', filters.search)
-      if (filters.country) productParams.append('country', filters.country)
-      if (filters.resultType) productParams.append('result_type', filters.resultType)
-
-      // Build query parameters for stats
-      const statsParams = new URLSearchParams()
-      if (filters.search) statsParams.append('search', filters.search)
-      if (filters.country) statsParams.append('country', filters.country)
-      if (filters.resultType) statsParams.append('result_type', filters.resultType)
-      if (filters.minConfidence > 0) statsParams.append('min_confidence', filters.minConfidence.toString())
-      if (filters.maxConfidence < 100) statsParams.append('max_confidence', filters.maxConfidence.toString())
-
-      const [productsRes, statsRes] = await Promise.all([
-        fetch(`/api/dashboard/products?${productParams}`),
-        fetch(`/api/dashboard/stats?${statsParams}`)
+      const [productsResponse, statsResponse] = await Promise.all([
+        fetch(`/api/dashboard/products?${params}`),
+        fetch(`/api/dashboard/stats?${params}`)
       ])
 
-      if (productsRes.ok) {
-        const productsData = await productsRes.json()
-        setProducts(productsData)
-        // Estimate total from current page size and data length
-        if (productsData.length === filters.limit) {
-          setTotalProducts(filters.page * filters.limit + productsData.length + 1)
-        } else {
-          setTotalProducts(filters.page * filters.limit + productsData.length)
-        }
-      }
-
-      if (statsRes.ok) {
-        const statsData = await statsRes.json()
+      if (productsResponse.ok && statsResponse.ok) {
+        const productsData = await productsResponse.json()
+        const statsData = await statsResponse.json()
+        
+        setProducts(productsData.products)
+        setTotalProducts(productsData.total)
         setStats(statsData.products)
-        setFilteredStats(statsData.filtered || statsData.products)
+        setFilteredStats(statsData.filtered)
+      } else {
+        console.error('Failed to load dashboard data')
       }
-
     } catch (error) {
-      console.error('Failed to load dashboard data:', error)
+      console.error('Error loading dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadEvaluationData = async () => {
+    setEvaluationLoading(true)
+    try {
+      const [statsResponse, casesResponse] = await Promise.all([
+        fetch('/api/evaluation-framework?action=stats'),
+        fetch('/api/evaluation-framework?action=cases')
+      ])
+
+      if (statsResponse.ok && casesResponse.ok) {
+        const statsData = await statsResponse.json()
+        const casesData = await casesResponse.json()
+        
+        setEvaluationStats(statsData.stats)
+        setEvaluationCases(casesData.cases)
+      } else {
+        console.error('Failed to load evaluation data')
+      }
+    } catch (error) {
+      console.error('Error loading evaluation data:', error)
+    } finally {
+      setEvaluationLoading(false)
+    }
+  }
+
+  const loadCaseData = async (caseId: string) => {
+    try {
+      const [ratingsResponse, resultsResponse, comparisonResponse] = await Promise.all([
+        fetch(`/api/evaluation-framework?action=human_ratings&case_id=${caseId}`),
+        fetch(`/api/evaluation-framework?action=ai_results&case_id=${caseId}`),
+        fetch(`/api/evaluation-framework?action=comparison&case_id=${caseId}`)
+      ])
+
+      if (ratingsResponse.ok && resultsResponse.ok && comparisonResponse.ok) {
+        const ratingsData = await ratingsResponse.json()
+        const resultsData = await resultsResponse.json()
+        const comparisonData = await comparisonResponse.json()
+        
+        setHumanRatings(ratingsData.ratings)
+        setAiResults(resultsData.results)
+        setCaseComparison(comparisonData.comparison)
+      }
+    } catch (error) {
+      console.error('Error loading case data:', error)
+    }
+  }
+
+  const createEvaluationSpreadsheet = async () => {
+    try {
+      const response = await fetch('/api/evaluation-framework', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_spreadsheet',
+          data: { title: 'Agent Evaluation Framework' }
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        alert(`Evaluation spreadsheet created! ID: ${data.spreadsheetId}`)
+        // Reload evaluation data
+        await loadEvaluationData()
+      } else {
+        console.error('Failed to create evaluation spreadsheet')
+      }
+    } catch (error) {
+      console.error('Error creating evaluation spreadsheet:', error)
     }
   }
 
@@ -371,750 +483,518 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white p-6 rounded-lg shadow border">
-        <h2 className="text-lg font-semibold mb-4">Filters & Search</h2>
-        <div className="space-y-4">
-          {/* Search and Basic Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <div className="absolute left-3 top-3 h-4 w-4 text-gray-400">🔍</div>
-              <input
-                type="text"
-                placeholder="Search brands, products, owners..."
-                value={filters.search}
-                onChange={(e) => updateFilters({ search: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+      {/* Main Dashboard Tabs */}
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="products">📊 Products</TabsTrigger>
+          <TabsTrigger value="evaluation">📋 Evaluation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="space-y-6">
+          {/* Filters */}
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <h2 className="text-lg font-semibold mb-4">Filters & Search</h2>
+            <div className="space-y-4">
+              {/* Search and Basic Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <div className="absolute left-3 top-3 h-4 w-4 text-gray-400">🔍</div>
+                  <input
+                    type="text"
+                    placeholder="Search brands, products, owners..."
+                    value={filters.search}
+                    onChange={(e) => updateFilters({ search: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <select
+                  value={filters.country}
+                  onChange={(e) => updateFilters({ country: e.target.value })}
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Countries</option>
+                  {currentStats && Object.keys(currentStats.byCountry).map(country => (
+                    <option key={country} value={country}>
+                      {country} ({currentStats.byCountry[country]})
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filters.resultType}
+                  onChange={(e) => updateFilters({ resultType: e.target.value })}
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Result Types</option>
+                  {currentStats && Object.keys(currentStats.byResultType).map(type => (
+                    <option key={type} value={type}>
+                      {type.replace('_', ' ')} ({currentStats.byResultType[type]})
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filters.limit}
+                  onChange={(e) => updateFilters({ limit: parseInt(e.target.value) })}
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                </select>
+              </div>
+
+              {/* Confidence Range Slider */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Confidence Range: {filters.minConfidence}% - {filters.maxConfidence}%
+                </label>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={filters.minConfidence}
+                    onChange={(e) => updateFilters({ minConfidence: parseInt(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={filters.maxConfidence}
+                    onChange={(e) => updateFilters({ maxConfidence: parseInt(e.target.value) })}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Sorting */}
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">Sort by:</label>
+                <select
+                  value={`${filters.sortBy}-${filters.sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-')
+                    updateFilters({ sortBy: field, sortOrder: order as 'asc' | 'desc' })
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="created_at-desc">Newest First</option>
+                  <option value="created_at-asc">Oldest First</option>
+                  <option value="confidence_score-desc">High Confidence First</option>
+                  <option value="confidence_score-asc">Low Confidence First</option>
+                  <option value="brand-asc">Brand A-Z</option>
+                  <option value="brand-desc">Brand Z-A</option>
+                  <option value="financial_beneficiary-asc">Owner A-Z</option>
+                  <option value="financial_beneficiary-desc">Owner Z-A</option>
+                </select>
+              </div>
             </div>
-            
-            <select
-              value={filters.country}
-              onChange={(e) => updateFilters({ country: e.target.value })}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Countries</option>
-              {currentStats && Object.keys(currentStats.byCountry).map(country => (
-                <option key={country} value={country}>
-                  {country} ({currentStats.byCountry[country]})
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filters.resultType}
-              onChange={(e) => updateFilters({ resultType: e.target.value })}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Result Types</option>
-              {currentStats && Object.keys(currentStats.byResultType).map(type => (
-                <option key={type} value={type}>
-                  {type.replace('_', ' ')} ({currentStats.byResultType[type]})
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filters.limit}
-              onChange={(e) => updateFilters({ limit: parseInt(e.target.value) })}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
           </div>
 
-          {/* Confidence Range Slider */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Confidence Range: {filters.minConfidence}% - {filters.maxConfidence}%
-            </label>
-            <div className="flex items-center space-x-4">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={filters.minConfidence}
-                onChange={(e) => updateFilters({ minConfidence: parseInt(e.target.value) })}
-                className="flex-1"
-              />
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={filters.maxConfidence}
-                onChange={(e) => updateFilters({ maxConfidence: parseInt(e.target.value) })}
-                className="flex-1"
-              />
+          {/* Products List */}
+          <div className="bg-white rounded-lg shadow border">
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-semibold">Scan Results ({totalProducts} total)</h2>
+              <p className="text-gray-600">Recent product scans and their ownership research results</p>
             </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
-          </div>
-
-          {/* Sorting */}
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Sort by:</label>
-            <select
-              value={`${filters.sortBy}-${filters.sortOrder}`}
-              onChange={(e) => {
-                const [field, order] = e.target.value.split('-')
-                updateFilters({ sortBy: field, sortOrder: order as 'asc' | 'desc' })
-              }}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="created_at-desc">Newest First</option>
-              <option value="created_at-asc">Oldest First</option>
-              <option value="confidence_score-desc">High Confidence First</option>
-              <option value="confidence_score-asc">Low Confidence First</option>
-              <option value="brand-asc">Brand A-Z</option>
-              <option value="brand-desc">Brand Z-A</option>
-              <option value="financial_beneficiary-asc">Owner A-Z</option>
-              <option value="financial_beneficiary-desc">Owner Z-A</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Products List */}
-      <div className="bg-white rounded-lg shadow border">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold">Scan Results ({totalProducts} total)</h2>
-          <p className="text-gray-600">Recent product scans and their ownership research results</p>
-        </div>
-        <div className="p-6">
-          {loading && products.length > 0 && (
-            <div className="flex items-center justify-center py-4">
-              <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
-              <span>Loading...</span>
-            </div>
-          )}
-          
-          <div className="space-y-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className={`relative bg-white rounded-lg shadow border p-6 mb-4 transition hover:shadow-lg ${expandedProduct === product.id ? 'ring-2 ring-blue-400' : ''}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg">{product.brand || 'Unknown Brand'}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getResultTypeColor(product.result_type)} cursor-help`} title={RESULT_TYPE_DESCRIPTIONS[product.result_type as keyof typeof RESULT_TYPE_DESCRIPTIONS] || 'Unknown result type'}>
-                        {product.result_type?.replace('_', ' ') || 'unknown'}
-                      </span>
+            <div className="p-6">
+              {loading && products.length > 0 && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
+                  <span>Loading...</span>
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                {(Array.isArray(products) ? products : []).map((product) => (
+                  <div
+                    key={product.id}
+                    className={`relative bg-white rounded-lg shadow border p-6 mb-4 transition hover:shadow-lg ${expandedProduct === product.id ? 'ring-2 ring-blue-400' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">{product.brand || 'Unknown Brand'}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getResultTypeColor(product.result_type)} cursor-help`} title={RESULT_TYPE_DESCRIPTIONS[product.result_type as keyof typeof RESULT_TYPE_DESCRIPTIONS] || 'Unknown result type'}>
+                            {product.result_type?.replace('_', ' ') || 'unknown'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <span>{product.product_name}</span>
+                          <span className="mx-2">|</span>
+                          <span className="flex items-center gap-1">
+                            <span className="text-lg">{product.beneficiary_flag || '🏳️'}</span>
+                            <span>{product.financial_beneficiary || 'Unknown Owner'}</span>
+                          </span>
+                          <span className="mx-2">|</span>
+                          <span>{product.beneficiary_country || 'Unknown Country'}</span>
+                          <span className="mx-2">|</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getConfidenceColor(product.confidence_score || 0)}`}>{product.confidence_score || 0}%</span>
+                        </div>
+                        {product.reasoning && (
+                          <div className="text-xs text-gray-600 mt-1 line-clamp-2 max-w-2xl">
+                            {product.reasoning}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => toggleProductExpansion(product.id)}
+                        className="ml-4 px-4 py-2 rounded bg-blue-100 text-blue-800 font-medium hover:bg-blue-200 transition"
+                        aria-expanded={expandedProduct === product.id}
+                      >
+                        {expandedProduct === product.id ? 'Hide Details' : 'Details'}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <span>{product.product_name}</span>
-                      <span className="mx-2">|</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-lg">{product.beneficiary_flag || '🏳️'}</span>
-                        <span>{product.financial_beneficiary || 'Unknown Owner'}</span>
-                      </span>
-                      <span className="mx-2">|</span>
-                      <span>{product.beneficiary_country || 'Unknown Country'}</span>
-                      <span className="mx-2">|</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getConfidenceColor(product.confidence_score || 0)}`}>{product.confidence_score || 0}%</span>
-                    </div>
-                    {product.reasoning && (
-                      <div className="text-xs text-gray-600 mt-1 line-clamp-2 max-w-2xl">
-                        {product.reasoning}
+                    {expandedProduct === product.id && (
+                      <div className="mt-4">
+                        <button
+                          onClick={() => setExpandedProduct(null)}
+                          className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-600 z-10"
+                          aria-label="Close details"
+                        >
+                          ×
+                        </button>
+                        <Tabs defaultValue="process" className="w-full mt-2">
+                          <TabsList className="mb-4">
+                            <TabsTrigger value="process">Process</TabsTrigger>
+                            <TabsTrigger value="sources">Sources</TabsTrigger>
+                            <TabsTrigger value="ownership">Ownership Chain</TabsTrigger>
+                            <TabsTrigger value="raw">Raw Data</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="process">
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full text-xs border rounded-lg">
+                                <thead>
+                                  <tr className="bg-gray-100 text-gray-700">
+                                    <th className="px-3 py-2 text-left">Step</th>
+                                    <th className="px-3 py-2 text-left">Status</th>
+                                    <th className="px-3 py-2 text-left">Reasoning & Citations</th>
+                                    <th className="px-3 py-2 text-left">Start Time</th>
+                                    <th className="px-3 py-2 text-left">Duration</th>
+                                    <th className="px-3 py-2 text-left">Error</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {product.agent_execution_trace?.stages?.map((stage, idx) => {
+                                    const stageInfo = getStageInfo(stage.stage)
+                                    return (
+                                      <tr key={idx} className="border-b last:border-b-0">
+                                        <td className="px-3 py-2 whitespace-nowrap flex items-center gap-2">
+                                          <span className="text-lg">{stageInfo.icon}</span>
+                                          <span>{stageInfo.name}</span>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                            stage.result === 'success' ? 'bg-green-100 text-green-800' :
+                                            stage.result === 'error' ? 'bg-red-100 text-red-800' :
+                                            'bg-gray-100 text-gray-800'
+                                          }`}>
+                                            {stage.result ? stage.result.toUpperCase() : '—'}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-gray-700 max-w-xs break-words">
+                                          {stage.data?.reasoning || stage.description || '—'}
+                                          {Array.isArray(stage.data?.citations) && stage.data.citations.length > 0 && (
+                                            <ul className="mt-1 list-disc list-inside text-blue-700">
+                                              {stage.data.citations.map((citation: string, i: number) => (
+                                                <li key={i} className="text-xs">{citation}</li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-gray-500">
+                                          {formatDate(stage.start_time)}
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-gray-500">
+                                          {stage.duration_ms ? `${stage.duration_ms}ms` : '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-xs text-red-600">
+                                          {stage.error || '—'}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="sources">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Sources Used ({product.sources?.length || 0})</h4>
+                                {product.sources && product.sources.length > 0 ? (
+                                  <ul className="space-y-2">
+                                    {product.sources.map((source, index) => (
+                                      <li key={index} className="flex items-center gap-2">
+                                        <span className="text-blue-600">🔗</span>
+                                        <a 
+                                          href={source} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:underline text-sm"
+                                        >
+                                          {source}
+                                        </a>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-gray-500 text-sm">No sources recorded</p>
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-medium mb-2">Web Research Details</h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="font-medium">Web Research Used:</span> {product.web_research_used ? 'Yes' : 'No'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Sources Count:</span> {product.web_sources_count || 0}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Query Analysis:</span> {product.query_analysis_used ? 'Yes' : 'No'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Static Mapping:</span> {product.static_mapping_used ? 'Yes' : 'No'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="ownership">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Ownership Structure</h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="font-medium">Structure Type:</span> {product.ownership_structure_type || 'Unknown'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Result Type:</span> {product.result_type || 'Unknown'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">User Contributed:</span> {product.user_contributed ? 'Yes' : 'No'}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Inferred:</span> {product.inferred ? 'Yes' : 'No'}
+                                  </div>
+                                </div>
+                              </div>
+                              {product.ownership_flow && product.ownership_flow.length > 0 && (
+                                <div>
+                                  <h4 className="font-medium mb-2">Ownership Flow</h4>
+                                  <div className="space-y-2">
+                                    {product.ownership_flow.map((step, index) => (
+                                      <div key={index} className="flex items-center gap-2 text-sm">
+                                        <span className="text-gray-500">{index + 1}.</span>
+                                        <span>{step}</span>
+                                        {index < product.ownership_flow.length - 1 && (
+                                          <span className="text-gray-400">→</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="raw">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-medium mb-2">Raw Data</h4>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                  <pre className="text-xs overflow-x-auto">
+                                    {JSON.stringify(product, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(JSON.stringify(product, null, 2))}
+                                  className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm hover:bg-blue-200"
+                                >
+                                  Copy JSON
+                                </button>
+                                <a
+                                  href="#"
+                                  className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm hover:bg-green-200"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    // TODO: Link to Google Sheets evaluation
+                                    alert('Google Sheets evaluation link will be added here')
+                                  }}
+                                >
+                                  📊 Eval
+                                </a>
+                              </div>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => toggleProductExpansion(product.id)}
-                    className="ml-4 px-4 py-2 rounded bg-blue-100 text-blue-800 font-medium hover:bg-blue-200 transition"
-                    aria-expanded={expandedProduct === product.id}
-                  >
-                    {expandedProduct === product.id ? 'Hide Details' : 'Details'}
-                  </button>
-                </div>
-                {expandedProduct === product.id && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() => setExpandedProduct(null)}
-                      className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-600 z-10"
-                      aria-label="Close details"
-                    >
-                      ×
-                    </button>
-                    <Tabs defaultValue="process" className="w-full mt-2">
-                      <TabsList className="mb-4">
-                        <TabsTrigger value="process">Process</TabsTrigger>
-                        <TabsTrigger value="sources">Sources</TabsTrigger>
-                        <TabsTrigger value="ownership">Ownership Chain</TabsTrigger>
-                        <TabsTrigger value="raw">Raw Data</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="process">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-xs border rounded-lg">
-                            <thead>
-                              <tr className="bg-gray-100 text-gray-700">
-                                <th className="px-3 py-2 text-left">Step</th>
-                                <th className="px-3 py-2 text-left">Status</th>
-                                <th className="px-3 py-2 text-left">Reasoning & Citations</th>
-                                <th className="px-3 py-2 text-left">Start Time</th>
-                                <th className="px-3 py-2 text-left">Duration</th>
-                                <th className="px-3 py-2 text-left">Error</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {product.agent_execution_trace?.stages?.map((stage, idx) => {
-                                const stageInfo = getStageInfo(stage.stage)
-                                return (
-                                  <tr key={idx} className="border-b last:border-b-0">
-                                    <td className="px-3 py-2 whitespace-nowrap flex items-center gap-2">
-                                      <span className="text-lg">{stageInfo.icon}</span>
-                                      <span>{stageInfo.name}</span>
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                        stage.result === 'success' ? 'bg-green-100 text-green-800' :
-                                        stage.result === 'error' ? 'bg-red-100 text-red-800' :
-                                        'bg-gray-100 text-gray-800'
-                                      }`}>
-                                        {stage.result ? stage.result.toUpperCase() : '—'}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-gray-700 max-w-xs break-words">
-                                      {stage.data?.reasoning || stage.description || '—'}
-                                      {Array.isArray(stage.data?.citations) && stage.data.citations.length > 0 && (
-                                        <ul className="mt-1 list-disc list-inside text-blue-700">
-                                          {stage.data.citations.map((cite, i) => (
-                                            <li key={i}>
-                                              {typeof cite === 'object' && cite !== null && 'url' in cite ? (
-                                                <a href={cite.url} target="_blank" rel="noopener noreferrer" className="underline">{cite.title || cite.url}</a>
-                                              ) : (typeof cite === 'object' && cite !== null && 'title' in cite ? cite.title : String(cite))}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      {stage.start_time ? new Date(stage.start_time).toLocaleTimeString() : '—'}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      {stage.duration_ms ? `${stage.duration_ms}ms` : '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-red-600">
-                                      {stage.error ? <span className="font-mono">{stage.error}</span> : '—'}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="sources">
-                        <div className="mt-2">
-                          {product.sources && product.sources.length > 0 ? (
-                            <ul className="list-disc list-inside text-sm text-blue-700">
-                              {product.sources.map((src, i) => {
-                                if (src == null) return null;
-                                if (typeof src !== 'object') return <li key={i}>{String(src)}</li>;
-                                const safeSrc = src as Record<string, any>;
-                                if ('url' in safeSrc && typeof safeSrc.url === 'string') {
-                                  return (
-                                    <li key={i}>
-                                      <a href={safeSrc.url} target="_blank" rel="noopener noreferrer" className="underline">{safeSrc.title || safeSrc.url}</a>
-                                    </li>
-                                  );
-                                } else if ('title' in safeSrc && typeof safeSrc.title === 'string') {
-                                  return <li key={i}>{safeSrc.title}</li>;
-                                } else {
-                                  return <li key={i}>{JSON.stringify(safeSrc)}</li>;
-                                }
-                              })}
-                            </ul>
-                          ) : <span className="text-gray-500">No sources available.</span>}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="ownership">
-                        <div className="mt-2">
-                          {product.ownership_flow && product.ownership_flow.length > 0 ? (
-                            <div className="flex flex-row items-center overflow-x-auto space-x-4">
-                              {product.ownership_flow.map((company, idx) => (
-                                <div key={company.name + idx} className="min-w-[180px] p-3 rounded-lg shadow border flex flex-col items-center justify-center bg-gray-50 border-gray-200">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="text-lg">{company.country ? getFlag(company.country) : '🏳️'}</span>
-                                    <span className="font-semibold text-gray-800">{company.name}</span>
-                                  </div>
-                                  <div className="text-xs text-gray-600 mb-1">{company.country || 'Unknown Country'}</div>
-                                  <div className="text-xs font-medium px-2 py-1 rounded bg-gray-100 text-gray-800">{company.type || 'unknown'}</div>
-                                  {company.source && (
-                                    <a href={company.source} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline mt-1">Source</a>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : <span className="text-gray-500">No ownership chain available.</span>}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="raw">
-                        <div className="bg-gray-50 rounded-lg p-4 mt-2">
-                          <pre className="text-xs overflow-auto whitespace-pre-wrap">{JSON.stringify(product, null, 2)}</pre>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </div>
+                ))}
+                {(!products || products.length === 0) && (
+                  <div className="text-center text-gray-500 py-8">No products found.</div>
                 )}
               </div>
-            ))}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-2 mt-6">
+                  <button
+                    onClick={() => handlePageChange(filters.page - 1)}
+                    disabled={filters.page === 0}
+                    className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1">
+                    Page {filters.page + 1} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(filters.page + 1)}
+                    disabled={filters.page >= totalPages - 1}
+                    className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="evaluation" className="space-y-6">
+          {/* Evaluation Framework */}
+          <div className="bg-white p-6 rounded-lg shadow border">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Evaluation Framework</h2>
+              <button
+                onClick={createEvaluationSpreadsheet}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Create Spreadsheet
+              </button>
+            </div>
+            <p className="text-gray-600 mb-4">Human-in-the-loop feedback and systematic agent improvement</p>
             
-            {products.length === 0 && !loading && (
-              <div className="text-center py-8 text-gray-500">
-                No products found matching your filters.
+            {evaluationLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
+                <span>Loading evaluation data...</span>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Evaluation Stats */}
+                {evaluationStats && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-blue-900">Cases</h3>
+                      <div className="text-2xl font-bold text-blue-600">{evaluationStats.total_cases}</div>
+                      <p className="text-sm text-blue-700">{evaluationStats.active_cases} active</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-green-900">Human Ratings</h3>
+                      <div className="text-2xl font-bold text-green-600">{evaluationStats.total_human_ratings}</div>
+                      <p className="text-sm text-green-700">Avg: {evaluationStats.average_human_score.toFixed(1)}</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-purple-900">AI Results</h3>
+                      <div className="text-2xl font-bold text-purple-600">{evaluationStats.total_ai_results}</div>
+                      <p className="text-sm text-purple-700">Avg: {evaluationStats.average_ai_score.toFixed(1)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Case Management */}
+                <div>
+                  <h3 className="font-medium mb-3">Evaluation Cases</h3>
+                  {evaluationCases.length > 0 ? (
+                    <div className="space-y-2">
+                      {evaluationCases.slice(0, 5).map((case_) => (
+                        <div key={case_.case_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <div className="font-medium">{case_.case_id}</div>
+                            <div className="text-sm text-gray-600">{case_.task_type}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              case_.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {case_.status}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSelectedCaseId(case_.case_id)
+                                loadCaseData(case_.case_id)
+                              }}
+                              className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm hover:bg-blue-200"
+                            >
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {evaluationCases.length > 5 && (
+                        <div className="text-center text-sm text-gray-500">
+                          ... and {evaluationCases.length - 5} more cases
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No evaluation cases found. Create a spreadsheet to get started.</p>
+                  )}
+                </div>
+
+                {/* Case Comparison */}
+                {selectedCaseId && caseComparison && (
+                  <div>
+                    <h3 className="font-medium mb-3">Case Comparison: {selectedCaseId}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-green-900 mb-2">Human Ratings ({caseComparison.human_ratings.length})</h4>
+                        <div className="text-2xl font-bold text-green-600">
+                          {caseComparison.average_human_score.toFixed(1)}
+                        </div>
+                        <p className="text-sm text-green-700">Average Score</p>
+                      </div>
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-purple-900 mb-2">AI Results ({caseComparison.ai_results.length})</h4>
+                        <div className="text-2xl font-bold text-purple-600">
+                          {caseComparison.average_ai_score.toFixed(1)}
+                        </div>
+                        <p className="text-sm text-purple-700">Average Score</p>
+                      </div>
+                    </div>
+                    {caseComparison.mismatches.length > 0 && (
+                      <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                        <h4 className="font-medium text-yellow-900 mb-2">⚠️ Mismatches Detected</h4>
+                        <ul className="space-y-1">
+                          {caseComparison.mismatches.map((mismatch: any, index: number) => (
+                            <li key={index} className="text-sm text-yellow-800">
+                              {mismatch.type}: {mismatch.difference.toFixed(1)} point difference
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-6 border-t">
-              <div className="text-sm text-gray-500">
-                Showing {filters.page * filters.limit + 1} to {Math.min((filters.page + 1) * filters.limit, totalProducts)} of {totalProducts} results
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handlePageChange(filters.page - 1)}
-                  disabled={filters.page === 0}
-                  className="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <span className="px-3 py-1 text-sm">
-                  Page {filters.page + 1} of {totalPages}
-                </span>
-                <button
-                  onClick={() => handlePageChange(filters.page + 1)}
-                  disabled={filters.page >= totalPages - 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const ProductDetails = ({ product, onClose }: { product: Product; onClose: () => void }) => {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [expandedRawData, setExpandedRawData] = useState<Set<string>>(new Set())
-  
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
-    return `${(ms / 1000).toFixed(1)}s`
-  }
-  
-  const getStageIcon = (stage: string) => {
-    const icons: Record<string, string> = {
-      cache_check: '🔍',
-      static_mapping: '🗂️',
-      query_builder: '🔧',
-      web_research: '🌐',
-      ownership_analysis: '🏢',
-      validation: '✅',
-      database_save: '💾',
-      evaluation: '📊'
-    }
-    return icons[stage] || '❓'
-  }
-  
-  const getStageColor = (result?: string) => {
-    switch (result) {
-      case 'success': return 'bg-green-100 text-green-800'
-      case 'error': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const toggleRawData = (stageIndex: number) => {
-    const key = `${product.id}-${stageIndex}`
-    setExpandedRawData(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(key)) {
-        newSet.delete(key)
-      } else {
-        newSet.add(key)
-      }
-      return newSet
-    })
-  }
-
-  const isRawDataExpanded = (stageIndex: number) => {
-    return expandedRawData.has(`${product.id}-${stageIndex}`)
-  }
-
-  const formatJSON = (data: any) => {
-    try {
-      return JSON.stringify(data, null, 2)
-    } catch {
-      return String(data)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold">Product Details</h2>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-2xl text-gray-600 z-10"
-            aria-label="Close details"
-          >
-            ×
-          </button>
-        </div>
-        
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="execution">Execution Trace</TabsTrigger>
-              <TabsTrigger value="agents">Agent Results</TabsTrigger>
-              <TabsTrigger value="raw">Raw Data</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold text-gray-700">Product Info</h3>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <div><span className="font-medium">Barcode:</span> {product.barcode}</div>
-                    <div><span className="font-medium">Product:</span> {product.product_name}</div>
-                    <div><span className="font-medium">Brand:</span> {product.brand}</div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-700">Ownership</h3>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <div><span className="font-medium">Beneficiary:</span> {product.financial_beneficiary}</div>
-                    <div><span className="font-medium">Country:</span> {product.beneficiary_country} {product.beneficiary_flag}</div>
-                    <div><span className="font-medium">Structure:</span> {product.ownership_structure_type}</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-700">Confidence & Sources</h3>
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Confidence:</span>
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${
-                          product.confidence_score >= 70 ? 'bg-green-500' :
-                          product.confidence_score >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${product.confidence_score}%` }}
-                      />
-                    </div>
-                    <span className="text-sm">{product.confidence_score}%</span>
-                  </div>
-                  
-                  {product.initial_llm_confidence && product.initial_llm_confidence !== product.confidence_score && (
-                    <div className="text-sm text-gray-600">
-                      Initial LLM confidence: {product.initial_llm_confidence}%
-                    </div>
-                  )}
-                  
-                  <div className="text-sm">
-                    <span className="font-medium">Sources:</span> {product.sources?.length || 0} found
-                    {product.web_research_used && (
-                      <span className="ml-2 text-green-600">✓ Web research used</span>
-                    )}
-                    {product.static_mapping_used && (
-                      <span className="ml-2 text-blue-600">✓ Static mapping used</span>
-                    )}
-                    {product.query_analysis_used && (
-                      <span className="ml-2 text-purple-600">✓ Query analysis used</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {product.fallback_reason && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <h4 className="font-medium text-yellow-800">Fallback Reason</h4>
-                  <p className="text-sm text-yellow-700 mt-1">{product.fallback_reason}</p>
-                </div>
-              )}
-              
-              <div>
-                <h3 className="font-semibold text-gray-700">Reasoning</h3>
-                <p className="mt-2 text-sm text-gray-600 whitespace-pre-wrap">{product.reasoning}</p>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="execution" className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Agent Research Pipeline</h4>
-                <div className="overflow-x-auto mt-4">
-                  <table className="min-w-full text-xs border rounded-lg">
-                    <thead>
-                      <tr className="bg-gray-100 text-gray-700">
-                        <th className="px-3 py-2 text-left">Step</th>
-                        <th className="px-3 py-2 text-left">Status</th>
-                        <th className="px-3 py-2 text-left">Reasoning</th>
-                        <th className="px-3 py-2 text-left">Start Time</th>
-                        <th className="px-3 py-2 text-left">Duration</th>
-                        <th className="px-3 py-2 text-left">Error</th>
-                        <th className="px-3 py-2 text-left">Data</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.agent_execution_trace?.stages?.map((stage, idx) => {
-                        const stageInfo = getStageInfo(stage.stage)
-                        const hasData = stage.data || stage.error
-                        const isExpanded = isRawDataExpanded(idx)
-                        
-                        return (
-                          <React.Fragment key={idx}>
-                            <tr className="border-b last:border-b-0">
-                              <td className="px-3 py-2 whitespace-nowrap flex items-center gap-2">
-                                <span className="text-lg">{stageInfo.icon}</span>
-                                <span>{stageInfo.name}</span>
-                              </td>
-                              <td className="px-3 py-2">
-                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                  stage.result === 'success' ? 'bg-green-100 text-green-800' :
-                                  stage.result === 'error' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {stage.result ? stage.result.toUpperCase() : '—'}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 text-xs text-gray-700">
-                                {stage.data?.reasoning || stage.description || '—'}
-                              </td>
-                              <td className="px-3 py-2">
-                                {stage.start_time ? new Date(stage.start_time).toLocaleTimeString() : '—'}
-                              </td>
-                              <td className="px-3 py-2">
-                                {stage.duration_ms ? `${stage.duration_ms}ms` : '—'}
-                              </td>
-                              <td className="px-3 py-2 text-red-600">
-                                {stage.error ? <span className="font-mono">{stage.error}</span> : '—'}
-                              </td>
-                              <td className="px-3 py-2">
-                                {hasData && (
-                                  <button
-                                    onClick={() => toggleRawData(idx)}
-                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                      isExpanded 
-                                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                    title={isExpanded ? 'Hide raw data' : 'Show raw data'}
-                                  >
-                                    <span className="text-xs">{isExpanded ? '−' : '+'}</span>
-                                    <span className="font-mono">{isExpanded ? 'Hide' : 'Raw'}</span>
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                            {/* Inline Raw Data Viewer */}
-                            {isExpanded && hasData && (
-                              <tr className="border-b bg-blue-50">
-                                <td colSpan={7} className="px-4 py-3">
-                                  <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <h5 className="font-medium text-blue-900 text-sm">
-                                        Raw Data for {stageInfo.name}
-                                      </h5>
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => {
-                                            const dataToCopy = stage.data || { error: stage.error }
-                                            navigator.clipboard.writeText(formatJSON(dataToCopy))
-                                          }}
-                                          className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
-                                        >
-                                          📋 Copy
-                                        </button>
-                                        {/* Future: Google Sheets Evaluation Link */}
-                                        <button
-                                          className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors opacity-50 cursor-not-allowed"
-                                          title="Google Sheets evaluation (coming soon)"
-                                        >
-                                          📊 Eval
-                                        </button>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="bg-white border border-blue-200 rounded-lg overflow-hidden">
-                                      <div className="bg-blue-100 px-3 py-2 border-b border-blue-200">
-                                        <div className="flex items-center gap-2 text-xs text-blue-800">
-                                          <span className="font-mono">JSON</span>
-                                          <span className="text-blue-600">•</span>
-                                          <span>{stage.data ? 'Data' : 'Error'}</span>
-                                          {stage.data && (
-                                            <>
-                                              <span className="text-blue-600">•</span>
-                                              <span>{Object.keys(stage.data).length} fields</span>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="p-3 max-h-64 overflow-auto">
-                                        <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap leading-relaxed">
-                                          {formatJSON(stage.data || { error: stage.error })}
-                                        </pre>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Smart Data Insights */}
-                                    {stage.data && (
-                                      <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                        <h6 className="font-medium text-gray-800 text-xs mb-2">Quick Insights:</h6>
-                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                          {stage.data.total_sources && (
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-gray-600">Sources:</span>
-                                              <span className="font-medium">{stage.data.total_sources}</span>
-                                            </div>
-                                          )}
-                                          {stage.data.duration_ms && (
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-gray-600">Duration:</span>
-                                              <span className="font-medium">{stage.data.duration_ms}ms</span>
-                                            </div>
-                                          )}
-                                          {stage.data.success !== undefined && (
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-gray-600">Success:</span>
-                                              <span className={`font-medium ${stage.data.success ? 'text-green-600' : 'text-red-600'}`}>
-                                                {stage.data.success ? 'Yes' : 'No'}
-                                              </span>
-                                            </div>
-                                          )}
-                                          {stage.data.query_count && (
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-gray-600">Queries:</span>
-                                              <span className="font-medium">{stage.data.query_count}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Execution Summary */}
-                {product.agent_execution_trace && (
-                  <div className="mt-6 p-4 bg-white rounded border border-gray-200">
-                    <h4 className="font-semibold text-gray-800 text-sm mb-3">Execution Summary:</h4>
-                    <div className="grid grid-cols-3 gap-4 text-xs">
-                      <div>
-                        <span className="text-gray-600">Completed Stages:</span>
-                        <div className="font-semibold text-green-600">
-                          {product.agent_execution_trace.stages?.filter(s => s.result === 'success').length || 0}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Failed Stages:</span>
-                        <div className="font-semibold text-red-600">
-                          {product.agent_execution_trace.stages?.filter(s => s.result === 'error').length || 0}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Total Stages:</span>
-                        <div className="font-semibold text-gray-800">
-                          {product.agent_execution_trace.stages?.length || 0}
-                        </div>
-                      </div>
-                    </div>
-                    {/* Total Execution Time */}
-                    {product.agent_execution_trace.total_duration_ms && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <span className="text-gray-600 text-xs">Total Execution Time:</span>
-                        <div className="font-semibold text-blue-600 text-sm">
-                          {formatDuration(product.agent_execution_trace.total_duration_ms)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="agents" className="space-y-4">
-              {product.agent_results ? (
-                <div className="space-y-4">
-                  {Object.entries(product.agent_results).map(([agentName, result]) => (
-                    <div key={agentName} className="border rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <h3 className="font-semibold capitalize">
-                          {agentName.replace('_', ' ')} Agent
-                        </h3>
-                        <Badge className={result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                          {result.success ? 'Success' : 'Failed'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div>
-                          <span className="font-medium text-sm">Reasoning:</span>
-                          <p className="text-sm text-gray-600 mt-1">{result.reasoning}</p>
-                        </div>
-                        
-                        {('data' in result && result.data) && (
-                          <div>
-                            <span className="font-medium text-sm">Data:</span>
-                            <div className="mt-1 p-2 bg-gray-50 rounded text-xs">
-                              <pre className="whitespace-pre-wrap">{JSON.stringify(result.data, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {('error' in result && result.error) && (
-                          <div>
-                            <span className="font-medium text-sm text-red-600">Error:</span>
-                            <p className="text-sm text-red-600 mt-1">{result.error}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  No agent results available for this product
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="raw" className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">Raw Product Data</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <pre className="text-xs overflow-auto whitespace-pre-wrap">
-                    {JSON.stringify(product, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 } 

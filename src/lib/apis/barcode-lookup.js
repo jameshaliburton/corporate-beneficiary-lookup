@@ -1,7 +1,7 @@
 /**
  * Multi-source barcode lookup with European support and AI fallback
  */
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../supabase.ts'
 import { AgentOwnershipResearch } from '../agents/ownership-research-agent.js'
 
 // Try ownership mappings database for brand-based ownership lookup
