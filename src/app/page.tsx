@@ -270,14 +270,11 @@ export default function Home() {
       <div className="w-full max-w-lg mx-auto flex flex-col items-center">
         {/* Header */}
         <div className="w-full text-center mb-8">
-          <img src="/logo.png" alt="OwnedBy Logo" className="mx-auto mb-2 h-12" />
-          <div className="flex justify-center items-center mb-4">
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight drop-shadow-sm mr-3">
-              OwnedBy
-            </h1>
+          <div className="flex justify-center items-center mb-2">
+            <img src="/logo.png" alt="OwnedBy Logo" className="h-14 mr-2" />
             <span className="inline-block bg-yellow-200 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full align-middle shadow-sm">Beta</span>
           </div>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-lg mt-2">
             Discover who owns the companies behind your purchases
           </p>
         </div>
@@ -291,6 +288,7 @@ export default function Home() {
                 processing={processing}
                 onManualEntry={handleManualEntry}
               />
+              <p className="text-gray-500 text-sm mt-4">Point your camera at a barcode to begin.</p>
             </CardContent>
           </Card>
         )}
@@ -323,7 +321,7 @@ export default function Home() {
                     className="flex-1 text-base py-3 font-semibold shadow"
                     disabled={!manualBarcode.trim()}
                   >
-                    Lookup
+                    Search
                   </Button>
                   <Button
                     type="button"
@@ -388,7 +386,7 @@ export default function Home() {
                     className="flex-1 text-base py-3 font-semibold shadow"
                     disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
                   >
-                    Research Ownership
+                    Submit & Research
                   </Button>
                   <Button
                     type="button"
@@ -400,6 +398,7 @@ export default function Home() {
                   </Button>
                 </div>
               </form>
+              <p className="text-xs text-gray-400 mt-4">Thank you for helping improve our database!</p>
             </CardContent>
           </Card>
         )}
@@ -413,10 +412,9 @@ export default function Home() {
                   Agent Research Pipeline
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Real-time execution trace of ownership research agents
+                  Our AI is researching ownership. This may take a few seconds.
                 </p>
               </div>
-              
               {/* Process Flow Visualization */}
               <div className="space-y-4">
                 {/* Current Active Stage */}
@@ -442,137 +440,13 @@ export default function Home() {
                           currentProgress.status === 'error' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {currentProgress.status === 'started' ? 'ACTIVE' :
-                           currentProgress.status === 'success' ? 'COMPLETED' :
-                           currentProgress.status === 'error' ? 'ERROR' :
-                           'PROCESSING'}
+                          {currentProgress.status}
                         </span>
                       </div>
                     </div>
-                    
-                    {/* Stage Details */}
-                    {currentProgress.data && (
-                      <div className="bg-white rounded border border-blue-200 p-3 text-xs">
-                        <div className="font-medium text-blue-900 mb-2">Stage Data:</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(currentProgress.data).map(([key, value]) => (
-                            <div key={key} className="flex justify-between">
-                              <span className="text-blue-700 capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="font-mono text-blue-900">{String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {currentProgress.reasoning && (
+                      <div className="text-xs text-blue-700 mt-2">{currentProgress.reasoning}</div>
                     )}
-                    
-                    {/* Error Display */}
-                    {currentProgress.error && (
-                      <div className="mt-3 bg-red-50 border border-red-200 rounded p-3">
-                        <div className="text-red-800 text-xs">
-                          <div className="font-medium mb-1">Error:</div>
-                          <code className="text-red-700">{currentProgress.error}</code>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* Process Timeline */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-gray-800 text-sm">Process Timeline:</h4>
-                  {/* Only show steps that have actually occurred, in order */}
-                  {progressHistory.map((progress, idx) => {
-                    const stageInfo = getStageInfo(progress.stage || '')
-                    const isActive = currentProgress?.stage === progress.stage && progress.status === 'started'
-                    return (
-                      <div key={idx} className={`flex items-center gap-3 p-3 rounded-lg border ${
-                        progress.status === 'success' ? 'bg-green-50 border-green-200' :
-                        progress.status === 'error' ? 'bg-red-50 border-red-200' :
-                        isActive ? 'bg-blue-50 border-blue-200' :
-                        'bg-gray-50 border-gray-200'
-                      }`}>
-                        {/* Stage Icon */}
-                        <div className={`text-lg ${
-                          progress.status === 'success' ? 'text-green-600' :
-                          progress.status === 'error' ? 'text-red-600' :
-                          isActive ? 'text-blue-600' :
-                          'text-gray-400'
-                        }`}>
-                          {stageInfo.icon}
-                        </div>
-                        {/* Stage Info */}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{stageInfo.name}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                              progress.status === 'success' ? 'bg-green-100 text-green-800' :
-                              progress.status === 'error' ? 'bg-red-100 text-red-800' :
-                              isActive ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {progress.status?.toUpperCase()}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600">{stageInfo.description}</p>
-                          {/* Stage Results */}
-                          {progress.data && (
-                            <div className="mt-2 text-xs">
-                              <div className="font-medium text-gray-700 mb-1">Results:</div>
-                              <div className="grid grid-cols-2 gap-1 text-gray-600">
-                                {Object.entries(progress.data).slice(0, 4).map(([key, value]) => (
-                                  <div key={key} className="flex justify-between">
-                                    <span className="capitalize">{key.replace(/_/g, ' ')}:</span>
-                                    <span className="font-mono">{String(value)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {/* Stage Error */}
-                          {progress.error && (
-                            <div className="mt-2 text-xs text-red-600">
-                              <div className="font-medium">Error:</div>
-                              <code>{progress.error}</code>
-                            </div>
-                          )}
-                        </div>
-                        {/* Timing */}
-                        <div className="text-right text-xs text-gray-500">
-                          {progress.timestamp && (
-                            <div>
-                              {new Date(progress.timestamp).toLocaleTimeString()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                
-                {/* Progress Summary */}
-                {progressHistory.length > 0 && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 text-sm mb-3">Execution Summary:</h4>
-                    <div className="grid grid-cols-3 gap-4 text-xs">
-                      <div>
-                        <span className="text-gray-600">Completed Stages:</span>
-                        <div className="font-semibold text-green-600">
-                          {progressHistory.filter(p => p.status === 'success').length}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Failed Stages:</span>
-                        <div className="font-semibold text-red-600">
-                          {progressHistory.filter(p => p.status === 'error').length}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Total Stages:</span>
-                        <div className="font-semibold text-gray-800">
-                          {progressHistory.length}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
@@ -580,245 +454,58 @@ export default function Home() {
           </Card>
         )}
 
-        {/* Results */}
-        {result && !processing && (
-          <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
-            <CardContent className="p-8 flex flex-col items-center">
+        {/* Result/Error State */}
+        {result && (
+          <Card className="w-full rounded-2xl shadow-xl border border-gray-100 mt-6">
+            <CardContent className="p-8">
               {result.success ? (
-                <>
-                  {/* Success Message for User Contributions */}
-                  {showContributionSuccess && (
-                    <div className="w-full mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center">
-                        <span className="text-green-600 mr-2">✅</span>
-                        <p className="text-green-800 text-sm font-medium">
-                          {result.result_type === 'agent-inferred' 
-                            ? 'Great! Our AI research found ownership information for this product.'
-                            : result.result_type === 'user_contributed_with_mapping'
-                            ? 'Perfect! We found ownership data for this brand in our database.'
-                            : 'Thanks! We\'ll use this to improve future lookups.'
-                          }
-                        </p>
-                      </div>
+                <div>
+                  {/* Success State */}
+                  <h2 className="text-2xl font-bold text-green-700 mb-2 flex items-center gap-2">
+                    <span>Ownership Found</span>
+                    {typeof result.confidence_score === 'number' && (
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                        result.confidence_score >= 80 ? 'bg-green-100 text-green-800' :
+                        result.confidence_score >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {result.confidence_score >= 80 ? 'High Confidence' : result.confidence_score >= 50 ? 'Medium Confidence' : 'Low Confidence'}
+                      </span>
+                    )}
+                  </h2>
+                  <div className="mb-4">
+                    <span className="font-semibold">Product:</span> {result.product_name || 'Unknown'}<br />
+                    <span className="font-semibold">Brand:</span> {result.brand || 'Unknown'}<br />
+                    <span className="font-semibold">Owner:</span> {result.financial_beneficiary || 'Unknown'}<br />
+                    <span className="font-semibold">Country:</span> {result.beneficiary_country || 'Unknown'} {result.beneficiary_flag || ''}<br />
+                  </div>
+                  {result.reasoning && (
+                    <div className="bg-gray-50 border-l-4 border-blue-300 p-4 rounded mb-4 text-sm text-blue-900">
+                      <span className="font-semibold">Reasoning:</span> {result.reasoning}
                     </div>
                   )}
-
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                      Ownership Research Results
-                    </h2>
-                    <div className="text-sm text-gray-500">
-                      {result.user_contributed ? 'User-contributed data' : 
-                       result.result_type === 'cached' ? 'Cached result' : 'AI analysis'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-6 w-full">
-                    {/* Product Info */}
-                    <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Product Information</h3>
-                        <div className="space-y-1 text-sm">
-                          <div><span className="font-medium">Name:</span> {result.product_name || 'Unknown'}</div>
-                          <div><span className="font-medium">Brand:</span> {result.brand || 'Unknown'}</div>
-                          <div><span className="font-medium">Barcode:</span> {result.barcode}</div>
-                          {result.user_contributed && (
-                            <div className="text-xs text-blue-600 mt-2">
-                              💡 User-contributed information
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Ownership Info */}
-                    <Card className="bg-blue-50 rounded-lg border border-blue-100">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Corporate Ownership</h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl">{result.beneficiary_flag}</span>
-                            <div>
-                              <div className="font-medium">{result.financial_beneficiary}</div>
-                              <div className="text-sm text-gray-600">{result.beneficiary_country}</div>
-                              {result.ownership_structure_type && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {result.ownership_structure_type}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Ownership Flow */}
-                          {result.ownership_flow && result.ownership_flow.length > 0 && (
-                            <div className="mt-3 p-3 bg-white rounded border border-blue-200">
-                              <div className="text-xs font-medium text-gray-700 mb-1">Ownership Chain:</div>
-                              <div className="flex flex-row items-center overflow-x-auto space-x-4">
-                                {result.ownership_flow.map((company, idx) => (
-                                  <React.Fragment key={company.name + idx}>
-                                    <div className={`min-w-[180px] p-3 rounded-lg shadow border flex flex-col items-center justify-center ${company.type === 'parent' ? 'bg-blue-50 border-blue-300' : company.type === 'subsidiary' ? 'bg-yellow-50 border-yellow-300' : company.type === 'franchise' ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'}`}>
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <span className="text-lg">{company.country ? getFlag(company.country) : '🏳️'}</span>
-                                        <span className="font-semibold text-gray-800">{company.name}</span>
-                                      </div>
-                                      <div className="text-xs text-gray-600 mb-1">{company.country || 'Unknown Country'}</div>
-                                      <div className={`text-xs font-medium px-2 py-1 rounded ${company.type === 'parent' ? 'bg-blue-100 text-blue-800' : company.type === 'subsidiary' ? 'bg-yellow-100 text-yellow-800' : company.type === 'franchise' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>{company.type || 'unknown'}</div>
-                                      {company.source && (
-                                        <a href={company.source} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline mt-1">Source</a>
-                                      )}
-                                    </div>
-                                    {idx < result.ownership_flow.length - 1 && (
-                                      <span className="text-2xl text-gray-400">→</span>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-2">
-                            {typeof result.confidence_score === 'number' && (
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                result.confidence_score >= 80 ? 'bg-green-100 text-green-800' :
-                                result.confidence_score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {result.confidence_score}% confidence
-                              </span>
-                            )}
-                            {result.verification_status && (
-                              <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {result.verification_status}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Sources */}
-                    {result.sources && result.sources.length > 0 && (
-                      <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold text-gray-800 mb-2">Sources</h3>
-                          <ul className="text-sm space-y-1">
-                            {result.sources.map((source, index) => (
-                              <li key={index} className="text-gray-600">• {source}</li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Reasoning */}
-                    {result.reasoning && (
-                      <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold text-gray-800 mb-2">Analysis</h3>
-                          <p className="text-sm text-gray-600">{result.reasoning}</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-
-                  {/* Low Confidence Fallback */}
-                  {showLowConfidenceFallback && (
-                    <div className="w-full mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="text-center mb-4">
-                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-                          Help Improve This Result
-                        </h3>
-                        <p className="text-yellow-700 text-sm">
-                          We found some information, but could use your help to get more accurate results.
-                        </p>
-                      </div>
-                      <form onSubmit={handleLowConfidenceSubmit} className="space-y-4">
-                        <div>
-                          <label htmlFor="low_conf_product_name" className="block text-sm font-medium text-yellow-800 mb-2">
-                            Product Name
-                          </label>
-                          <Input
-                            type="text"
-                            id="low_conf_product_name"
-                            value={lowConfidenceData.product_name}
-                            onChange={(e) => setLowConfidenceData(prev => ({ ...prev, product_name: e.target.value }))}
-                            className="w-full text-lg bg-white border-yellow-300"
-                            placeholder="Enter the correct product name..."
-                            autoFocus
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="low_conf_brand" className="block text-sm font-medium text-yellow-800 mb-2">
-                            Brand Name
-                          </label>
-                          <Input
-                            type="text"
-                            id="low_conf_brand"
-                            value={lowConfidenceData.brand}
-                            onChange={(e) => setLowConfidenceData(prev => ({ ...prev, brand: e.target.value }))}
-                            className="w-full text-lg bg-white border-yellow-300"
-                            placeholder="Enter the correct brand name..."
-                          />
-                        </div>
-                        <div className="flex gap-3">
-                          <Button
-                            type="submit"
-                            className="flex-1 text-base py-2 font-semibold bg-yellow-600 hover:bg-yellow-700 text-white"
-                            disabled={!lowConfidenceData.product_name.trim() || !lowConfidenceData.brand.trim()}
-                          >
-                            Improve Result
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowLowConfidenceFallback(false)}
-                            className="flex-1 text-base py-2 font-semibold"
-                          >
-                            Skip
-                          </Button>
-                        </div>
-                      </form>
+                  {result.sources && result.sources.length > 0 && (
+                    <div className="mb-4">
+                      <span className="font-semibold">Sources:</span>
+                      <ul className="list-disc list-inside text-xs text-gray-600 mt-1">
+                        {result.sources.map((src, i) => (
+                          <li key={i}>{src}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
-
-                  <Button
-                    onClick={handleScanAnother}
-                    className="w-full mt-8 text-base py-3 font-semibold shadow"
-                  >
-                    Scan Another Product
-                  </Button>
-                </>
+                  <Button onClick={handleScanAnother} className="mt-4 w-full">Scan another</Button>
+                </div>
               ) : (
-                <div className="text-center w-full">
-                  <div className="text-red-600 text-lg font-semibold mb-4">
-                    Research Failed
+                <div>
+                  {/* Error State */}
+                  <h2 className="text-2xl font-bold text-red-700 mb-2 flex items-center gap-2">
+                    <span>Ownership Not Found</span>
+                  </h2>
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded mb-4 text-sm text-red-900">
+                    <span className="font-semibold">Error:</span> {result.error || 'No ownership information found.'}
                   </div>
-                  <p className="text-gray-600 mb-6">
-                    {result.error || 'Unable to research this product. Please try again.'}
-                  </p>
-                  
-                  {/* Show user contribution option for failed lookups */}
-                  {result.result_type !== 'user_contributed_no_match' && (
-                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 text-sm mb-3">
-                        Can't find this product? Help us by providing the product details manually.
-                      </p>
-                      <Button
-                        onClick={() => setShowUserContribution(true)}
-                        variant="outline"
-                        className="w-full text-sm"
-                      >
-                        Contribute Product Information
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <Button
-                    onClick={handleScanAnother}
-                    className="w-full text-base py-3 font-semibold shadow"
-                  >
-                    Try Again
-                  </Button>
+                  <Button onClick={handleScanAnother} className="mt-4 w-full" variant="secondary">Scan another</Button>
                 </div>
               )}
             </CardContent>
