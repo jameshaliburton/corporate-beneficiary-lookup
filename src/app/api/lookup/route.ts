@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { lookupProduct } from '@/lib/apis/barcode-lookup.js';
 import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { AgentOwnershipResearch } from '@/lib/agents/ownership-research-agent.js';
+import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 
 export async function POST(req: Request) {
   try {
@@ -14,6 +15,9 @@ export async function POST(req: Request) {
     if (!barcode || typeof barcode !== 'string') {
       return NextResponse.json({ success: false, error: 'Barcode is required.' }, { status: 400 });
     }
+
+    // Generate query ID for progress tracking
+    const queryId = generateQueryId();
 
     // 1. Check Supabase for cached result (SKIP if user is providing new product/brand info)
     let cached = null;
@@ -34,6 +38,27 @@ export async function POST(req: Request) {
         ...cached,
         result_type: 'cached',
         user_contributed: cached.user_contributed || false,
+        agent_execution_trace: {
+          query_id: queryId,
+          start_time: new Date().toISOString(),
+          brand: cached.brand,
+          product_name: cached.product_name,
+          barcode: cached.barcode,
+          stages: [{
+            stage: 'cache_check',
+            start_time: new Date().toISOString(),
+            description: 'Checking for existing cached result',
+            result: 'hit',
+            duration_ms: 0,
+            data: {
+              financial_beneficiary: cached.financial_beneficiary,
+              confidence_score: cached.confidence_score,
+              result_type: cached.result_type
+            }
+          }],
+          final_result: 'cached',
+          total_duration_ms: 0
+        }
       });
     }
 
@@ -126,7 +151,8 @@ export async function POST(req: Request) {
           reasoning: researchResult.reasoning || null,
           sources: researchResult.sources || ['User contribution', 'Web research', 'AI analysis'],
           web_research_used: researchResult.web_research_used,
-          web_sources_count: researchResult.web_sources_count
+          web_sources_count: researchResult.web_sources_count,
+          agent_execution_trace: researchResult.agent_execution_trace
         };
 
         return NextResponse.json(responseData);
@@ -199,14 +225,16 @@ export async function POST(req: Request) {
           },
           enableEvaluation: true
         });
+        
         ownershipSource = 'agent_research';
         console.log('[ownership] Ownership research agent fallback result:', ownership);
       } catch (researchErr) {
         console.error('[ownership] Ownership research agent fallback error:', researchErr);
         
+        // Return error response
         return NextResponse.json({
           success: false,
-          error: 'Ownership research failed: ' + (researchErr.message || researchErr),
+          error: 'Unable to research ownership for this product.',
         }, { status: 500 });
       }
     }

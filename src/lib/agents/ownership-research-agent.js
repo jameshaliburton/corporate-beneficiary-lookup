@@ -5,6 +5,7 @@ import { QueryBuilderAgent, isQueryBuilderAvailable } from './query-builder-agen
 import { supabase } from '../supabase.ts'
 import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-mappings.js'
 import { getProductByBarcode, upsertProduct, ownershipResultToProductData } from '../database/products.js'
+import { emitProgress } from '../utils.ts'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -94,17 +95,51 @@ export async function AgentOwnershipResearch({
   const startTime = Date.now()
   const queryId = generateQueryId()
   
+  // Initialize execution trace
+  const executionTrace = {
+    query_id: queryId,
+    start_time: new Date().toISOString(),
+    brand,
+    product_name,
+    barcode,
+    hints,
+    stages: [],
+    final_result: null,
+    total_duration_ms: 0
+  }
+  
   console.log(`[AgentOwnershipResearch] Starting research for:`, { product_name, brand, hints })
   
   try {
     evaluationMetrics.totalQueries++
     
     // Step 0: Check existing product record (cached result)
+    const cacheStage = {
+      stage: 'cache_check',
+      start_time: new Date().toISOString(),
+      description: 'Checking for existing cached result'
+    }
+    executionTrace.stages.push(cacheStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'cache_check', 'started', { barcode })
+    
     console.log(`[AgentOwnershipResearch] Checking existing product record for barcode: ${barcode}`)
     const existingProduct = await getProductByBarcode(barcode)
     
     if (existingProduct && existingProduct.financial_beneficiary && existingProduct.financial_beneficiary !== 'Unknown') {
       console.log(`[AgentOwnershipResearch] Found cached result for ${brand}`)
+      
+      cacheStage.result = 'hit'
+      cacheStage.duration_ms = Date.now() - startTime
+      cacheStage.data = {
+        financial_beneficiary: existingProduct.financial_beneficiary,
+        confidence_score: existingProduct.confidence_score,
+        result_type: existingProduct.result_type
+      }
+      
+      // Emit progress update
+      await emitProgress(queryId, 'cache_check', 'success', cacheStage.data)
       
       // Convert cached product to result format
       const cachedResult = {
@@ -124,8 +159,16 @@ export async function AgentOwnershipResearch({
         user_contributed: existingProduct.user_contributed,
         inferred: existingProduct.inferred,
         cached: true,
-        product_id: existingProduct.id
+        product_id: existingProduct.id,
+        // Add execution trace
+        agent_execution_trace: executionTrace,
+        initial_llm_confidence: existingProduct.initial_llm_confidence,
+        agent_results: existingProduct.agent_results,
+        fallback_reason: existingProduct.fallback_reason
       }
+      
+      executionTrace.final_result = 'cached'
+      executionTrace.total_duration_ms = Date.now() - startTime
       
       // Track metrics
       const responseTime = Date.now() - startTime
@@ -138,12 +181,39 @@ export async function AgentOwnershipResearch({
       return cachedResult
     }
     
+    cacheStage.result = 'miss'
+    cacheStage.duration_ms = Date.now() - startTime
+    
+    // Emit progress update
+    await emitProgress(queryId, 'cache_check', 'completed', { result: 'miss' })
+    
     // Step 1: Check static ownership mappings
+    const staticMappingStage = {
+      stage: 'static_mapping',
+      start_time: new Date().toISOString(),
+      description: 'Checking static ownership mappings'
+    }
+    executionTrace.stages.push(staticMappingStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'static_mapping', 'started', { brand })
+    
     console.log(`[AgentOwnershipResearch] Checking static ownership mappings for: ${brand}`)
     const staticMapping = await lookupOwnershipMapping(brand)
     
     if (staticMapping) {
       console.log(`[AgentOwnershipResearch] Found static mapping for ${brand}`)
+      
+      staticMappingStage.result = 'hit'
+      staticMappingStage.duration_ms = Date.now() - startTime
+      staticMappingStage.data = {
+        financial_beneficiary: staticMapping.financial_beneficiary,
+        confidence_score: staticMapping.confidence_score || 95
+      }
+      
+      // Emit progress update
+      await emitProgress(queryId, 'static_mapping', 'success', staticMappingStage.data)
+      
       const result = mappingToResult(staticMapping)
       
       // Add metadata
@@ -153,6 +223,18 @@ export async function AgentOwnershipResearch({
       result.query_analysis_used = false
       result.static_mapping_used = true
       result.cached = false
+      result.agent_execution_trace = executionTrace
+      result.initial_llm_confidence = result.confidence_score
+      result.agent_results = {
+        static_mapping: {
+          success: true,
+          data: staticMapping,
+          reasoning: 'Found in static ownership mappings database'
+        }
+      }
+      
+      executionTrace.final_result = 'static_mapping'
+      executionTrace.total_duration_ms = Date.now() - startTime
       
       // Save to database
       const productData = ownershipResultToProductData(barcode, product_name, brand, result)
@@ -168,9 +250,25 @@ export async function AgentOwnershipResearch({
       return result
     }
     
+    staticMappingStage.result = 'miss'
+    staticMappingStage.duration_ms = Date.now() - startTime
+    
+    // Emit progress update
+    await emitProgress(queryId, 'static_mapping', 'completed', { result: 'miss' })
+    
     console.log(`[AgentOwnershipResearch] No static mapping found, proceeding with research`)
     
     // Step 2: Query Builder Analysis
+    const queryBuilderStage = {
+      stage: 'query_builder',
+      start_time: new Date().toISOString(),
+      description: 'Analyzing brand for optimal search queries'
+    }
+    executionTrace.stages.push(queryBuilderStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'query_builder', 'started', { brand })
+    
     let queryAnalysis = null
     if (isQueryBuilderAvailable()) {
       try {
@@ -182,6 +280,18 @@ export async function AgentOwnershipResearch({
           hints
         })
         
+        queryBuilderStage.result = 'success'
+        queryBuilderStage.duration_ms = Date.now() - startTime
+        queryBuilderStage.data = {
+          company_type: queryAnalysis.company_type,
+          country_guess: queryAnalysis.country_guess,
+          query_count: queryAnalysis.recommended_queries.length,
+          flags: queryAnalysis.flags
+        }
+        
+        // Emit progress update
+        await emitProgress(queryId, 'query_builder', 'success', queryBuilderStage.data)
+        
         console.log(`[AgentOwnershipResearch] Query analysis:`, {
           companyType: queryAnalysis.company_type,
           countryGuess: queryAnalysis.country_guess,
@@ -191,13 +301,34 @@ export async function AgentOwnershipResearch({
         
       } catch (error) {
         console.error('[AgentOwnershipResearch] Query builder failed:', error)
+        queryBuilderStage.result = 'error'
+        queryBuilderStage.duration_ms = Date.now() - startTime
+        queryBuilderStage.error = error.message
+        
+        // Emit progress update
+        await emitProgress(queryId, 'query_builder', 'error', null, error.message)
         // Continue without query builder
       }
     } else {
       console.log(`[AgentOwnershipResearch] Query builder not available, using default queries`)
+      queryBuilderStage.result = 'not_available'
+      queryBuilderStage.duration_ms = Date.now() - startTime
+      
+      // Emit progress update
+      await emitProgress(queryId, 'query_builder', 'completed', { result: 'not_available' })
     }
     
     // Step 3: Web Research
+    const webResearchStage = {
+      stage: 'web_research',
+      start_time: new Date().toISOString(),
+      description: 'Performing web research for ownership information'
+    }
+    executionTrace.stages.push(webResearchStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
+    
     let webResearchData = null
     if (isWebResearchAvailable()) {
       console.log(`[AgentOwnershipResearch] Performing actual web research...`)
@@ -211,6 +342,19 @@ export async function AgentOwnershipResearch({
           queryAnalysis // Pass query analysis to web research agent
         })
         
+        webResearchStage.result = 'success'
+        webResearchStage.duration_ms = Date.now() - startTime
+        webResearchStage.data = {
+          success: webResearchData.success,
+          total_sources: webResearchData.total_sources,
+          search_results_count: webResearchData.search_results_count,
+          scraped_sites_count: webResearchData.scraped_sites_count,
+          findings_count: webResearchData.findings?.length || 0
+        }
+        
+        // Emit progress update
+        await emitProgress(queryId, 'web_research', 'success', webResearchStage.data)
+        
         console.log(`[AgentOwnershipResearch] Web research results:`, {
           success: webResearchData.success,
           total_sources: webResearchData.total_sources,
@@ -221,18 +365,75 @@ export async function AgentOwnershipResearch({
       } catch (error) {
         console.error('[AgentOwnershipResearch] Web research failed:', error)
         webResearchData = { success: false, findings: [] }
+        webResearchStage.result = 'error'
+        webResearchStage.duration_ms = Date.now() - startTime
+        webResearchStage.error = error.message
+        
+        // Emit progress update
+        await emitProgress(queryId, 'web_research', 'error', null, error.message)
       }
     } else {
       console.log(`[AgentOwnershipResearch] Web research not available, using knowledge agent only`)
       evaluationMetrics.ignoredViableSources++
+      webResearchStage.result = 'not_available'
+      webResearchStage.duration_ms = Date.now() - startTime
+      
+      // Emit progress update
+      await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
     }
 
     // Step 4: Ownership Analysis
+    const ownershipAnalysisStage = {
+      stage: 'ownership_analysis',
+      start_time: new Date().toISOString(),
+      description: 'Performing LLM-based ownership analysis'
+    }
+    executionTrace.stages.push(ownershipAnalysisStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'ownership_analysis', 'started', { 
+      hasWebResearch: !!webResearchData?.success,
+      sourcesCount: webResearchData?.total_sources || 0
+    })
+    
     const researchPrompt = buildResearchPrompt(product_name, brand, hints, webResearchData, queryAnalysis)
     const ownership = await performOwnershipAnalysis(researchPrompt, product_name, brand, webResearchData)
     
+    ownershipAnalysisStage.result = 'success'
+    ownershipAnalysisStage.duration_ms = Date.now() - startTime
+    ownershipAnalysisStage.data = {
+      confidence_score: ownership.confidence_score,
+      financial_beneficiary: ownership.financial_beneficiary,
+      beneficiary_country: ownership.beneficiary_country,
+      sources_count: ownership.sources?.length || 0
+    }
+    
+    // Emit progress update
+    await emitProgress(queryId, 'ownership_analysis', 'success', ownershipAnalysisStage.data)
+    
     // Step 5: Validation and Sanitization
+    const validationStage = {
+      stage: 'validation',
+      start_time: new Date().toISOString(),
+      description: 'Validating and sanitizing results'
+    }
+    executionTrace.stages.push(validationStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'validation', 'started', { initial_confidence: ownership.confidence_score })
+    
     const validated = validateAndSanitizeResults(ownership, brand, webResearchData)
+    
+    validationStage.result = 'success'
+    validationStage.duration_ms = Date.now() - startTime
+    validationStage.data = {
+      final_confidence_score: validated.confidence_score,
+      warnings_count: validated.warnings?.length || 0,
+      validation_passed: validated.financial_beneficiary !== 'Unknown'
+    }
+    
+    // Emit progress update
+    await emitProgress(queryId, 'validation', 'success', validationStage.data)
     
     // Add metadata
     validated.beneficiary_flag = getCountryFlag(validated.beneficiary_country)
@@ -247,8 +448,67 @@ export async function AgentOwnershipResearch({
     validated.static_mapping_used = false
     validated.result_type = 'ai_research'
     validated.cached = false
+    
+    // Add detailed agent results
+    validated.agent_execution_trace = executionTrace
+    validated.initial_llm_confidence = ownership.confidence_score
+    validated.agent_results = {
+      query_builder: queryAnalysis ? {
+        success: true,
+        data: queryAnalysis,
+        reasoning: 'Query builder analyzed brand characteristics and generated optimized search queries'
+      } : {
+        success: false,
+        reasoning: 'Query builder not available or failed'
+      },
+      web_research: webResearchData ? {
+        success: webResearchData.success,
+        data: {
+          total_sources: webResearchData.total_sources,
+          findings_count: webResearchData.findings?.length || 0,
+          search_results_count: webResearchData.search_results_count
+        },
+        reasoning: webResearchData.success ? 
+          'Web research found relevant sources and extracted ownership information' :
+          'Web research failed or returned no useful results'
+      } : {
+        success: false,
+        reasoning: 'Web research not available'
+      },
+      ownership_analysis: {
+        success: validated.financial_beneficiary !== 'Unknown',
+        data: {
+          initial_confidence: ownership.confidence_score,
+          final_confidence: validated.confidence_score,
+          sources_used: validated.sources?.length || 0
+        },
+        reasoning: validated.reasoning || 'LLM analyzed available information to determine ownership'
+      }
+    }
+    
+    // Determine fallback reason if applicable
+    if (validated.confidence_score < 50) {
+      validated.fallback_reason = 'Low confidence score - may need additional research'
+    } else if (!webResearchData?.success) {
+      validated.fallback_reason = 'Web research unavailable or failed'
+    } else if (webResearchData.findings?.length === 0) {
+      validated.fallback_reason = 'No web research findings available'
+    }
 
     // Step 6: Save to database
+    const saveStage = {
+      stage: 'database_save',
+      start_time: new Date().toISOString(),
+      description: 'Saving result to database'
+    }
+    executionTrace.stages.push(saveStage)
+    
+    // Emit progress update
+    await emitProgress(queryId, 'database_save', 'started', { 
+      beneficiary: validated.financial_beneficiary,
+      confidence: validated.confidence_score
+    })
+    
     console.log(`[AgentOwnershipResearch] Saving result to database`)
     const productData = ownershipResultToProductData(barcode, product_name, brand, validated)
     const saveResult = await upsertProduct(productData)
@@ -256,18 +516,49 @@ export async function AgentOwnershipResearch({
     if (saveResult.success) {
       console.log(`[AgentOwnershipResearch] Result saved to database`)
       validated.product_id = saveResult.data.id
+      saveStage.result = 'success'
+      saveStage.duration_ms = Date.now() - startTime
+      
+      // Emit progress update
+      await emitProgress(queryId, 'database_save', 'success', { product_id: saveResult.data.id })
     } else {
       console.error(`[AgentOwnershipResearch] Failed to save to database:`, saveResult.error)
+      saveStage.result = 'error'
+      saveStage.duration_ms = Date.now() - startTime
+      saveStage.error = saveResult.error
+      
+      // Emit progress update
+      await emitProgress(queryId, 'database_save', 'error', null, saveResult.error)
     }
 
     // Step 7: Evaluation (if enabled)
     if (enableEvaluation) {
+      const evaluationStage = {
+        stage: 'evaluation',
+        start_time: new Date().toISOString(),
+        description: 'Running evaluation metrics'
+      }
+      executionTrace.stages.push(evaluationStage)
+      
+      // Emit progress update
+      await emitProgress(queryId, 'evaluation', 'started')
+      
       const evaluation = evaluateAgentBehavior(validated, webResearchData, brand, {
         queryAnalysis,
         startTime,
         queryId
       })
       validated.evaluation = evaluation
+      
+      evaluationStage.result = 'success'
+      evaluationStage.duration_ms = Date.now() - startTime
+      evaluationStage.data = {
+        source_quality_score: evaluation.sourceQualityScore,
+        warnings_count: evaluation.warnings?.length || 0
+      }
+      
+      // Emit progress update
+      await emitProgress(queryId, 'evaluation', 'success', evaluationStage.data)
     }
 
     // Step 8: Metrics Tracking
@@ -277,10 +568,14 @@ export async function AgentOwnershipResearch({
     if (validated.financial_beneficiary !== 'Unknown') {
       evaluationMetrics.successfulQueries++
       evaluationMetrics.responseTimesByResult.success.push(responseTime)
+      executionTrace.final_result = 'success'
     } else {
       evaluationMetrics.failedQueries++
       evaluationMetrics.responseTimesByResult.failure.push(responseTime)
+      executionTrace.final_result = 'failure'
     }
+    
+    executionTrace.total_duration_ms = responseTime
     
     trackEvaluationMetrics(validated, webResearchData, queryAnalysis)
 
@@ -289,6 +584,18 @@ export async function AgentOwnershipResearch({
 
   } catch (error) {
     console.error('[AgentOwnershipResearch] Research failed:', error)
+    
+    const errorStage = {
+      stage: 'error_recovery',
+      start_time: new Date().toISOString(),
+      description: 'Error recovery and fallback response',
+      result: 'error',
+      duration_ms: Date.now() - startTime,
+      error: error.message
+    }
+    executionTrace.stages.push(errorStage)
+    executionTrace.final_result = 'error'
+    executionTrace.total_duration_ms = Date.now() - startTime
     
     const responseTime = Date.now() - startTime
     evaluationMetrics.failedQueries++
@@ -309,7 +616,17 @@ export async function AgentOwnershipResearch({
       static_mapping_used: false,
       result_type: 'error',
       cached: false,
-      error: error.message
+      error: error.message,
+      agent_execution_trace: executionTrace,
+      initial_llm_confidence: 20,
+      agent_results: {
+        error: {
+          success: false,
+          error: error.message,
+          reasoning: 'Research process failed with error'
+        }
+      },
+      fallback_reason: `Research failed: ${error.message}`
     }
   }
 }
@@ -422,7 +739,7 @@ function evaluateAgentBehavior(validatedData, webResearchData, brand, evaluation
       'Private': ['privately held', 'private company'],
       'Subsidiary': ['subsidiary', 'wholly owned', 'division of'],
       'Cooperative': ['cooperative', 'co-op', 'member-owned'],
-      'State-owned': ['state-owned', 'government-owned', 'public sector']
+      'State-owned': ['state-owned', 'government-owned', 'public sector', 'state enterprise']
     }
     
     const keywords = structureKeywords[validatedData.ownership_structure_type] || []
@@ -750,7 +1067,7 @@ function trackEvaluationMetrics(validatedData, webResearchData, queryAnalysis) {
 /**
  * Generates a unique query ID for tracking
  */
-function generateQueryId() {
+export function generateQueryId() {
   return `query_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 

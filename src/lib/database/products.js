@@ -95,7 +95,7 @@ export async function upsertProduct(productData) {
 }
 
 /**
- * Update product ownership information
+ * Update product ownership information with detailed agent trace
  */
 export async function updateProductOwnership(barcode, ownershipData) {
   try {
@@ -113,6 +113,11 @@ export async function updateProductOwnership(barcode, ownershipData) {
       query_analysis_used: ownershipData.query_analysis_used,
       static_mapping_used: ownershipData.static_mapping_used,
       result_type: ownershipData.result_type,
+      // New fields for detailed agent trace
+      agent_execution_trace: ownershipData.agent_execution_trace || null,
+      initial_llm_confidence: ownershipData.initial_llm_confidence || null,
+      agent_results: ownershipData.agent_results || null,
+      fallback_reason: ownershipData.fallback_reason || null,
       updated_at: new Date().toISOString()
     }
     
@@ -441,7 +446,143 @@ export function ownershipResultToProductData(barcode, productName, brand, owners
     result_type: ownershipResult.result_type,
     user_contributed: false,
     inferred: true,
+    agent_execution_trace: ownershipResult.agent_execution_trace || null,
+    initial_llm_confidence: ownershipResult.initial_llm_confidence || null,
+    agent_results: ownershipResult.agent_results || null,
+    fallback_reason: ownershipResult.fallback_reason || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
+  }
+}
+
+/**
+ * Get filtered, paginated, and sorted products for dashboard
+ */
+export async function getFilteredProducts({
+  limit = 100,
+  offset = 0,
+  search = '',
+  country = '',
+  result_type = '',
+  sort_by = 'created_at',
+  sort_order = 'desc',
+  minConfidence,
+  maxConfidence
+} = {}) {
+  try {
+    let query = supabase
+      .from('products')
+      .select('*')
+
+    if (search) {
+      query = query.or(`product_name.ilike.%${search}%,brand.ilike.%${search}%,financial_beneficiary.ilike.%${search}%`)
+    }
+    if (country) {
+      query = query.eq('beneficiary_country', country)
+    }
+    if (result_type) {
+      query = query.eq('result_type', result_type)
+    }
+    if (minConfidence !== undefined) {
+      query = query.gte('confidence_score', minConfidence)
+    }
+    if (maxConfidence !== undefined) {
+      query = query.lte('confidence_score', maxConfidence)
+    }
+    if (sort_by) {
+      query = query.order(sort_by, { ascending: sort_order === 'asc' })
+    }
+    if (typeof offset === 'number' && typeof limit === 'number') {
+      query = query.range(offset, offset + limit - 1)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('[Products] Filtered fetch error:', error)
+      return { success: false, error, data: [] }
+    }
+    return { success: true, data: data || [] }
+  } catch (error) {
+    console.error('[Products] getFilteredProducts error:', error)
+    return { success: false, error, data: [] }
+  }
+}
+
+/**
+ * Get filtered product statistics
+ */
+export async function getFilteredProductStats({
+  search = '',
+  country = '',
+  result_type = '',
+  minConfidence,
+  maxConfidence
+} = {}) {
+  try {
+    let query = supabase
+      .from('products')
+      .select('beneficiary_country, result_type, user_contributed, inferred, confidence_score')
+    
+    if (search) {
+      query = query.or(`product_name.ilike.%${search}%,brand.ilike.%${search}%,financial_beneficiary.ilike.%${search}%`)
+    }
+    if (country) {
+      query = query.eq('beneficiary_country', country)
+    }
+    if (result_type) {
+      query = query.eq('result_type', result_type)
+    }
+    if (minConfidence !== undefined) {
+      query = query.gte('confidence_score', minConfidence)
+    }
+    if (maxConfidence !== undefined) {
+      query = query.lte('confidence_score', maxConfidence)
+    }
+
+    const { data, error } = await query
+    
+    if (error) {
+      console.error('[Products] Get filtered stats error:', error)
+      return { success: false, error }
+    }
+    
+    const stats = {
+      total: data.length,
+      byCountry: {},
+      byResultType: {},
+      userContributed: 0,
+      inferred: 0,
+      byConfidence: {
+        high: 0,    // 80-100
+        medium: 0,  // 50-79
+        low: 0      // 0-49
+      }
+    }
+    
+    data.forEach(product => {
+      // Count by country
+      const country = product.beneficiary_country || 'Unknown'
+      stats.byCountry[country] = (stats.byCountry[country] || 0) + 1
+      
+      // Count by result type
+      const resultType = product.result_type || 'unknown'
+      stats.byResultType[resultType] = (stats.byResultType[resultType] || 0) + 1
+      
+      // Count user contributions
+      if (product.user_contributed) stats.userContributed++
+      if (product.inferred) stats.inferred++
+      
+      // Count by confidence
+      const confidence = product.confidence_score || 0
+      if (confidence >= 80) stats.byConfidence.high++
+      else if (confidence >= 50) stats.byConfidence.medium++
+      else stats.byConfidence.low++
+    })
+    
+    return { success: true, stats }
+    
+  } catch (error) {
+    console.error('[Products] Get filtered stats error:', error)
+    return { success: false, error }
   }
 } 
