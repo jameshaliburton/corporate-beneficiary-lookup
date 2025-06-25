@@ -53,12 +53,27 @@ export async function POST(request: NextRequest) {
       // Step 3: Final result
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
-      return NextResponse.json({
+      // Merge barcode data and ownership result into a flat structure
+      const mergedResult = {
         success: true,
-        query_id: queryId,
-        barcode_data: barcodeData,
-        ownership_result: ownershipResult
-      });
+        product_name: product_name || barcodeData.product_name,
+        brand: brand || barcodeData.brand,
+        barcode: barcode,
+        financial_beneficiary: ownershipResult.financial_beneficiary,
+        beneficiary_country: ownershipResult.beneficiary_country,
+        beneficiary_flag: ownershipResult.beneficiary_flag,
+        confidence_score: ownershipResult.confidence_score,
+        ownership_structure_type: ownershipResult.ownership_structure_type,
+        ownership_flow: ownershipResult.ownership_flow,
+        sources: ownershipResult.sources,
+        reasoning: ownershipResult.reasoning,
+        result_type: ownershipResult.result_type,
+        user_contributed: !!(product_name || brand),
+        agent_execution_trace: ownershipResult.agent_execution_trace,
+        query_id: queryId
+      };
+
+      return NextResponse.json(mergedResult);
 
     } catch (error) {
       console.error('Error in ownership research:', error);
