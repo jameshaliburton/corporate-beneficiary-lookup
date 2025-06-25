@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { lookupProduct } from '@/lib/apis/barcode-lookup.js';
+import { enhancedLookupProduct } from '@/lib/apis/enhanced-barcode-lookup.js';
 import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
@@ -22,12 +22,32 @@ export async function POST(request: NextRequest) {
     await emitProgress(queryId, 'start', 'started', { barcode, brand });
 
     try {
-      // Step 1: Barcode lookup
+      // Step 1: Enhanced barcode lookup with comprehensive fallback pipeline
       await emitProgress(queryId, 'barcode_lookup', 'started', { barcode });
-      const barcodeData = await lookupProduct(barcode);
+      
+      // Prepare user data if provided
+      const userData = (product_name || brand) ? {
+        product_name,
+        brand,
+        region_hint: hints.country_of_origin
+      } : null;
+      
+      const barcodeData = await enhancedLookupProduct(barcode, userData);
       await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
-      // Step 2: Enhanced Ownership research
+      // If we already have ownership data from the enhanced lookup, return it
+      if (barcodeData.financial_beneficiary) {
+        console.log('✅ Ownership data found in enhanced lookup, skipping agent research');
+        await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'Already found in lookup' });
+        await emitProgress(queryId, 'complete', 'completed', { success: true });
+
+        return NextResponse.json({
+          ...barcodeData,
+          query_id: queryId
+        });
+      }
+
+      // Step 2: Enhanced Ownership research (only if no ownership data found)
       await emitProgress(queryId, 'ownership_research', 'started', { brand, product_name });
       
       // Enable evaluation logging if requested
@@ -74,6 +94,7 @@ export async function POST(request: NextRequest) {
         result_type: ownershipResult.result_type,
         user_contributed: !!(product_name || brand),
         agent_execution_trace: ownershipResult.agent_execution_trace,
+        lookup_trace: barcodeData.lookup_trace, // Include enhanced lookup trace
         query_id: queryId
       };
 
