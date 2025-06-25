@@ -19,22 +19,46 @@ export async function GET() {
           const promptBuilder = getPromptBuilder(agentKey, version);
           
           // Create sample data to generate the prompt (for display purposes)
-          const sampleData = {
-            product_name: 'Sample Product',
-            brand: 'Sample Brand',
-            hints: {},
-            webResearchData: { success: true, total_sources: 5 },
-            queryAnalysis: { company_type: 'Unknown', country_guess: 'Unknown', flags: [] }
-          };
+          // Use different sample data based on agent type
+          let promptContent;
+          
+          if (agentKey === 'OWNERSHIP_RESEARCH') {
+            const sampleData = {
+              product_name: 'Sample Product',
+              brand: 'Sample Brand',
+              hints: {},
+              webResearchData: { 
+                success: true, 
+                findings: [
+                  {
+                    url: 'https://example.com/sample',
+                    title: 'Sample Source',
+                    snippet: 'Sample content snippet',
+                    content: 'Sample content for testing',
+                    priorityScore: 15
+                  }
+                ]
+              },
+              queryAnalysis: { 
+                company_type: 'Unknown', 
+                country_guess: 'Unknown', 
+                flags: [],
+                reasoning: 'Sample analysis'
+              }
+            };
 
-          // Generate the prompt content
-          const promptContent = promptBuilder(
-            sampleData.product_name,
-            sampleData.brand,
-            sampleData.hints,
-            sampleData.webResearchData,
-            sampleData.queryAnalysis
-          );
+            // Generate the prompt content
+            promptContent = promptBuilder(
+              sampleData.product_name,
+              sampleData.brand,
+              sampleData.hints,
+              sampleData.webResearchData,
+              sampleData.queryAnalysis
+            );
+          } else {
+            // For other agent types, call without parameters
+            promptContent = promptBuilder();
+          }
 
           agentVersions.push({
             version,

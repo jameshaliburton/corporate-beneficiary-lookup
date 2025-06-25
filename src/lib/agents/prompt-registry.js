@@ -190,7 +190,7 @@ PRODUCT CONTEXT:
     prompt += `\n\nQUERY ANALYSIS INSIGHTS:
 - Inferred Company Type: ${queryAnalysis.company_type}
 - Geographic Market: ${queryAnalysis.country_guess}
-- Analysis Flags: ${queryAnalysis.flags.join(', ')}
+- Analysis Flags: ${(queryAnalysis.flags || []).join(', ')}
 - Analysis Reasoning: ${queryAnalysis.reasoning}`
   }
 
@@ -205,22 +205,22 @@ PRODUCT CONTEXT:
 8. Source Utilization: Use ALL available sources, especially high-quality ones
 9. Specific Evidence: Quote or reference specific content from sources when making claims`
 
-  if (webResearchData && webResearchData.success && webResearchData.findings.length > 0) {
+  if (webResearchData && webResearchData.success && webResearchData.findings && webResearchData.findings.length > 0) {
     prompt += `\n\nWEB RESEARCH FINDINGS (${webResearchData.findings.length} sources available):`;
     
     const sortedFindings = [...webResearchData.findings].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
     
     sortedFindings.forEach((finding, index) => {
-      const sourceType = getSourceType(finding.url)
-      const priorityLevel = finding.priorityScore >= 15 ? 'HIGH' : finding.priorityScore >= 10 ? 'MEDIUM' : 'LOW'
+      const sourceType = getSourceType(finding.url || '');
+      const priorityLevel = (finding.priorityScore || 0) >= 15 ? 'HIGH' : (finding.priorityScore || 0) >= 10 ? 'MEDIUM' : 'LOW';
       
-      prompt += `\n\nSource ${index + 1} [${priorityLevel} Priority - ${sourceType.toUpperCase()}]: ${finding.url}`;
-      prompt += `\nTitle: ${finding.title}`;
-      prompt += `\nSnippet: ${finding.snippet}`;
+      prompt += `\n\nSource ${index + 1} [${priorityLevel} Priority - ${sourceType.toUpperCase()}]: ${finding.url || 'No URL'}`;
+      prompt += `\nTitle: ${finding.title || 'No title'}`;
+      prompt += `\nSnippet: ${finding.snippet || 'No snippet'}`;
       if (finding.content) {
-        const content = finding.content.toLowerCase()
-        const ownershipKeywords = ['owned', 'subsidiary', 'parent', 'acquisition', 'merger', 'investor', 'corporate', 'structure', 'annual report', 'financial']
-        const hasOwnershipContent = ownershipKeywords.some(keyword => content.includes(keyword))
+        const content = finding.content.toLowerCase();
+        const ownershipKeywords = ['owned', 'subsidiary', 'parent', 'acquisition', 'merger', 'investor', 'corporate', 'structure', 'annual report', 'financial'];
+        const hasOwnershipContent = ownershipKeywords.some(keyword => content.includes(keyword));
         
         if (hasOwnershipContent) {
           prompt += `\nContent: ${finding.content.substring(0, 800)}...`;
@@ -342,7 +342,7 @@ PRODUCT CONTEXT:
     prompt += `\n\nQUERY ANALYSIS INSIGHTS:
 - Inferred Company Type: ${queryAnalysis.company_type}
 - Geographic Market: ${queryAnalysis.country_guess}
-- Analysis Flags: ${queryAnalysis.flags.join(', ')}
+- Analysis Flags: ${(queryAnalysis.flags || []).join(', ')}
 - Analysis Reasoning: ${queryAnalysis.reasoning}`;
   }
 
@@ -360,15 +360,15 @@ PRODUCT CONTEXT:
 11. JSON Formatting: Ensure perfect JSON formatting with no syntax errors
 12. Source Attribution: Always include the specific sources used in your analysis`;
 
-  if (webResearchData && webResearchData.success && webResearchData.findings.length > 0) {
+  if (webResearchData && webResearchData.success && webResearchData.findings && webResearchData.findings.length > 0) {
     prompt += `\n\nWEB RESEARCH FINDINGS (${webResearchData.findings.length} sources available):`;
     const sortedFindings = [...webResearchData.findings].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
     sortedFindings.forEach((finding, index) => {
-      const sourceType = getSourceType(finding.url);
-      const priorityLevel = finding.priorityScore >= 15 ? 'HIGH' : finding.priorityScore >= 10 ? 'MEDIUM' : 'LOW';
-      prompt += `\n\nSource ${index + 1} [${priorityLevel} Priority - ${sourceType.toUpperCase()}]: ${finding.url}`;
-      prompt += `\nTitle: ${finding.title}`;
-      prompt += `\nSnippet: ${finding.snippet}`;
+      const sourceType = getSourceType(finding.url || '');
+      const priorityLevel = (finding.priorityScore || 0) >= 15 ? 'HIGH' : (finding.priorityScore || 0) >= 10 ? 'MEDIUM' : 'LOW';
+      prompt += `\n\nSource ${index + 1} [${priorityLevel} Priority - ${sourceType.toUpperCase()}]: ${finding.url || 'No URL'}`;
+      prompt += `\nTitle: ${finding.title || 'No title'}`;
+      prompt += `\nSnippet: ${finding.snippet || 'No snippet'}`;
       if (finding.content) {
         const content = finding.content.toLowerCase();
         const ownershipKeywords = ['owned', 'subsidiary', 'parent', 'acquisition', 'merger', 'investor', 'corporate', 'structure', 'annual report', 'financial', 'ownership', 'stake', 'holding'];

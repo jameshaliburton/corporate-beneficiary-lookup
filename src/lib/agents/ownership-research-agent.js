@@ -7,6 +7,7 @@ import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-m
 import { getProductByBarcode, upsertProduct, ownershipResultToProductData } from '../database/products.js'
 import { emitProgress } from '../utils.ts'
 import { adaptedEvaluationFramework } from '../services/adapted-evaluation-framework.js'
+import { getPromptBuilder, getCurrentPromptVersion } from './prompt-registry.js'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -421,7 +422,14 @@ export async function AgentOwnershipResearch({
       sourcesCount: webResearchData?.total_sources || 0
     })
     
-    const researchPrompt = buildResearchPrompt(product_name, brand, hints, webResearchData, queryAnalysis)
+    // Get current prompt version and build prompt using registry
+    const promptVersion = getCurrentPromptVersion('OWNERSHIP_RESEARCH')
+    const promptBuilder = getPromptBuilder('OWNERSHIP_RESEARCH', promptVersion)
+    const researchPrompt = promptBuilder(product_name, brand, hints, webResearchData, queryAnalysis)
+    
+    // Add prompt version to execution trace
+    executionTrace.prompt_version = promptVersion
+    
     const ownership = await performOwnershipAnalysis(researchPrompt, product_name, brand, webResearchData)
     
     ownershipAnalysisStage.result = 'success'
