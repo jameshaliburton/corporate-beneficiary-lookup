@@ -389,3 +389,35 @@ PRODUCT CONTEXT:
 
   return prompt;
 }
+
+// Placeholder functions for other agents
+function buildQueryBuilderPromptV1_0() {
+  return "Query builder prompt v1.0 - to be implemented";
+}
+
+function buildQueryBuilderPromptV1_1() {
+  return "Query builder prompt v1.1 - to be implemented";
+}
+
+function buildVerificationPromptV1_0() {
+  return "Verification prompt v1.0 - to be implemented";
+}
+
+function buildVerificationPromptV1_1() {
+  return "Verification prompt v1.1 - to be implemented";
+}
+
+// Helper function
+function getSourceType(url) {
+  if (!url) return 'unknown';
+  
+  const domain = url.toLowerCase();
+  
+  if (domain.includes('sec.gov') || domain.includes('edgar') || domain.includes('regulatory')) return 'regulatory';
+  if (domain.includes('bloomberg') || domain.includes('reuters') || domain.includes('ft.com') || domain.includes('wsj.com')) return 'financial_news';
+  if (domain.includes('annual') || domain.includes('investor') || domain.includes('corporate')) return 'company_official';
+  if (domain.includes('opencorporates') || domain.includes('dun') || domain.includes('zoominfo')) return 'business_database';
+  if (domain.includes('news') || domain.includes('press')) return 'news';
+  
+  return 'other';
+}
