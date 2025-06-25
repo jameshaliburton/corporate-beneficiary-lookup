@@ -177,6 +177,31 @@ export default function PromptDashboard() {
     <div className="p-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Prompt Management</h1>
       
+      {/* Instructions Section */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h2 className="text-lg font-semibold text-blue-800 mb-3">How to Use Prompt Versioning</h2>
+        <div className="text-sm text-blue-700 space-y-2">
+          <p><strong>Version Statuses:</strong></p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li><strong>Current:</strong> The active version used in production</li>
+            <li><strong>Testing:</strong> Ready for A/B testing against the current version</li>
+            <li><strong>Development:</strong> In development, not ready for testing</li>
+            <li><strong>Deprecated:</strong> No longer used</li>
+          </ul>
+          <p className="mt-3"><strong>Workflow:</strong></p>
+          <ol className="list-decimal list-inside ml-4 space-y-1">
+            <li>Edit a prompt version using the text area below</li>
+            <li>Click "Save" to update the prompt content</li>
+            <li>Use "Set Active" to make a version the current production version</li>
+            <li>Test different versions by switching between them</li>
+          </ol>
+          <p className="mt-3 text-xs text-blue-600">
+            💡 <strong>Tip:</strong> Only "Current" and "Testing" versions can be set as active. 
+            Use "Development" versions for work-in-progress prompts.
+          </p>
+        </div>
+      </div>
+      
       <div className="flex gap-4 mb-4">
         <select 
           value={selectedAgent.key} 
