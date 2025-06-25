@@ -143,13 +143,43 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     barcode: result.barcode || 'Unknown Barcode',
   } : mockData.product;
 
-  const ownershipTrailData = result?.ownership_flow ? result.ownership_flow.map((company, index) => ({
-    name: company.name,
-    country: company.country || 'Unknown',
-    type: company.type || 'Unknown',
-    flag: company.country ? getFlag(company.country) : '🏳️',
-    ultimate: index === result.ownership_flow!.length - 1,
-  })) : mockData.ownershipTrail;
+  // Handle ownership trail - if we have a real result with ownership flow, use it
+  // Otherwise, if we have beneficiary info, create a simple trail
+  // Otherwise, use mock data
+  const ownershipTrailData = result ? (
+    result.ownership_flow && result.ownership_flow.length > 0 ? 
+      result.ownership_flow.map((company, index) => ({
+        name: company.name,
+        country: company.country || 'Unknown',
+        type: company.type || 'Unknown',
+        flag: company.country ? getFlag(company.country) : '🏳️',
+        ultimate: index === result.ownership_flow!.length - 1,
+      })) : 
+      result.financial_beneficiary && result.financial_beneficiary !== 'Unknown' ? [
+        {
+          name: result.brand || 'Unknown Brand',
+          country: 'Unknown',
+          type: 'Brand',
+          flag: '🏳️',
+          ultimate: false,
+        },
+        {
+          name: result.financial_beneficiary,
+          country: result.beneficiary_country || 'Unknown',
+          type: 'Ultimate Owner',
+          flag: result.beneficiary_flag || getFlag(result.beneficiary_country),
+          ultimate: true,
+        }
+      ] : [
+        {
+          name: result.brand || 'Unknown Brand',
+          country: 'Unknown',
+          type: 'Brand',
+          flag: '🏳️',
+          ultimate: true,
+        }
+      ]
+  ) : mockData.ownershipTrail;
 
   const confidenceData = result ? {
     confidence: (() => {
@@ -187,7 +217,7 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       <ProductHeader product={productData} />
       <OwnershipTrail steps={ownershipTrailData} />
       <ConfidenceAttribution confidence={confidenceData.confidence} score={confidenceData.attribution} />
-      <ProcessTrace reasoning={data.reasoning || 'No reasoning available'} />
+      <ProcessTrace reasoning={result?.reasoning || data.reasoning || 'No reasoning available'} />
       <Trace trace={traceData} />
       {result?.error && (
         <ErrorFallback scenario="AI Research Error" message={result.error} />
