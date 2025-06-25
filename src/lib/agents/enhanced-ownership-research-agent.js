@@ -238,7 +238,7 @@ export async function EnhancedAgentOwnershipResearch({
       }
     } catch (ragError) {
       ragStage.reason(`RAG retrieval failed: ${ragError.message}`, REASONING_TYPES.ERROR)
-      ragStage.failure(ragError, ['Knowledge base search failed, continuing with LLM analysis'])
+      ragStage.error(ragError, {}, ['Knowledge base search failed, continuing with LLM analysis'])
       await emitProgress(queryId, 'rag_retrieval', 'failed', { error: ragError.message })
     }
     
@@ -683,7 +683,7 @@ Respond in valid JSON format:
       }
       
     } catch (error) {
-      saveStage.failure(error, ['Failed to save result to database'])
+      saveStage.error(error, {}, ['Failed to save result to database'])
       await emitProgress(queryId, 'database_save', 'failed', { error: error.message })
       console.error('Database save error:', error)
     }

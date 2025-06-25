@@ -8,7 +8,7 @@ import { supabase } from '../supabase.ts';
 // RAG Knowledge Base Class
 export class RAGKnowledgeBase {
   constructor() {
-    this.tableName = 'ownership_knowledge_base';
+    this.tableName = 'knowledge_base';
   }
 
   /**
