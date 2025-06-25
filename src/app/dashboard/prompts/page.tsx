@@ -7,31 +7,30 @@ interface PromptVersion {
   status: string;
   prompt: string;
   isCurrent: boolean;
+  isEdited: boolean;
 }
 
 interface Agent {
   key: string;
   name: string;
   versions: PromptVersion[];
+  currentVersion: string;
 }
 
 export default function PromptDashboard() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
   const [promptText, setPromptText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  // Fetch prompt data on component mount
-  useEffect(() => {
-    fetchPrompts();
-  }, []);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const fetchPrompts = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch('/api/prompts');
       const result = await response.json();
       
@@ -53,13 +52,18 @@ export default function PromptDashboard() {
     }
   };
 
-  // Handle agent/version switching
+  useEffect(() => {
+    fetchPrompts();
+  }, []);
+
   const handleAgentChange = (agentKey: string) => {
     const agent = agents.find(a => a.key === agentKey);
     if (agent) {
       setSelectedAgent(agent);
-      setSelectedVersion(agent.versions[0]);
-      setPromptText(agent.versions[0].prompt);
+      // Select the current active version if available, otherwise the first version
+      const currentVersion = agent.versions.find(v => v.isCurrent) || agent.versions[0];
+      setSelectedVersion(currentVersion);
+      setPromptText(currentVersion.prompt);
     }
   };
 
@@ -79,6 +83,7 @@ export default function PromptDashboard() {
 
     try {
       setSaving(true);
+      setSaveMessage(null);
       const response = await fetch('/api/prompts', {
         method: 'POST',
         headers: {
@@ -93,14 +98,18 @@ export default function PromptDashboard() {
 
       const result = await response.json();
       if (result.success) {
-        alert('Prompt saved successfully!');
+        setSaveMessage('✅ Prompt saved successfully!');
         // Refresh the data to get any updates
         await fetchPrompts();
+        // Clear success message after 3 seconds
+        setTimeout(() => setSaveMessage(null), 3000);
       } else {
-        alert(`Error saving prompt: ${result.error}`);
+        setSaveMessage(`❌ Error: ${result.error}`);
+        setTimeout(() => setSaveMessage(null), 5000);
       }
     } catch (err) {
-      alert('Failed to save prompt');
+      setSaveMessage('❌ Failed to save prompt');
+      setTimeout(() => setSaveMessage(null), 5000);
       console.error('Error saving prompt:', err);
     } finally {
       setSaving(false);
@@ -113,6 +122,7 @@ export default function PromptDashboard() {
 
     try {
       setSaving(true);
+      setSaveMessage(null);
       const response = await fetch('/api/prompts', {
         method: 'PUT',
         headers: {
@@ -126,14 +136,18 @@ export default function PromptDashboard() {
 
       const result = await response.json();
       if (result.success) {
-        alert('Active version updated successfully!');
+        setSaveMessage('✅ Active version updated successfully!');
         // Refresh the data to get updated status
         await fetchPrompts();
+        // Clear success message after 3 seconds
+        setTimeout(() => setSaveMessage(null), 3000);
       } else {
-        alert(`Error setting active version: ${result.error}`);
+        setSaveMessage(`❌ Error: ${result.error}`);
+        setTimeout(() => setSaveMessage(null), 5000);
       }
     } catch (err) {
-      alert('Failed to set active version');
+      setSaveMessage('❌ Failed to set active version');
+      setTimeout(() => setSaveMessage(null), 5000);
       console.error('Error setting active version:', err);
     } finally {
       setSaving(false);
@@ -201,6 +215,17 @@ export default function PromptDashboard() {
           </p>
         </div>
       </div>
+
+      {/* Status Messages */}
+      {saveMessage && (
+        <div className={`mb-4 p-3 rounded ${
+          saveMessage.includes('✅') ? 'bg-green-100 text-green-800 border border-green-200' : 
+          saveMessage.includes('❌') ? 'bg-red-100 text-red-800 border border-red-200' : 
+          'bg-blue-100 text-blue-800 border border-blue-200'
+        }`}>
+          {saveMessage}
+        </div>
+      )}
       
       <div className="flex gap-4 mb-4">
         <select 
@@ -220,7 +245,7 @@ export default function PromptDashboard() {
         >
           {selectedAgent.versions.map(v => (
             <option key={v.version} value={v.version}>
-              {v.version} ({v.status}) {v.isCurrent ? '(Current)' : ''}
+              {v.version} ({v.status}) {v.isCurrent ? '⭐ Active' : ''} {v.isEdited ? '✏️ Edited' : ''}
             </option>
           ))}
         </select>
@@ -228,15 +253,25 @@ export default function PromptDashboard() {
         <button 
           onClick={handleSetActive} 
           disabled={saving || selectedVersion.isCurrent}
-          className="ml-2 px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-400"
+          className="ml-2 px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-400 hover:bg-blue-700"
         >
           {saving ? 'Setting...' : 'Set Active'}
         </button>
       </div>
       
       <div className="mb-4">
-        <div className="text-sm text-gray-600 mb-2">
-          Status: {selectedVersion.status} {selectedVersion.isCurrent && '(Currently Active)'}
+        <div className="text-sm text-gray-600 mb-2 flex items-center gap-2">
+          <span>Status: {selectedVersion.status}</span>
+          {selectedVersion.isCurrent && (
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+              ⭐ Currently Active
+            </span>
+          )}
+          {selectedVersion.isEdited && (
+            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">
+              ✏️ Edited
+            </span>
+          )}
         </div>
       </div>
       
@@ -251,7 +286,7 @@ export default function PromptDashboard() {
         <button 
           onClick={handleSave} 
           disabled={saving}
-          className="px-4 py-2 bg-green-600 text-white rounded disabled:bg-gray-400"
+          className="px-4 py-2 bg-green-600 text-white rounded disabled:bg-gray-400 hover:bg-green-700"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
