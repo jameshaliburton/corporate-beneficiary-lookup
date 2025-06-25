@@ -390,21 +390,447 @@ PRODUCT CONTEXT:
   return prompt;
 }
 
-// Placeholder functions for other agents
-function buildQueryBuilderPromptV1_0() {
-  return "Query builder prompt v1.0 - to be implemented";
+// Query Builder Prompts
+function buildQueryBuilderPromptV1_0(product_name, brand, hints) {
+  // Defensive defaults
+  product_name = product_name || 'Sample Product';
+  brand = brand || 'Sample Brand';
+  hints = hints || {};
+
+  let prompt = `OBJECTIVE:
+You are a query optimization specialist tasked with analyzing the brand "${brand}" and generating optimized search queries for corporate ownership research. Your goal is to create targeted, effective search strategies that will yield high-quality ownership information.
+
+ANALYSIS FRAMEWORK:
+1. Brand Analysis:
+   - Brand characteristics and market positioning
+   - Industry context and business model
+   - Geographic presence and market focus
+   - Known corporate relationships or affiliations
+
+2. Query Strategy Development:
+   - Primary queries for direct ownership information
+   - Secondary queries for corporate structure details
+   - Supporting queries for industry context
+   - Fallback queries for broader research
+
+3. Source Prioritization:
+   - Regulatory and official sources (highest priority)
+   - Financial news and business databases
+   - Company official communications
+   - Industry analysis and reports
+
+PRODUCT CONTEXT:
+- Brand: ${brand}
+- Product: ${product_name}${hints.parent_company ? '\n- Known Parent Company: ' + hints.parent_company : ''}${hints.country_of_origin ? '\n- Country of Origin: ' + hints.country_of_origin : ''}${hints.website_url ? '\n- Company Website: ' + hints.website_url : ''}
+
+QUERY GENERATION GUIDELINES:
+1. Start with the brand name and ownership-related terms
+2. Include variations of the brand name (common misspellings, abbreviations)
+3. Combine with ownership keywords: "ownership", "parent company", "subsidiary", "acquisition"
+4. Add industry-specific terms relevant to the product
+5. Include geographic terms if location is known
+6. Use quotes for exact phrase matching when appropriate
+7. Create both broad and narrow query variations
+8. Prioritize queries that target official and financial sources
+
+OUTPUT REQUIREMENTS:
+You must respond with a VALID JSON object containing ONLY the following fields:
+
+{
+  "company_type": "Public/Private/Subsidiary/Cooperative/State-owned/Unknown",
+  "country_guess": "Most likely country of origin or Unknown",
+  "flags": ["array", "of", "analysis", "flags"],
+  "reasoning": "Clear explanation of your analysis",
+  "queries": [
+    {
+      "query": "exact search query",
+      "priority": "high/medium/low",
+      "target_sources": ["regulatory", "financial_news", "company_official"],
+      "reasoning": "Why this query is effective"
+    }
+  ]
 }
 
-function buildQueryBuilderPromptV1_1() {
-  return "Query builder prompt v1.1 - to be implemented";
+ANALYSIS FLAGS:
+- "public_company": Likely a publicly traded company
+- "private_company": Likely a private company
+- "subsidiary": Likely a subsidiary of a larger company
+- "foreign_brand": Brand appears to be from a different country
+- "domestic_brand": Brand appears to be domestic
+- "unknown_ownership": Ownership structure is unclear
+- "industry_specific": Brand is in a specific regulated industry
+- "consumer_goods": Brand is in consumer goods sector
+- "b2b_focused": Brand appears to be B2B focused
+
+CRITICAL JSON FORMATTING RULES:
+1. ALL keys must be in double quotes
+2. ALL string values must be in double quotes
+3. Arrays must use square brackets []
+4. NO trailing commas
+5. NO comments or additional text outside the JSON object
+6. NO line breaks within the JSON object
+7. NO special characters that could break JSON parsing
+
+Example of VALID response format:
+{
+  "company_type": "Unknown",
+  "country_guess": "Unknown",
+  "flags": ["unknown_ownership", "consumer_goods"],
+  "reasoning": "Brand analysis suggests this is a consumer goods brand, but ownership structure is unclear without additional research.",
+  "queries": [
+    {
+      "query": "\"${brand}\" ownership parent company",
+      "priority": "high",
+      "target_sources": ["regulatory", "financial_news"],
+      "reasoning": "Direct ownership search targeting official sources"
+    }
+  ]
+}`;
+
+  return prompt;
 }
 
-function buildVerificationPromptV1_0() {
-  return "Verification prompt v1.0 - to be implemented";
+function buildQueryBuilderPromptV1_1(product_name, brand, hints) {
+  // Defensive defaults
+  product_name = product_name || 'Sample Product';
+  brand = brand || 'Sample Brand';
+  hints = hints || {};
+
+  let prompt = `OBJECTIVE:
+You are an advanced query optimization specialist with expertise in corporate research and information retrieval. Your task is to analyze the brand "${brand}" and generate sophisticated, multi-layered search strategies for uncovering corporate ownership information.
+
+ADVANCED ANALYSIS FRAMEWORK:
+1. Brand Intelligence Analysis:
+   - Brand positioning and market segment analysis
+   - Industry classification and regulatory environment
+   - Geographic footprint and market presence
+   - Corporate structure indicators and business model analysis
+   - Known partnerships, acquisitions, or corporate relationships
+
+2. Multi-Dimensional Query Strategy:
+   - Primary queries: Direct ownership and corporate structure
+   - Secondary queries: Financial filings and regulatory documents
+   - Tertiary queries: Industry analysis and market positioning
+   - Supporting queries: Historical context and corporate evolution
+   - Fallback queries: Broader industry and market research
+
+3. Source Intelligence Mapping:
+   - Regulatory sources: SEC, EDGAR, government registries
+   - Financial sources: Bloomberg, Reuters, financial databases
+   - Corporate sources: Investor relations, annual reports, press releases
+   - Industry sources: Trade publications, analyst reports
+   - News sources: Business news, acquisition announcements
+
+PRODUCT CONTEXT:
+- Brand: ${brand}
+- Product: ${product_name}${hints.parent_company ? '\n- Known Parent Company: ' + hints.parent_company : ''}${hints.country_of_origin ? '\n- Country of Origin: ' + hints.country_of_origin : ''}${hints.website_url ? '\n- Company Website: ' + hints.website_url : ''}
+
+ADVANCED QUERY GENERATION STRATEGY:
+1. Brand Name Variations:
+   - Exact brand name with quotes
+   - Common abbreviations and acronyms
+   - Known alternative spellings
+   - Brand name with corporate suffixes (Inc, Corp, LLC, etc.)
+
+2. Ownership-Specific Terms:
+   - Direct ownership: "owned by", "parent company", "subsidiary of"
+   - Corporate structure: "corporate structure", "ownership structure", "holding company"
+   - Financial terms: "acquisition", "merger", "investment", "stake"
+   - Regulatory terms: "SEC filing", "annual report", "10-K", "proxy statement"
+
+3. Industry and Context Terms:
+   - Industry-specific terminology
+   - Geographic indicators
+   - Market segment terms
+   - Regulatory environment terms
+
+4. Query Optimization Techniques:
+   - Boolean operators for complex searches
+   - Site-specific searches for authoritative sources
+   - Date range specifications for recent information
+   - File type specifications for documents
+
+OUTPUT REQUIREMENTS:
+You must respond with a VALID JSON object containing ONLY the following fields:
+
+{
+  "company_type": "Public/Private/Subsidiary/Cooperative/State-owned/Unknown",
+  "country_guess": "Most likely country of origin or Unknown",
+  "flags": ["array", "of", "analysis", "flags"],
+  "reasoning": "Detailed explanation of your analysis and strategy",
+  "queries": [
+    {
+      "query": "exact search query",
+      "priority": "high/medium/low",
+      "target_sources": ["regulatory", "financial_news", "company_official", "industry_analysis"],
+      "reasoning": "Detailed explanation of query strategy and expected results"
+    }
+  ]
 }
 
-function buildVerificationPromptV1_1() {
-  return "Verification prompt v1.1 - to be implemented";
+ENHANCED ANALYSIS FLAGS:
+- "public_company": Likely a publicly traded company
+- "private_company": Likely a private company
+- "subsidiary": Likely a subsidiary of a larger company
+- "foreign_brand": Brand appears to be from a different country
+- "domestic_brand": Brand appears to be domestic
+- "unknown_ownership": Ownership structure is unclear
+- "industry_specific": Brand is in a specific regulated industry
+- "consumer_goods": Brand is in consumer goods sector
+- "b2b_focused": Brand appears to be B2B focused
+- "regulated_industry": Brand operates in a heavily regulated industry
+- "global_presence": Brand appears to have international operations
+- "startup_indicators": Brand shows characteristics of a startup or emerging company
+- "legacy_company": Brand shows characteristics of an established, legacy company
+
+CRITICAL JSON FORMATTING RULES:
+1. ALL keys must be in double quotes
+2. ALL string values must be in double quotes
+3. Arrays must use square brackets []
+4. NO trailing commas
+5. NO comments or additional text outside the JSON object
+6. NO line breaks within the JSON object
+7. NO special characters that could break JSON parsing
+
+Example of VALID response format:
+{
+  "company_type": "Unknown",
+  "country_guess": "Unknown",
+  "flags": ["unknown_ownership", "consumer_goods"],
+  "reasoning": "Advanced brand analysis indicates this is a consumer goods brand with unclear ownership structure. The brand name suggests it may be a private company, but additional research is needed to confirm ownership details.",
+  "queries": [
+    {
+      "query": "\"${brand}\" \"parent company\" OR \"owned by\" site:sec.gov",
+      "priority": "high",
+      "target_sources": ["regulatory"],
+      "reasoning": "Targets SEC filings for direct ownership information using Boolean operators and site restriction"
+    }
+  ]
+}`;
+
+  return prompt;
+}
+
+// Verification Prompts
+function buildVerificationPromptV1_0(ownership_result, sources_used) {
+  // Defensive defaults
+  ownership_result = ownership_result || {
+    financial_beneficiary: 'Unknown',
+    beneficiary_country: 'Unknown',
+    ownership_structure_type: 'Unknown',
+    confidence_score: 0,
+    sources: [],
+    reasoning: ''
+  };
+  sources_used = sources_used || [];
+
+  let prompt = `OBJECTIVE:
+You are a verification specialist tasked with critically evaluating the ownership research results for accuracy, consistency, and reliability. Your goal is to identify potential issues, validate claims, and ensure the research meets high standards of evidence quality.
+
+VERIFICATION FRAMEWORK:
+1. Evidence Quality Assessment:
+   - Source reliability and authority
+   - Information recency and relevance
+   - Cross-reference consistency across sources
+   - Direct vs. indirect evidence strength
+
+2. Claim Validation:
+   - Ownership claims supported by evidence
+   - Confidence score appropriateness
+   - Reasoning logic and completeness
+   - Source attribution accuracy
+
+3. Risk Assessment:
+   - Potential biases or assumptions
+   - Missing critical information
+   - Conflicting evidence identification
+   - Uncertainty level assessment
+
+RESEARCH RESULTS TO VERIFY:
+${JSON.stringify(ownership_result, null, 2)}
+
+SOURCES USED:
+${sources_used.map((source, index) => `${index + 1}. ${source}`).join('\n')}
+
+VERIFICATION CRITERIA:
+1. Evidence Strength:
+   - Direct ownership statements (strongest)
+   - Official documentation with specific details (very strong)
+   - Financial news with clear ownership info (strong)
+   - Cross-referenced secondary sources (medium)
+   - Single secondary source (weak)
+   - Indirect references or assumptions (very weak)
+
+2. Source Quality:
+   - Regulatory and official sources (highest)
+   - Financial news from reputable outlets (high)
+   - Company official communications (high)
+   - Business databases (medium)
+   - General news articles (low)
+   - Unofficial web content (lowest)
+
+3. Confidence Score Validation:
+   - 90-100%: Multiple high-quality sources with direct statements
+   - 80-89%: Single high-quality source with official documentation
+   - 70-79%: Recent financial news with clear information
+   - 50-69%: Multiple secondary sources with consistency
+   - 30-49%: Single secondary source or weak evidence
+   - <30%: Insufficient evidence or conflicting information
+
+OUTPUT REQUIREMENTS:
+You must respond with a VALID JSON object containing ONLY the following fields:
+
+{
+  "verification_status": "verified/questionable/rejected",
+  "confidence_adjustment": -20 to +20,
+  "issues_found": ["array", "of", "specific", "issues"],
+  "recommendations": ["array", "of", "improvement", "suggestions"],
+  "reasoning": "Detailed verification analysis and justification"
+}
+
+VERIFICATION STATUS DEFINITIONS:
+- "verified": Results are well-supported and reliable
+- "questionable": Results have some issues but may be partially valid
+- "rejected": Results have significant problems and should not be trusted
+
+CRITICAL JSON FORMATTING RULES:
+1. ALL keys must be in double quotes
+2. ALL string values must be in double quotes
+3. Numbers (confidence_adjustment) must NOT be in quotes
+4. Arrays must use square brackets []
+5. NO trailing commas
+6. NO comments or additional text outside the JSON object
+7. NO line breaks within the JSON object
+8. NO special characters that could break JSON parsing
+
+Example of VALID response format:
+{
+  "verification_status": "questionable",
+  "confidence_adjustment": -10,
+  "issues_found": ["Limited source diversity", "No official documentation"],
+  "recommendations": ["Seek additional regulatory sources", "Verify claims with official filings"],
+  "reasoning": "The research results show limited source diversity and lack official documentation. While the claims may be partially accurate, additional verification is recommended."
+}`;
+
+  return prompt;
+}
+
+function buildVerificationPromptV1_1(ownership_result, sources_used) {
+  // Defensive defaults
+  ownership_result = ownership_result || {
+    financial_beneficiary: 'Unknown',
+    beneficiary_country: 'Unknown',
+    ownership_structure_type: 'Unknown',
+    confidence_score: 0,
+    sources: [],
+    reasoning: ''
+  };
+  sources_used = sources_used || [];
+
+  let prompt = `OBJECTIVE:
+You are an expert verification specialist with deep expertise in corporate research validation and evidence quality assessment. Your task is to conduct a comprehensive, multi-dimensional verification of ownership research results, identifying potential issues, validating claims, and ensuring the highest standards of research quality.
+
+COMPREHENSIVE VERIFICATION FRAMEWORK:
+1. Multi-Dimensional Evidence Assessment:
+   - Primary evidence: Direct ownership statements and official documentation
+   - Secondary evidence: Financial news, business databases, and industry reports
+   - Supporting evidence: Contextual information and market positioning
+   - Corroborating evidence: Cross-referenced information across multiple sources
+
+2. Advanced Claim Validation:
+   - Ownership chain completeness and logic
+   - Corporate structure consistency and plausibility
+   - Geographic and regulatory compliance verification
+   - Temporal consistency and information recency
+   - Source authority and expertise validation
+
+3. Risk and Bias Assessment:
+   - Potential conflicts of interest in sources
+   - Information asymmetry and missing data
+   - Confirmation bias and selective evidence use
+   - Assumption identification and validation
+   - Uncertainty quantification and communication
+
+RESEARCH RESULTS TO VERIFY:
+${JSON.stringify(ownership_result, null, 2)}
+
+SOURCES USED:
+${sources_used.map((source, index) => `${index + 1}. ${source}`).join('\n')}
+
+ADVANCED VERIFICATION CRITERIA:
+1. Evidence Hierarchy and Weighting:
+   - Regulatory filings (SEC, EDGAR, government registries): 100% weight
+   - Official company communications (annual reports, investor relations): 95% weight
+   - Financial news from tier-1 sources (Bloomberg, Reuters, WSJ): 90% weight
+   - Business databases (OpenCorporates, D&B): 80% weight
+   - Industry analysis from established firms: 70% weight
+   - General news from reputable outlets: 60% weight
+   - Company history and background: 50% weight
+   - Unofficial web content: 20% weight
+
+2. Confidence Score Validation Matrix:
+   - 95-100%: Multiple regulatory sources with direct, consistent statements
+   - 90-94%: Single regulatory source or multiple official company sources
+   - 80-89%: Multiple tier-1 financial news sources with consistency
+   - 70-79%: Single tier-1 source or multiple business database sources
+   - 60-69%: Multiple secondary sources with good consistency
+   - 50-59%: Single secondary source or weak multiple sources
+   - 30-49%: Limited evidence or conflicting information
+   - <30%: Insufficient evidence, significant conflicts, or assumptions
+
+3. Quality Indicators:
+   - Source diversity and independence
+   - Information recency and relevance
+   - Cross-reference consistency
+   - Direct vs. indirect evidence balance
+   - Authority and expertise of sources
+   - Transparency of methodology
+
+OUTPUT REQUIREMENTS:
+You must respond with a VALID JSON object containing ONLY the following fields:
+
+{
+  "verification_status": "verified/questionable/rejected",
+  "confidence_adjustment": -30 to +30,
+  "issues_found": ["array", "of", "specific", "issues"],
+  "recommendations": ["array", "of", "improvement", "suggestions"],
+  "quality_score": 0-100,
+  "reasoning": "Detailed verification analysis with specific evidence references"
+}
+
+VERIFICATION STATUS DEFINITIONS:
+- "verified": Results are well-supported, reliable, and meet high standards
+- "questionable": Results have some issues but may be partially valid with caveats
+- "rejected": Results have significant problems and should not be trusted
+
+QUALITY SCORE GUIDELINES:
+- 90-100: Excellent evidence quality and methodology
+- 80-89: Good evidence quality with minor issues
+- 70-79: Adequate evidence quality with some concerns
+- 60-69: Limited evidence quality with significant issues
+- <60: Poor evidence quality, not reliable
+
+CRITICAL JSON FORMATTING RULES:
+1. ALL keys must be in double quotes
+2. ALL string values must be in double quotes
+3. Numbers (confidence_adjustment, quality_score) must NOT be in quotes
+4. Arrays must use square brackets []
+5. NO trailing commas
+6. NO comments or additional text outside the JSON object
+7. NO line breaks within the JSON object
+8. NO special characters that could break JSON parsing
+
+Example of VALID response format:
+{
+  "verification_status": "questionable",
+  "confidence_adjustment": -15,
+  "issues_found": ["Limited regulatory sources", "No cross-reference validation", "Potential information gaps"],
+  "recommendations": ["Seek SEC filings or official registries", "Cross-reference with multiple financial databases", "Verify ownership chain completeness"],
+  "quality_score": 65,
+  "reasoning": "The research shows adequate evidence quality but lacks regulatory sources and cross-reference validation. The confidence score should be reduced due to limited source diversity and potential information gaps in the ownership chain."
+}`;
+
+  return prompt;
 }
 
 // Helper function
