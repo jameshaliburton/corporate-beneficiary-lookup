@@ -9,7 +9,12 @@
     "start": "next start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["corporate-ownership", "beneficiary-research", "ai-analysis", "barcode-lookup"],
+  "keywords": [
+    "corporate-ownership",
+    "beneficiary-research",
+    "ai-analysis",
+    "barcode-lookup"
+  ],
   "author": "OwnedBy Team",
   "license": "ISC",
   "description": "AI-powered corporate ownership research tool that helps users discover who owns the companies behind their purchases",
@@ -19,6 +24,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.12",
     "@supabase/supabase-js": "^2.50.0",
+    "@swc/helpers": "^0.5.17",
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.61",
     "@zxing/library": "^0.21.3",

@@ -242,7 +242,7 @@ export default function Home() {
   };
 
   // Helper to get flag emoji from country name
-  function getFlag(country: string | undefined) {
+  const getFlag = (country: string | undefined) => {
     if (!country || country === 'Unknown') return '🏳️';
     const flagMap: { [key: string]: string } = {
       'Sweden': '🇸🇪',
@@ -266,7 +266,7 @@ export default function Home() {
       'Mexico': '🇲🇽',
     };
     return flagMap[country] || '🏳️';
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 px-4 py-8">
