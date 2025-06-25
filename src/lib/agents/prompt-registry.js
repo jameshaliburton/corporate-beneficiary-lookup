@@ -136,8 +136,13 @@ function getVerificationPrompt(version) {
 
 // Import prompt builders (these will be implemented in separate files)
 function buildResearchPromptV1_0(product_name, brand, hints, webResearchData, queryAnalysis) {
-  // This is the current implementation from ownership-research-agent.js
-  // We'll extract it here for versioning
+  // Defensive defaults
+  product_name = product_name || 'Sample Product';
+  brand = brand || 'Sample Brand';
+  hints = hints || {};
+  webResearchData = webResearchData || { success: false, findings: [] };
+  queryAnalysis = queryAnalysis || { company_type: 'Unknown', country_guess: 'Unknown', flags: [], reasoning: '' };
+
   let prompt = `OBJECTIVE:
 You are a corporate ownership researcher tasked with identifying the ultimate financial beneficiary of the brand "${brand}". Your goal is to establish clear, evidence-based ownership relationships while maintaining high accuracy and avoiding assumptions.
 
@@ -233,7 +238,7 @@ PRODUCT CONTEXT:
 5. Use specific quotes or references from the content when making claims
 6. If sources conflict, explain the conflict and which source you trust more and why`;
   } else {
-    prompt += `\n\nNo web research data available. Apply the research strategy using only verifiable information from your training data. Maintain high standards for evidence quality.`;
+    prompt += `\n\nNo web research data available. Apply the research strategy using only verifiable information from your training data. Maintain high standards for evidence quality and be conservative with confidence scores.`;
   }
 
   prompt += `\n\nOUTPUT REQUIREMENTS:
@@ -245,7 +250,7 @@ You must respond with a VALID JSON object containing ONLY the following fields:
   "ownership_structure_type": "Public/Private/Subsidiary/Cooperative/State-owned/Unknown",
   "confidence_score": 0-100,
   "sources": ["array", "of", "specific", "sources"],
-  "reasoning": "Clear explanation with evidence"
+  "reasoning": "Clear explanation with evidence and source references"
 }
 
 CRITICAL JSON FORMATTING RULES:
@@ -256,6 +261,8 @@ CRITICAL JSON FORMATTING RULES:
 5. NO trailing commas
 6. NO comments or additional text outside the JSON object
 7. NO line breaks within the JSON object
+8. NO special characters that could break JSON parsing
+9. Ensure all quotes are properly escaped if they appear in string values
 
 Example of VALID response format:
 {
@@ -264,14 +271,20 @@ Example of VALID response format:
   "ownership_structure_type": "Unknown",
   "confidence_score": 30,
   "sources": ["Web research", "AI analysis"],
-  "reasoning": "No clear evidence found in available sources."
+  "reasoning": "No clear evidence found in available sources. The sources provided do not contain specific ownership information for this brand."
 }`;
 
   return prompt;
 }
 
 function buildResearchPromptV1_1(product_name, brand, hints, webResearchData, queryAnalysis) {
-  // Enhanced v1.1 prompt with better confidence scoring and source prioritization
+  // Defensive defaults
+  product_name = product_name || 'Sample Product';
+  brand = brand || 'Sample Brand';
+  hints = hints || {};
+  webResearchData = webResearchData || { success: false, findings: [] };
+  queryAnalysis = queryAnalysis || { company_type: 'Unknown', country_guess: 'Unknown', flags: [], reasoning: '' };
+
   let prompt = `OBJECTIVE:
 You are a corporate ownership researcher tasked with identifying the ultimate financial beneficiary of the brand "${brand}". Your goal is to establish clear, evidence-based ownership relationships while maintaining high accuracy and avoiding assumptions.
 
@@ -323,14 +336,14 @@ ANALYSIS FRAMEWORK:
 
 PRODUCT CONTEXT:
 - Brand: ${brand}
-- Product: ${product_name}${hints.parent_company ? '\n- Known Parent Company: ' + hints.parent_company : ''}${hints.country_of_origin ? '\n- Country of Origin: ' + hints.country_of_origin : ''}${hints.website_url ? '\n- Company Website: ' + hints.website_url : ''}`
+- Product: ${product_name}${hints.parent_company ? '\n- Known Parent Company: ' + hints.parent_company : ''}${hints.country_of_origin ? '\n- Country of Origin: ' + hints.country_of_origin : ''}${hints.website_url ? '\n- Company Website: ' + hints.website_url : ''}`;
 
   if (queryAnalysis) {
     prompt += `\n\nQUERY ANALYSIS INSIGHTS:
 - Inferred Company Type: ${queryAnalysis.company_type}
 - Geographic Market: ${queryAnalysis.country_guess}
 - Analysis Flags: ${queryAnalysis.flags.join(', ')}
-- Analysis Reasoning: ${queryAnalysis.reasoning}`
+- Analysis Reasoning: ${queryAnalysis.reasoning}`;
   }
 
   prompt += `\n\nCRITICAL GUIDELINES:
@@ -345,25 +358,21 @@ PRODUCT CONTEXT:
 9. Specific Evidence: Quote or reference specific content from sources when making claims
 10. Confidence Calibration: Be conservative with confidence scores - it's better to be uncertain than wrong
 11. JSON Formatting: Ensure perfect JSON formatting with no syntax errors
-12. Source Attribution: Always include the specific sources used in your analysis`
+12. Source Attribution: Always include the specific sources used in your analysis`;
 
   if (webResearchData && webResearchData.success && webResearchData.findings.length > 0) {
     prompt += `\n\nWEB RESEARCH FINDINGS (${webResearchData.findings.length} sources available):`;
-    
-    const sortedFindings = [...webResearchData.findings].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
-    
+    const sortedFindings = [...webResearchData.findings].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
     sortedFindings.forEach((finding, index) => {
-      const sourceType = getSourceType(finding.url)
-      const priorityLevel = finding.priorityScore >= 15 ? 'HIGH' : finding.priorityScore >= 10 ? 'MEDIUM' : 'LOW'
-      
+      const sourceType = getSourceType(finding.url);
+      const priorityLevel = finding.priorityScore >= 15 ? 'HIGH' : finding.priorityScore >= 10 ? 'MEDIUM' : 'LOW';
       prompt += `\n\nSource ${index + 1} [${priorityLevel} Priority - ${sourceType.toUpperCase()}]: ${finding.url}`;
       prompt += `\nTitle: ${finding.title}`;
       prompt += `\nSnippet: ${finding.snippet}`;
       if (finding.content) {
-        const content = finding.content.toLowerCase()
-        const ownershipKeywords = ['owned', 'subsidiary', 'parent', 'acquisition', 'merger', 'investor', 'corporate', 'structure', 'annual report', 'financial', 'ownership', 'stake', 'holding']
-        const hasOwnershipContent = ownershipKeywords.some(keyword => content.includes(keyword))
-        
+        const content = finding.content.toLowerCase();
+        const ownershipKeywords = ['owned', 'subsidiary', 'parent', 'acquisition', 'merger', 'investor', 'corporate', 'structure', 'annual report', 'financial', 'ownership', 'stake', 'holding'];
+        const hasOwnershipContent = ownershipKeywords.some(keyword => content.includes(keyword));
         if (hasOwnershipContent) {
           prompt += `\nContent: ${finding.content.substring(0, 1000)}...`;
         } else {
@@ -371,88 +380,12 @@ PRODUCT CONTEXT:
         }
       }
     });
-    
-    prompt += `\n\nSOURCE ANALYSIS INSTRUCTIONS:
-1. Start with HIGH priority sources first (regulatory, financial_news, company_official)
-2. Look for direct ownership statements in official documents and financial reports
-3. Cross-reference information across multiple sources for consistency
-4. Pay special attention to sources marked as regulatory, financial_news, or company_official
-5. Use specific quotes or references from the content when making claims
-6. If sources conflict, explain the conflict and which source you trust more and why
-7. Note any gaps in the ownership chain or missing information
-8. Consider the recency of information - prefer recent sources for ownership changes`;
+    prompt += `\n\nSOURCE ANALYSIS INSTRUCTIONS:\n1. Start with HIGH priority sources first (regulatory, financial_news, company_official)\n2. Look for direct ownership statements in official documents and financial reports\n3. Cross-reference information across multiple sources for consistency\n4. Pay special attention to sources marked as regulatory, financial_news, or company_official\n5. Use specific quotes or references from the content when making claims\n6. If sources conflict, explain the conflict and which source you trust more and why\n7. Note any gaps in the ownership chain or missing information\n8. Consider the recency of information - prefer recent sources for ownership changes`;
   } else {
     prompt += `\n\nNo web research data available. Apply the research strategy using only verifiable information from your training data. Maintain high standards for evidence quality and be conservative with confidence scores.`;
   }
 
-  prompt += `\n\nOUTPUT REQUIREMENTS:
-You must respond with a VALID JSON object containing ONLY the following fields:
-
-{
-  "financial_beneficiary": "Ultimate owner or Unknown",
-  "beneficiary_country": "Country of owner or Unknown",
-  "ownership_structure_type": "Public/Private/Subsidiary/Cooperative/State-owned/Unknown",
-  "confidence_score": 0-100,
-  "sources": ["array", "of", "specific", "sources"],
-  "reasoning": "Clear explanation with evidence and source references"
-}
-
-CRITICAL JSON FORMATTING RULES:
-1. ALL keys must be in double quotes
-2. ALL string values must be in double quotes
-3. Numbers (confidence_score) must NOT be in quotes
-4. Arrays must use square brackets []
-5. NO trailing commas
-6. NO comments or additional text outside the JSON object
-7. NO line breaks within the JSON object
-8. NO special characters that could break JSON parsing
-9. Ensure all quotes are properly escaped if they appear in string values
-
-Example of VALID response format:
-{
-  "financial_beneficiary": "Unknown",
-  "beneficiary_country": "Unknown",
-  "ownership_structure_type": "Unknown",
-  "confidence_score": 30,
-  "sources": ["Web research", "AI analysis"],
-  "reasoning": "No clear evidence found in available sources. The sources provided do not contain specific ownership information for this brand."
-}`;
+  prompt += `\n\nOUTPUT REQUIREMENTS:\nYou must respond with a VALID JSON object containing ONLY the following fields:\n\n{\n  "financial_beneficiary": "Ultimate owner or Unknown",\n  "beneficiary_country": "Country of owner or Unknown",\n  "ownership_structure_type": "Public/Private/Subsidiary/Cooperative/State-owned/Unknown",\n  "confidence_score": 0-100,\n  "sources": ["array", "of", "specific", "sources"],\n  "reasoning": "Clear explanation with evidence and source references"\n}\n\nCRITICAL JSON FORMATTING RULES:\n1. ALL keys must be in double quotes\n2. ALL string values must be in double quotes\n3. Numbers (confidence_score) must NOT be in quotes\n4. Arrays must use square brackets []\n5. NO trailing commas\n6. NO comments or additional text outside the JSON object\n7. NO line breaks within the JSON object\n8. NO special characters that could break JSON parsing\n9. Ensure all quotes are properly escaped if they appear in string values\n\nExample of VALID response format:\n{\n  "financial_beneficiary": "Unknown",\n  "beneficiary_country": "Unknown",\n  "ownership_structure_type": "Unknown",\n  "confidence_score": 30,\n  "sources": ["Web research", "AI analysis"],\n  "reasoning": "No clear evidence found in available sources. The sources provided do not contain specific ownership information for this brand."\n}`;
 
   return prompt;
-}
-
-// Placeholder functions for other agents
-function buildQueryBuilderPromptV1_0() {
-  // TODO: Implement query builder prompt v1.0
-  return "Query builder prompt v1.0 - to be implemented"
-}
-
-function buildQueryBuilderPromptV1_1() {
-  // TODO: Implement query builder prompt v1.1
-  return "Query builder prompt v1.1 - to be implemented"
-}
-
-function buildVerificationPromptV1_0() {
-  // TODO: Implement verification prompt v1.0
-  return "Verification prompt v1.0 - to be implemented"
-}
-
-function buildVerificationPromptV1_1() {
-  // TODO: Implement verification prompt v1.1
-  return "Verification prompt v1.1 - to be implemented"
-}
-
-// Helper function
-function getSourceType(url) {
-  if (!url) return 'unknown'
-  
-  const domain = url.toLowerCase()
-  
-  if (domain.includes('sec.gov') || domain.includes('edgar') || domain.includes('regulatory')) return 'regulatory'
-  if (domain.includes('bloomberg') || domain.includes('reuters') || domain.includes('ft.com') || domain.includes('wsj.com')) return 'financial_news'
-  if (domain.includes('annual') || domain.includes('investor') || domain.includes('corporate')) return 'company_official'
-  if (domain.includes('opencorporates') || domain.includes('dun') || domain.includes('zoominfo')) return 'business_database'
-  if (domain.includes('news') || domain.includes('press')) return 'news'
-  
-  return 'other'
 }
