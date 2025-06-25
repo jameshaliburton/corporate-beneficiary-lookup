@@ -92,6 +92,8 @@ interface ProductResult {
     country?: string;
     type?: string;
     source?: string;
+    flag?: string;
+    ultimate?: boolean;
   }>;
   agent_execution_trace?: {
     trace_id?: string;
@@ -207,8 +209,8 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
         name: company.name,
         country: company.country || 'Unknown',
         type: company.type || 'Unknown',
-        flag: company.country ? getFlag(company.country) : '🏳️',
-        ultimate: index === result.ownership_flow!.length - 1,
+        flag: company.flag || getFlag(company.country),
+        ultimate: company.ultimate || index === result.ownership_flow!.length - 1,
       })) : [
         {
           name: result.brand || 'Unknown Brand',

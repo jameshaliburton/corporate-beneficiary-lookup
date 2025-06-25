@@ -171,7 +171,7 @@ export async function EnhancedAgentOwnershipResearch({
     llmFirstStage.reason(`Attempting LLM-first analysis for brand: ${brand}`, REASONING_TYPES.INFO)
     
     try {
-      const llmFirstPrompt = `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner).
+      const llmFirstPrompt = `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner), and provide a detailed ownership chain if possible.
 
 Brand: ${brand}
 Product: ${product_name || 'Unknown product'}
@@ -185,6 +185,10 @@ Based on your knowledge of corporate structures and brand ownership, provide a d
 3. What country is the ultimate owner based in?
 4. What is your confidence level (0-100) in this assessment?
 5. What reasoning supports your conclusion?
+6. List the full ownership chain as an array, from brand to ultimate owner, with as much detail as possible. For each step, include:
+   - name (company or entity name)
+   - type (e.g., Brand, Parent Company, Ultimate Owner, Subsidiary, etc.)
+   - country (if known)
 
 Respond in JSON format:
 {
@@ -193,7 +197,11 @@ Respond in JSON format:
   "beneficiary_country": "string",
   "confidence_score": number,
   "reasoning": "string",
-  "ownership_structure_type": "string"
+  "ownership_structure_type": "string",
+  "ownership_flow": [
+    { "name": "string", "type": "string", "country": "string" },
+    ...
+  ]
 }
 
 If you cannot determine with reasonable confidence, set financial_beneficiary to "Unknown" and confidence_score to a low value.`
@@ -222,6 +230,20 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
         if (llmFirstResult.confidence_score > 70 && llmFirstResult.financial_beneficiary !== 'Unknown') {
           llmFirstStage.decide('Use LLM-first result', ['Proceed with web research'], 'LLM analysis provides high-confidence result')
           
+          // Map ownership_flow to expected UI format, fallback if not present
+          const ownershipFlow = Array.isArray(llmFirstResult.ownership_flow) && llmFirstResult.ownership_flow.length > 0
+            ? llmFirstResult.ownership_flow.map((step, idx, arr) => ({
+                name: step.name || (idx === 0 ? brand : 'Unknown'),
+                type: step.type || (idx === 0 ? 'Brand' : (idx === arr.length - 1 ? 'Ultimate Owner' : 'Parent Company')),
+                country: step.country || 'Unknown',
+                flag: getCountryFlag(step.country),
+                ultimate: idx === arr.length - 1
+              }))
+            : [
+                { name: brand, type: 'Brand', country: 'Unknown', flag: getCountryFlag('Unknown'), ultimate: false },
+                { name: llmFirstResult.financial_beneficiary, type: 'Ultimate Owner', country: llmFirstResult.beneficiary_country || 'Unknown', flag: getCountryFlag(llmFirstResult.beneficiary_country), ultimate: true }
+              ]
+
           const result = {
             financial_beneficiary: llmFirstResult.financial_beneficiary,
             beneficiary_country: llmFirstResult.beneficiary_country,
@@ -231,7 +253,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
             confidence_level: getConfidenceLabel(llmFirstResult.confidence_score),
             sources: [`LLM analysis of ${brand}`],
             reasoning: llmFirstResult.reasoning,
-            ownership_flow: [brand, llmFirstResult.financial_beneficiary],
+            ownership_flow: ownershipFlow,
             web_research_used: false,
             web_sources_count: 0,
             query_analysis_used: false,
@@ -599,7 +621,7 @@ function getCountryFlag(country) {
     'Peru': '🇵🇪',
     'Venezuela': '🇻🇪',
     'Uruguay': '🇺🇾',
-    'Paraguay': '🇵🇾',
+    'Paraguay': '🇵��',
     'Bolivia': '🇧🇴',
     'Ecuador': '🇪🇨',
     'Guyana': '🇬🇾',
