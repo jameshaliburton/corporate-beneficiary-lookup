@@ -8,6 +8,7 @@ import Trace from './Trace';
 import ErrorFallback from './ErrorFallback';
 import ManualEntryForm from './ManualEntryForm';
 import StickyActionBar from './StickyActionBar';
+import LookupTrace from './LookupTrace';
 
 // Mock data for demo
 const mockData = {
@@ -95,6 +96,19 @@ interface ProductResult {
     flag?: string;
     ultimate?: boolean;
   }>;
+  lookup_trace?: {
+    barcode: string;
+    start_time: string;
+    attempts: Array<{
+      source: string;
+      success: boolean;
+      timestamp: string;
+      reason?: string;
+      error?: string;
+    }>;
+    final_result: string;
+    total_duration_ms: number;
+  };
   agent_execution_trace?: {
     trace_id?: string;
     start_time?: string;
@@ -282,6 +296,12 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
       <ProductHeader product={productData} />
+      
+      {/* Show lookup trace if available */}
+      {result?.lookup_trace && (
+        <LookupTrace trace={result.lookup_trace} />
+      )}
+      
       <OwnershipTrail steps={ownershipTrailData} />
       <EnhancedConfidenceAttribution 
         confidence={confidenceData.confidence} 

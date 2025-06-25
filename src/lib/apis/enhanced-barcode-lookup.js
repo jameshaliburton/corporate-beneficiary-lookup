@@ -126,14 +126,33 @@ async function tryOpenFoodFacts(barcode) {
 // AI fallback when all databases fail
 async function tryAIBarcodeInference(barcode) {
   let region = 'unknown'
+  let regionFlag = '🏳️'
+  let confidence = 'low'
+  
   if (barcode.startsWith('73')) {
     region = 'Swedish/Nordic'
+    regionFlag = '🇸🇪'
   } else if (barcode.startsWith('0') || barcode.startsWith('1')) {
     region = 'US/Canada'
+    regionFlag = '🇺🇸'
   } else if (barcode.startsWith('4')) {
     region = 'Germany'
+    regionFlag = '🇩🇪'
   } else if (barcode.startsWith('5')) {
     region = 'UK'
+    regionFlag = '🇬🇧'
+  } else if (barcode.startsWith('30') || barcode.startsWith('31') || barcode.startsWith('32') || barcode.startsWith('33') || barcode.startsWith('34') || barcode.startsWith('35') || barcode.startsWith('36') || barcode.startsWith('37')) {
+    region = 'France'
+    regionFlag = '🇫🇷'
+  } else if (barcode.startsWith('80') || barcode.startsWith('81') || barcode.startsWith('82') || barcode.startsWith('83')) {
+    region = 'Italy'
+    regionFlag = '🇮🇹'
+  } else if (barcode.startsWith('84') || barcode.startsWith('85') || barcode.startsWith('86') || barcode.startsWith('87') || barcode.startsWith('88') || barcode.startsWith('89')) {
+    region = 'Spain'
+    regionFlag = '🇪🇸'
+  } else if (barcode.startsWith('90') || barcode.startsWith('91') || barcode.startsWith('92') || barcode.startsWith('93') || barcode.startsWith('94') || barcode.startsWith('95') || barcode.startsWith('96') || barcode.startsWith('97') || barcode.startsWith('98') || barcode.startsWith('99')) {
+    region = 'Austria'
+    regionFlag = '🇦🇹'
   }
 
   return {
@@ -142,7 +161,10 @@ async function tryAIBarcodeInference(barcode) {
     brand: 'Unknown Brand',
     barcode,
     source: 'ai_inference',
-    region_hint: region
+    region_hint: region,
+    region_flag: regionFlag,
+    confidence: confidence,
+    reasoning: `Barcode pattern analysis indicates this is a ${region} product. The barcode prefix suggests the product was registered in this region, but no specific product information was found in our databases.`
   }
 }
 
@@ -348,62 +370,49 @@ export async function enhancedLookupProduct(barcode, userData = null) {
         console.log('✅ Found in Wikidata')
         productInfo = wikidataResult
       } else {
-        // Try GS1 GEPIR (prefix-based)
-        console.log('  → Trying GS1 GEPIR')
-        const gepirResult = await tryGEPIR(barcode)
+        // Try GS1 GEPIR (prefix-based) - TEMPORARILY DISABLED
+        console.log('  → GEPIR lookup temporarily disabled (waiting for API access)')
         lookupTrace.attempts.push({
           source: 'gepir',
-          success: gepirResult.success,
+          success: false,
+          reason: 'Temporarily disabled - waiting for API access',
           timestamp: new Date().toISOString()
         })
         
-        if (gepirResult.success) {
-          console.log('✅ Found in GEPIR')
-          productInfo = {
-            success: true,
-            product_name: `Product by ${gepirResult.company_name}`,
-            brand: gepirResult.company_name,
-            barcode,
-            source: 'gepir',
-            company_info: gepirResult,
-            raw_data: gepirResult.raw_data
-          }
+        // Try Google Shopping fallback
+        console.log('  → Trying Google Shopping')
+        const googleResult = await tryGoogleShopping(barcode)
+        lookupTrace.attempts.push({
+          source: 'google_shopping',
+          success: googleResult.success,
+          timestamp: new Date().toISOString()
+        })
+        
+        if (googleResult.success) {
+          console.log('✅ Found in Google Shopping')
+          productInfo = googleResult
         } else {
-          // Try Google Shopping fallback
-          console.log('  → Trying Google Shopping')
-          const googleResult = await tryGoogleShopping(barcode)
+          // Try basic web search
+          console.log('  → Trying basic web search')
+          const basicResult = await tryBasicWebSearch(barcode)
           lookupTrace.attempts.push({
-            source: 'google_shopping',
-            success: googleResult.success,
+            source: 'basic_web_search',
+            success: basicResult.success,
             timestamp: new Date().toISOString()
           })
           
-          if (googleResult.success) {
-            console.log('✅ Found in Google Shopping')
-            productInfo = googleResult
+          if (basicResult.success) {
+            console.log('✅ Found with basic web search')
+            productInfo = basicResult
           } else {
-            // Try basic web search
-            console.log('  → Trying basic web search')
-            const basicResult = await tryBasicWebSearch(barcode)
+            // AI inference fallback
+            console.log('  → Using AI inference fallback')
+            productInfo = await tryAIBarcodeInference(barcode)
             lookupTrace.attempts.push({
-              source: 'basic_web_search',
-              success: basicResult.success,
+              source: 'ai_inference',
+              success: true,
               timestamp: new Date().toISOString()
             })
-            
-            if (basicResult.success) {
-              console.log('✅ Found with basic web search')
-              productInfo = basicResult
-            } else {
-              // AI inference fallback
-              console.log('  → Using AI inference fallback')
-              productInfo = await tryAIBarcodeInference(barcode)
-              lookupTrace.attempts.push({
-                source: 'ai_inference',
-                success: true,
-                timestamp: new Date().toISOString()
-              })
-            }
           }
         }
       }
