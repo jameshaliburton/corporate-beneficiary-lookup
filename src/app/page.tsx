@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getStageInfo } from '@/lib/utils';
+import ProductResultScreen from '@/components/ProductResultScreen/index';
 
 interface OwnershipFlowCompany {
   name: string;
@@ -63,6 +64,7 @@ export default function Home() {
     product_name: '',
     brand: ''
   });
+  const [showDemo, setShowDemo] = useState(false);
   
   // Progress tracking
   const [currentProgress, setCurrentProgress] = useState<ProgressUpdate | null>(null);
@@ -229,12 +231,14 @@ export default function Home() {
     setResult(null);
     setShowManualEntry(false);
     setShowUserContribution(false);
-    setManualBarcode('');
-    setUserContribution({ product_name: '', brand: '' });
-    setCurrentBarcode('');
     setShowContributionSuccess(false);
     setShowLowConfidenceFallback(false);
+    setShowDemo(false);
+    setCurrentBarcode('');
+    setManualBarcode('');
+    setUserContribution({ product_name: '', brand: '' });
     setLowConfidenceData({ product_name: '', brand: '' });
+    stopProgressTracking();
   };
 
   // Helper to get flag emoji from country name
@@ -287,8 +291,18 @@ export default function Home() {
           </p>
         </div>
 
+        {/* Show Demo Result Screen */}
+        {showDemo && (
+          <ProductResultScreen onScanAnother={handleScanAnother} />
+        )}
+
+        {/* Show Actual Result Screen */}
+        {result && !processing && !showDemo && (
+          <ProductResultScreen onScanAnother={handleScanAnother} result={result} />
+        )}
+
         {/* Main Scanner */}
-        {!showManualEntry && !showUserContribution && !result && (
+        {!showManualEntry && !showUserContribution && !result && !showDemo && (
           <Card className="w-full p-0 rounded-2xl shadow-xl border border-gray-100">
             <CardContent className="p-6 flex flex-col items-center">
               <BarcodeScanner
@@ -296,6 +310,17 @@ export default function Home() {
                 processing={processing}
                 onManualEntry={handleManualEntry}
               />
+              
+              {/* Demo Button */}
+              <div className="mt-6 w-full">
+                <Button
+                  onClick={() => setShowDemo(true)}
+                  variant="outline"
+                  className="w-full text-base py-3 font-semibold"
+                >
+                  Preview Demo Result
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -581,251 +606,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Results */}
-        {result && !processing && (
-          <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
-            <CardContent className="p-8 flex flex-col items-center">
-              {result.success ? (
-                <>
-                  {/* Success Message for User Contributions */}
-                  {showContributionSuccess && (
-                    <div className="w-full mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center">
-                        <span className="text-green-600 mr-2">✅</span>
-                        <p className="text-green-800 text-sm font-medium">
-                          {result.result_type === 'agent-inferred' 
-                            ? 'Great! Our AI research found ownership information for this product.'
-                            : result.result_type === 'user_contributed_with_mapping'
-                            ? 'Perfect! We found ownership data for this brand in our database.'
-                            : 'Thanks! We\'ll use this to improve future lookups.'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                      Ownership Research Results
-                    </h2>
-                    <div className="text-sm text-gray-500">
-                      {result.user_contributed ? 'User-contributed data' : 
-                       result.result_type === 'cached' ? 'Cached result' : 'AI analysis'}
-                    </div>
-                  </div>
-
-                  <div className="space-y-6 w-full">
-                    {/* Product Info */}
-                    <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Product Information</h3>
-                        <div className="space-y-1 text-sm">
-                          <div><span className="font-medium">Name:</span> {result.product_name || 'Unknown'}</div>
-                          <div><span className="font-medium">Brand:</span> {result.brand || 'Unknown'}</div>
-                          <div><span className="font-medium">Barcode:</span> {result.barcode}</div>
-                          {result.user_contributed && (
-                            <div className="text-xs text-blue-600 mt-2">
-                              💡 User-contributed information
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Ownership Info */}
-                    <Card className="bg-blue-50 rounded-lg border border-blue-100">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Corporate Ownership</h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl">{result.beneficiary_flag}</span>
-                            <div>
-                              <div className="font-medium">{result.financial_beneficiary}</div>
-                              <div className="text-sm text-gray-600">{result.beneficiary_country}</div>
-                              {result.ownership_structure_type && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {result.ownership_structure_type}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Ownership Flow */}
-                          {result.ownership_flow && result.ownership_flow.length > 0 && (
-                            <div className="mt-3 p-3 bg-white rounded border border-blue-200">
-                              <div className="text-xs font-medium text-gray-700 mb-1">Ownership Chain:</div>
-                              <div className="flex flex-row items-center overflow-x-auto space-x-4">
-                                {result.ownership_flow.map((company, idx) => (
-                                  <React.Fragment key={company.name + idx}>
-                                    <div className={`min-w-[180px] p-3 rounded-lg shadow border flex flex-col items-center justify-center ${company.type === 'parent' ? 'bg-blue-50 border-blue-300' : company.type === 'subsidiary' ? 'bg-yellow-50 border-yellow-300' : company.type === 'franchise' ? 'bg-orange-50 border-orange-300' : 'bg-gray-50 border-gray-200'}`}>
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <span className="text-lg">{company.country ? getFlag(company.country) : '🏳️'}</span>
-                                        <span className="font-semibold text-gray-800">{company.name}</span>
-                                      </div>
-                                      <div className="text-xs text-gray-600 mb-1">{company.country || 'Unknown Country'}</div>
-                                      <div className={`text-xs font-medium px-2 py-1 rounded ${company.type === 'parent' ? 'bg-blue-100 text-blue-800' : company.type === 'subsidiary' ? 'bg-yellow-100 text-yellow-800' : company.type === 'franchise' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>{company.type || 'unknown'}</div>
-                                      {company.source && (
-                                        <a href={company.source} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline mt-1">Source</a>
-                                      )}
-                                    </div>
-                                    {idx < result.ownership_flow.length - 1 && (
-                                      <span className="text-2xl text-gray-400">→</span>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-2">
-                            {typeof result.confidence_score === 'number' && (
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                result.confidence_score >= 80 ? 'bg-green-100 text-green-800' :
-                                result.confidence_score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {result.confidence_score}% confidence
-                              </span>
-                            )}
-                            {result.verification_status && (
-                              <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {result.verification_status}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Sources */}
-                    {result.sources && result.sources.length > 0 && (
-                      <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold text-gray-800 mb-2">Sources</h3>
-                          <ul className="text-sm space-y-1">
-                            {result.sources.map((source, index) => (
-                              <li key={index} className="text-gray-600">• {source}</li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Reasoning */}
-                    {result.reasoning && (
-                      <Card className="bg-gray-50 rounded-lg border border-gray-100">
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold text-gray-800 mb-2">Analysis</h3>
-                          <p className="text-sm text-gray-600">{result.reasoning}</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-
-                  {/* Low Confidence Fallback */}
-                  {showLowConfidenceFallback && (
-                    <div className="w-full mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="text-center mb-4">
-                        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-                          Help Improve This Result
-                        </h3>
-                        <p className="text-yellow-700 text-sm">
-                          We found some information, but could use your help to get more accurate results.
-                        </p>
-                      </div>
-                      <form onSubmit={handleLowConfidenceSubmit} className="space-y-4">
-                        <div>
-                          <label htmlFor="low_conf_product_name" className="block text-sm font-medium text-yellow-800 mb-2">
-                            Product Name
-                          </label>
-                          <Input
-                            type="text"
-                            id="low_conf_product_name"
-                            value={lowConfidenceData.product_name}
-                            onChange={(e) => setLowConfidenceData(prev => ({ ...prev, product_name: e.target.value }))}
-                            className="w-full text-lg bg-white border-yellow-300"
-                            placeholder="Enter the correct product name..."
-                            autoFocus
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="low_conf_brand" className="block text-sm font-medium text-yellow-800 mb-2">
-                            Brand Name
-                          </label>
-                          <Input
-                            type="text"
-                            id="low_conf_brand"
-                            value={lowConfidenceData.brand}
-                            onChange={(e) => setLowConfidenceData(prev => ({ ...prev, brand: e.target.value }))}
-                            className="w-full text-lg bg-white border-yellow-300"
-                            placeholder="Enter the correct brand name..."
-                          />
-                        </div>
-                        <div className="flex gap-3">
-                          <Button
-                            type="submit"
-                            className="flex-1 text-base py-2 font-semibold bg-yellow-600 hover:bg-yellow-700 text-white"
-                            disabled={!lowConfidenceData.product_name.trim() || !lowConfidenceData.brand.trim()}
-                          >
-                            Improve Result
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowLowConfidenceFallback(false)}
-                            className="flex-1 text-base py-2 font-semibold"
-                          >
-                            Skip
-                          </Button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleScanAnother}
-                    className="w-full mt-8 text-base py-3 font-semibold shadow"
-                  >
-                    Scan Another Product
-                  </Button>
-                </>
-              ) : (
-                <div className="text-center w-full">
-                  <div className="text-red-600 text-lg font-semibold mb-4">
-                    Research Failed
-                  </div>
-                  <p className="text-gray-600 mb-6">
-                    {result.error || 'Unable to research this product. Please try again.'}
-                  </p>
-                  
-                  {/* Show user contribution option for failed lookups */}
-                  {result.result_type !== 'user_contributed_no_match' && (
-                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 text-sm mb-3">
-                        Can't find this product? Help us by providing the product details manually.
-                      </p>
-                      <Button
-                        onClick={() => setShowUserContribution(true)}
-                        variant="outline"
-                        className="w-full text-sm"
-                      >
-                        Contribute Product Information
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <Button
-                    onClick={handleScanAnother}
-                    className="w-full text-base py-3 font-semibold shadow"
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
