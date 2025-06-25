@@ -164,7 +164,134 @@ export async function EnhancedAgentOwnershipResearch({
     staticStage.success({ result: 'miss' }, ['No static mapping available'])
     await emitProgress(queryId, 'static_mapping', 'completed', { result: 'miss' })
     
-    // Step 2: Query Builder Analysis
+    // Step 2: LLM-First Analysis
+    const llmFirstStage = new EnhancedStageTracker(traceLogger, 'llm_first_analysis', 'Attempting initial LLM analysis of brand ownership')
+    await emitProgress(queryId, 'llm_first_analysis', 'started', { brand, product_name })
+    
+    llmFirstStage.reason(`Attempting LLM-first analysis for brand: ${brand}`, REASONING_TYPES.INFO)
+    
+    try {
+      const llmFirstPrompt = `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner).
+
+Brand: ${brand}
+Product: ${product_name || 'Unknown product'}
+Barcode: ${barcode}
+Additional hints: ${JSON.stringify(hints)}
+
+Based on your knowledge of corporate structures and brand ownership, provide a detailed analysis:
+
+1. What type of company is this brand likely associated with?
+2. What is the ultimate financial beneficiary (parent company or owner)?
+3. What country is the ultimate owner based in?
+4. What is your confidence level (0-100) in this assessment?
+5. What reasoning supports your conclusion?
+
+Respond in JSON format:
+{
+  "company_type": "string",
+  "financial_beneficiary": "string", 
+  "beneficiary_country": "string",
+  "confidence_score": number,
+  "reasoning": "string",
+  "ownership_structure_type": "string"
+}
+
+If you cannot determine with reasonable confidence, set financial_beneficiary to "Unknown" and confidence_score to a low value.`
+
+      const llmFirstResponse = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'user',
+            content: llmFirstPrompt
+          }
+        ]
+      })
+
+      const llmFirstContent = llmFirstResponse.content[0].text
+      const llmFirstMatch = llmFirstContent.match(/\{[\s\S]*\}/)
+      
+      if (llmFirstMatch) {
+        const llmFirstResult = JSON.parse(llmFirstMatch[0])
+        
+        llmFirstStage.reason(`LLM analysis complete: ${llmFirstResult.financial_beneficiary} (confidence: ${llmFirstResult.confidence_score}%)`, REASONING_TYPES.ANALYSIS)
+        
+        // If LLM has high confidence (>70), use it directly
+        if (llmFirstResult.confidence_score > 70 && llmFirstResult.financial_beneficiary !== 'Unknown') {
+          llmFirstStage.decide('Use LLM-first result', ['Proceed with web research'], 'LLM analysis provides high-confidence result')
+          
+          const result = {
+            financial_beneficiary: llmFirstResult.financial_beneficiary,
+            beneficiary_country: llmFirstResult.beneficiary_country,
+            beneficiary_flag: getCountryFlag(llmFirstResult.beneficiary_country),
+            ownership_structure_type: llmFirstResult.ownership_structure_type,
+            confidence_score: llmFirstResult.confidence_score,
+            confidence_level: getConfidenceLabel(llmFirstResult.confidence_score),
+            sources: [`LLM analysis of ${brand}`],
+            reasoning: llmFirstResult.reasoning,
+            ownership_flow: [brand, llmFirstResult.financial_beneficiary],
+            web_research_used: false,
+            web_sources_count: 0,
+            query_analysis_used: false,
+            static_mapping_used: false,
+            result_type: 'llm_first_analysis',
+            cached: false,
+            agent_execution_trace: traceLogger.toDatabaseFormat(),
+            initial_llm_confidence: llmFirstResult.confidence_score,
+            agent_results: {
+              llm_first_analysis: {
+                success: true,
+                data: llmFirstResult,
+                reasoning: 'LLM-first analysis provided high-confidence ownership determination'
+              }
+            }
+          }
+          
+          llmFirstStage.success({
+            financial_beneficiary: result.financial_beneficiary,
+            confidence_score: result.confidence_score,
+            method: 'llm_first_high_confidence'
+          }, ['LLM-first analysis successful with high confidence'])
+          
+          await emitProgress(queryId, 'llm_first_analysis', 'success', llmFirstStage.stage.data)
+          
+          // Save to database
+          const productData = ownershipResultToProductData(barcode, product_name, brand, result)
+          await upsertProduct(productData)
+          
+          traceLogger.setFinalResult('llm_first_analysis')
+          return result
+        } else {
+          llmFirstStage.reason(`LLM confidence too low (${llmFirstResult.confidence_score}%), proceeding with web research`, REASONING_TYPES.DECISION)
+          llmFirstStage.decide('Proceed with web research', ['Use LLM result'], 'LLM confidence insufficient for direct use')
+          
+          llmFirstStage.success({
+            confidence_score: llmFirstResult.confidence_score,
+            method: 'llm_first_low_confidence',
+            llm_insights: llmFirstResult
+          }, ['LLM-first analysis completed, proceeding with web research'])
+          
+          await emitProgress(queryId, 'llm_first_analysis', 'completed', llmFirstStage.stage.data)
+          
+          // Store LLM insights for later use
+          const llmInsights = llmFirstResult
+          
+        }
+      } else {
+        llmFirstStage.reason('LLM response could not be parsed as JSON', REASONING_TYPES.ERROR)
+        llmFirstStage.success({ method: 'llm_first_failed' }, ['LLM-first analysis failed, proceeding with web research'])
+        await emitProgress(queryId, 'llm_first_analysis', 'completed', { method: 'llm_first_failed' })
+      }
+      
+    } catch (error) {
+      llmFirstStage.reason(`LLM-first analysis failed: ${error.message}`, REASONING_TYPES.ERROR)
+      llmFirstStage.success({ method: 'llm_first_error' }, ['LLM-first analysis encountered error, proceeding with web research'])
+      await emitProgress(queryId, 'llm_first_analysis', 'completed', { method: 'llm_first_error' })
+    }
+    
+    // Step 3: Query Builder Analysis
     const queryStage = new EnhancedStageTracker(traceLogger, 'query_builder', 'Analyzing brand for optimal search queries')
     await emitProgress(queryId, 'query_builder', 'started', { brand })
     
@@ -202,7 +329,7 @@ export async function EnhancedAgentOwnershipResearch({
       await emitProgress(queryId, 'query_builder', 'completed', { result: 'not_available' })
     }
     
-    // Step 3: Web Research
+    // Step 4: Web Research
     const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web research for ownership information')
     await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
     
@@ -260,7 +387,7 @@ export async function EnhancedAgentOwnershipResearch({
       await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
     }
     
-    // Step 4: Ownership Analysis
+    // Step 5: Ownership Analysis
     const analysisStage = new EnhancedStageTracker(traceLogger, 'ownership_analysis', 'Performing LLM-based ownership analysis')
     await emitProgress(queryId, 'ownership_analysis', 'started', { 
       hasWebResearch: !!webResearchData?.success,
@@ -292,7 +419,7 @@ export async function EnhancedAgentOwnershipResearch({
     
     await emitProgress(queryId, 'ownership_analysis', 'success', analysisStage.stage.data)
     
-    // Step 5: Enhanced Confidence Calculation
+    // Step 6: Enhanced Confidence Calculation
     const confidenceStage = new EnhancedStageTracker(traceLogger, 'confidence_calculation', 'Calculating enhanced confidence score')
     await emitProgress(queryId, 'confidence_calculation', 'started', { initial_confidence: ownership.confidence_score })
     
@@ -327,7 +454,7 @@ export async function EnhancedAgentOwnershipResearch({
     
     await emitProgress(queryId, 'confidence_calculation', 'success', confidenceStage.stage.data)
     
-    // Step 6: Validation and Sanitization
+    // Step 7: Validation and Sanitization
     const validationStage = new EnhancedStageTracker(traceLogger, 'validation', 'Validating and sanitizing results')
     await emitProgress(queryId, 'validation', 'started', { confidence: ownership.confidence_score })
     
@@ -384,7 +511,7 @@ export async function EnhancedAgentOwnershipResearch({
       }
     }
     
-    // Step 7: Database Save
+    // Step 8: Database Save
     const saveStage = new EnhancedStageTracker(traceLogger, 'database_save', 'Saving result to database')
     await emitProgress(queryId, 'database_save', 'started', { 
       beneficiary: validated.financial_beneficiary,

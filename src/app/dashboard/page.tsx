@@ -172,6 +172,11 @@ const getStageInfo = (stage: string) => {
       description: 'Looking up in static ownership database',
       icon: '🗂️'
     },
+    llm_first_analysis: {
+      name: 'LLM-First Analysis',
+      description: 'Initial LLM analysis of brand ownership',
+      icon: '🧠'
+    },
     query_builder: {
       name: 'Query Builder',
       description: 'Building optimized search queries',
