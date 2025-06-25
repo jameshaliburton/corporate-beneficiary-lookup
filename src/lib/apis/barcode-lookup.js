@@ -2,7 +2,7 @@
  * Multi-source barcode lookup with European support and AI fallback
  */
 import { supabase } from '../supabase.ts'
-import { AgentOwnershipResearch } from '../agents/ownership-research-agent.js'
+import { EnhancedAgentOwnershipResearch } from '../agents/enhanced-ownership-research-agent.js'
 
 // Try ownership mappings database for brand-based ownership lookup
 async function tryOwnershipMappings(brand) {
@@ -153,10 +153,10 @@ export async function lookupProduct(barcode, userData = null) {
       }
     }
     
-    // Step 2: If ownership mappings fail, invoke AgentOwnershipResearch
-    console.log('Ownership mappings failed, invoking AgentOwnershipResearch')
+    // Step 2: If ownership mappings fail, invoke EnhancedAgentOwnershipResearch
+    console.log('Ownership mappings failed, invoking EnhancedAgentOwnershipResearch')
     try {
-      const agentResult = await AgentOwnershipResearch({
+      const agentResult = await EnhancedAgentOwnershipResearch({
         barcode,
         product_name: userData.product_name,
         brand: userData.brand,
@@ -165,7 +165,7 @@ export async function lookupProduct(barcode, userData = null) {
         }
       })
       
-      console.log('AgentOwnershipResearch result:', agentResult)
+      console.log('EnhancedAgentOwnershipResearch result:', agentResult)
       
       return {
         success: true,
@@ -177,15 +177,20 @@ export async function lookupProduct(barcode, userData = null) {
         beneficiary_flag: agentResult.beneficiary_flag,
         ownership_structure_type: agentResult.ownership_structure_type,
         confidence_score: agentResult.confidence_score,
+        confidence_level: agentResult.confidence_level,
+        confidence_factors: agentResult.confidence_factors,
+        confidence_breakdown: agentResult.confidence_breakdown,
+        confidence_reasoning: agentResult.confidence_reasoning,
         ownership_flow: agentResult.ownership_flow,
         sources: agentResult.sources,
         reasoning: agentResult.reasoning,
-        source: 'user_contribution + agent_research',
-        result_type: 'agent-inferred',
-        user_contributed: true
+        source: 'user_contribution + enhanced_agent_research',
+        result_type: 'enhanced-agent-inferred',
+        user_contributed: true,
+        agent_execution_trace: agentResult.agent_execution_trace
       }
     } catch (agentError) {
-      console.error('AgentOwnershipResearch failed:', agentError)
+      console.error('EnhancedAgentOwnershipResearch failed:', agentError)
       
       // Return user data with unknown ownership
       return {

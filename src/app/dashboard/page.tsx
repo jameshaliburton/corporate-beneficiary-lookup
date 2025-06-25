@@ -702,13 +702,43 @@ export default function DashboardPage() {
                                           </span>
                                         </td>
                                         <td className="px-3 py-2 text-xs text-gray-700 max-w-xs break-words">
-                                          {stage.data?.reasoning || stage.description || '—'}
-                                          {Array.isArray(stage.data?.citations) && stage.data.citations.length > 0 && (
-                                            <ul className="mt-1 list-disc list-inside text-blue-700">
-                                              {stage.data.citations.map((citation: string, i: number) => (
-                                                <li key={i} className="text-xs">{citation}</li>
-                                              ))}
-                                            </ul>
+                                          {stage.stage === 'confidence_calculation' && stage.data && (stage.data.factors || stage.data.breakdown) ? (
+                                            <div>
+                                              {stage.data.reasoning && (
+                                                <div className="mb-1"><span className="font-semibold">Reasoning:</span> {stage.data.reasoning}</div>
+                                              )}
+                                              {stage.data.factors && (
+                                                <div className="mb-1">
+                                                  <span className="font-semibold">Factors:</span>
+                                                  <ul className="list-disc list-inside ml-4">
+                                                    {Object.entries(stage.data.factors).map(([factor, score]) => (
+                                                      <li key={String(factor)}>{String(factor)}: {String(score)}%</li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              )}
+                                              {Array.isArray(stage.data.breakdown) && stage.data.breakdown.length > 0 && (
+                                                <div>
+                                                  <span className="font-semibold">Breakdown:</span>
+                                                  <ul className="list-disc list-inside ml-4">
+                                                    {stage.data.breakdown.map((item: any, i: number) => (
+                                                      <li key={i}>{item.factor}: {item.score}% (weight: {item.weight}%, contribution: {item.contribution})</li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <>
+                                              {stage.data?.reasoning || stage.description || '—'}
+                                              {Array.isArray(stage.data?.citations) && stage.data.citations.length > 0 && (
+                                                <ul className="mt-1 list-disc list-inside text-blue-700">
+                                                  {stage.data.citations.map((citation: string, i: number) => (
+                                                    <li key={i} className="text-xs">{citation}</li>
+                                                  ))}
+                                                </ul>
+                                              )}
+                                            </>
                                           )}
                                         </td>
                                         <td className="px-3 py-2 text-xs text-gray-500">

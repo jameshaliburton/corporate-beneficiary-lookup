@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { lookupProduct } from '@/lib/apis/barcode-lookup.js';
 import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
-import { AgentOwnershipResearch } from '@/lib/agents/ownership-research-agent.js';
+import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { emitProgress } from '@/lib/utils';
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       const barcodeData = await lookupProduct(barcode);
       await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
-      // Step 2: Ownership research
+      // Step 2: Enhanced Ownership research
       await emitProgress(queryId, 'ownership_research', 'started', { brand, product_name });
       
       // Enable evaluation logging if requested
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         process.env.ENABLE_EVALUATION_LOGGING = 'true';
       }
       
-      const ownershipResult = await AgentOwnershipResearch({
+      const ownershipResult = await EnhancedAgentOwnershipResearch({
         barcode,
         product_name: product_name || barcodeData.product_name,
         brand: brand || barcodeData.brand,
@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
         beneficiary_country: ownershipResult.beneficiary_country,
         beneficiary_flag: ownershipResult.beneficiary_flag,
         confidence_score: ownershipResult.confidence_score,
+        confidence_level: ownershipResult.confidence_level,
+        confidence_factors: ownershipResult.confidence_factors,
+        confidence_breakdown: ownershipResult.confidence_breakdown,
+        confidence_reasoning: ownershipResult.confidence_reasoning,
         ownership_structure_type: ownershipResult.ownership_structure_type,
         ownership_flow: ownershipResult.ownership_flow,
         sources: ownershipResult.sources,

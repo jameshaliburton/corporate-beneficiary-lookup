@@ -1,8 +1,9 @@
 import React from 'react';
 import ProductHeader from './ProductHeader';
 import OwnershipTrail from './OwnershipTrail';
-import ConfidenceAttribution from './ConfidenceAttribution';
+import EnhancedConfidenceAttribution from './EnhancedConfidenceAttribution';
 import { ProcessTrace } from './ProcessTrace';
+import EnhancedTraceViewer from './EnhancedTraceViewer';
 import Trace from './Trace';
 import ErrorFallback from './ErrorFallback';
 import ManualEntryForm from './ManualEntryForm';
@@ -80,6 +81,10 @@ interface ProductResult {
   result_type?: string;
   error?: string;
   confidence_score?: number;
+  confidence_level?: string;
+  confidence_factors?: Record<string, number>;
+  confidence_breakdown?: Record<string, number>;
+  confidence_reasoning?: string;
   ownership_structure_type?: string;
   user_contributed?: boolean;
   ownership_flow?: Array<{
@@ -89,12 +94,64 @@ interface ProductResult {
     source?: string;
   }>;
   agent_execution_trace?: {
+    trace_id?: string;
+    start_time?: string;
+    brand?: string;
+    product_name?: string;
+    barcode?: string;
     stages?: Array<{
-      name?: string;
+      stage_id?: string;
+      stage?: string;
       description?: string;
+      start_time?: string;
+      end_time?: string;
       status?: string;
+      reasoning?: Array<{
+        timestamp: string;
+        type: string;
+        content: string;
+      }>;
+      decisions?: Array<{
+        timestamp: string;
+        decision: string;
+        alternatives: string[];
+        reasoning: string;
+      }>;
+      data?: any;
+      error?: string;
+      duration_ms?: number;
+      name?: string;
+      result?: string;
       duration?: number;
       details?: string;
+    }>;
+    decisions?: Array<{
+      stage: string;
+      timestamp: string;
+      decision: string;
+      alternatives: string[];
+      reasoning: string;
+    }>;
+    reasoning_chain?: Array<{
+      stage: string;
+      timestamp: string;
+      type: string;
+      content: string;
+    }>;
+    performance_metrics?: {
+      total_duration_ms: number;
+      stage_durations: Record<string, number>;
+      memory_usage?: number;
+      api_calls: number;
+      token_usage: number;
+    };
+    final_result?: string;
+    error_details?: string;
+    confidence_evolution?: Array<{
+      stage: string;
+      timestamp: string;
+      confidence: number;
+      factors: Record<string, any>;
     }>;
   };
 }
@@ -172,15 +229,26 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
 
   const confidenceData = result ? {
     confidence: (() => {
-      if (!result.confidence_score) return 'Low' as 'High' | 'Medium' | 'Low';
-      if (result.confidence_score >= 80) return 'High' as 'High' | 'Medium' | 'Low';
-      if (result.confidence_score >= 60) return 'Medium' as 'High' | 'Medium' | 'Low';
-      return 'Low' as 'High' | 'Medium' | 'Low';
+      if (!result.confidence_score) return 'Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (result.confidence_score >= 90) return 'Very High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (result.confidence_score >= 80) return 'High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (result.confidence_score >= 60) return 'Medium' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (result.confidence_score >= 30) return 'Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      return 'Very Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
     })(),
     attribution: result.confidence_score || 0,
     sources: result.sources?.length || 0,
+    // Enhanced confidence data
+    factors: result.confidence_factors,
+    breakdown: result.confidence_breakdown ? Object.entries(result.confidence_breakdown).map(([factor, score]) => ({
+      factor,
+      score,
+      weight: 16.67, // Equal weight for each factor
+      contribution: (score * 16.67) / 100
+    })) : undefined,
+    reasoning: result.confidence_reasoning,
   } : {
-    confidence: mockData.confidence,
+    confidence: 'Medium' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low',
     attribution: mockData.attribution,
     sources: mockData.sources,
   };
@@ -204,13 +272,28 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       };
     }) : mockData.trace;
 
+  // Helper function to check if we have enhanced trace data
+  const hasEnhancedTrace = (trace: any): boolean => {
+    return trace && trace.trace_id && trace.start_time && trace.brand && trace.product_name && trace.barcode;
+  };
+
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
       <ProductHeader product={productData} />
       <OwnershipTrail steps={ownershipTrailData} />
-      <ConfidenceAttribution confidence={confidenceData.confidence} score={confidenceData.attribution} />
+      <EnhancedConfidenceAttribution 
+        confidence={confidenceData.confidence} 
+        score={confidenceData.attribution}
+        factors={confidenceData.factors}
+        breakdown={confidenceData.breakdown}
+        reasoning={confidenceData.reasoning}
+      />
       <ProcessTrace reasoning={result?.reasoning || data.reasoning || 'No reasoning available'} />
-      <Trace trace={traceData} />
+      {result?.agent_execution_trace && hasEnhancedTrace(result.agent_execution_trace) ? (
+        <EnhancedTraceViewer trace={result.agent_execution_trace as any} />
+      ) : result?.agent_execution_trace ? (
+        <Trace trace={traceData} />
+      ) : null}
       {result?.error && (
         <ErrorFallback scenario="AI Research Error" message={result.error} />
       )}
