@@ -23,6 +23,7 @@ import {
   TraceAnalyzer,
   REASONING_TYPES 
 } from './enhanced-trace-logging.js'
+import { ragKnowledgeBase } from './rag-knowledge-base.js'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -164,47 +165,132 @@ export async function EnhancedAgentOwnershipResearch({
     staticStage.success({ result: 'miss' }, ['No static mapping available'])
     await emitProgress(queryId, 'static_mapping', 'completed', { result: 'miss' })
     
-    // Step 2: LLM-First Analysis
+    // Step 2: RAG Knowledge Base Retrieval
+    const ragStage = new EnhancedStageTracker(traceLogger, 'rag_retrieval', 'Searching knowledge base for similar ownership patterns')
+    await emitProgress(queryId, 'rag_retrieval', 'started', { brand, product_name })
+    
+    ragStage.reason(`Searching knowledge base for brand: ${brand}`, REASONING_TYPES.INFO)
+    
+    try {
+      const similarEntries = await ragKnowledgeBase.searchSimilar(brand, product_name, 3)
+      
+      if (similarEntries && similarEntries.length > 0) {
+        const bestMatch = similarEntries[0]
+        ragStage.reason(`Found ${similarEntries.length} similar entries in knowledge base`, REASONING_TYPES.SUCCESS)
+        ragStage.reason(`Best match: ${bestMatch.brand} → ${bestMatch.financial_beneficiary} (confidence: ${bestMatch.confidence_score}%)`, REASONING_TYPES.INFO)
+        
+        // If we have a high-confidence match, use it directly
+        if (bestMatch.similarity_score > 0.8 && bestMatch.confidence_score > 80) {
+          ragStage.reason(`High-confidence RAG match found, using knowledge base result`, REASONING_TYPES.SUCCESS)
+          
+          const ragResult = {
+            financial_beneficiary: bestMatch.financial_beneficiary,
+            beneficiary_country: bestMatch.beneficiary_country,
+            ownership_structure_type: bestMatch.ownership_structure_type,
+            ownership_flow: bestMatch.ownership_flow,
+            confidence_score: bestMatch.confidence_score,
+            confidence_level: bestMatch.confidence_score >= 90 ? 'Very High' : 
+                             bestMatch.confidence_score >= 80 ? 'High' : 
+                             bestMatch.confidence_score >= 60 ? 'Medium' : 'Low',
+            reasoning: `Based on knowledge base match: ${bestMatch.reasoning}`,
+            sources: bestMatch.sources,
+            result_type: 'rag_knowledge_base',
+            rag_match: {
+              similarity_score: bestMatch.similarity_score,
+              matched_brand: bestMatch.brand,
+              knowledge_base_id: bestMatch.id
+            }
+          }
+          
+          ragStage.success(ragResult, [`Used knowledge base match with ${bestMatch.similarity_score.toFixed(2)} similarity`])
+          await emitProgress(queryId, 'rag_retrieval', 'completed', ragResult)
+          
+          // Store this result in knowledge base for future use
+          try {
+            await ragKnowledgeBase.storeEntry({
+              brand,
+              product_name,
+              barcode,
+              ...ragResult,
+              tags: ['rag_match', 'high_confidence']
+            })
+          } catch (storeError) {
+            console.warn('Failed to store RAG result in knowledge base:', storeError)
+          }
+          
+          return ragResult
+        } else {
+          ragStage.reason(`RAG matches found but confidence too low, proceeding with LLM analysis`, REASONING_TYPES.INFO)
+          ragStage.success({ 
+            similar_entries: similarEntries.length,
+            best_similarity: bestMatch.similarity_score,
+            best_confidence: bestMatch.confidence_score
+          }, [`Found ${similarEntries.length} similar patterns for reference`])
+          await emitProgress(queryId, 'rag_retrieval', 'completed', { 
+            similar_entries: similarEntries.length,
+            best_similarity: bestMatch.similarity_score 
+          })
+        }
+      } else {
+        ragStage.reason('No similar entries found in knowledge base', REASONING_TYPES.INFO)
+        ragStage.success({ result: 'no_matches' }, ['Knowledge base search completed'])
+        await emitProgress(queryId, 'rag_retrieval', 'completed', { result: 'no_matches' })
+      }
+    } catch (ragError) {
+      ragStage.reason(`RAG retrieval failed: ${ragError.message}`, REASONING_TYPES.ERROR)
+      ragStage.failure(ragError, ['Knowledge base search failed, continuing with LLM analysis'])
+      await emitProgress(queryId, 'rag_retrieval', 'failed', { error: ragError.message })
+    }
+    
+    // Step 3: LLM-First Analysis (now with RAG context)
     const llmFirstStage = new EnhancedStageTracker(traceLogger, 'llm_first_analysis', 'Attempting initial LLM analysis of brand ownership')
     await emitProgress(queryId, 'llm_first_analysis', 'started', { brand, product_name })
     
     llmFirstStage.reason(`Attempting LLM-first analysis for brand: ${brand}`, REASONING_TYPES.INFO)
     
     try {
+      // Get RAG context for LLM
+      const ragContext = await ragKnowledgeBase.searchSimilar(brand, product_name, 2)
+      const ragContextText = ragContext.length > 0 
+        ? `\n\nRelevant ownership patterns from knowledge base:\n${ragContext.map(entry => 
+            `- ${entry.brand} → ${entry.financial_beneficiary} (${entry.ownership_structure_type}, confidence: ${entry.confidence_score}%)`
+          ).join('\n')}`
+        : ''
+
       const llmFirstPrompt = `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner), and provide a detailed ownership chain if possible.
 
 Brand: ${brand}
 Product: ${product_name || 'Unknown product'}
 Barcode: ${barcode}
-Additional hints: ${JSON.stringify(hints)}
+Additional hints: ${JSON.stringify(hints)}${ragContextText}
 
 Based on your knowledge of corporate structures and brand ownership, provide a detailed analysis:
 
-1. What type of company is this brand likely associated with?
-2. What is the ultimate financial beneficiary (parent company or owner)?
-3. What country is the ultimate owner based in?
-4. What is your confidence level (0-100) in this assessment?
-5. What reasoning supports your conclusion?
-6. List the full ownership chain as an array, from brand to ultimate owner, with as much detail as possible. For each step, include:
-   - name (company or entity name)
-   - type (e.g., Brand, Parent Company, Ultimate Owner, Subsidiary, etc.)
-   - country (if known)
+1. **Financial Beneficiary**: The ultimate parent company or owner
+2. **Ownership Structure Type**: The type of ownership structure (e.g., "Public Company", "Private Company", "Subsidiary", "Joint Venture", "Franchise", "Licensed Brand", etc.)
+3. **Ownership Flow**: A detailed chain showing the ownership structure from brand to ultimate owner, including intermediate companies if known
+4. **Confidence Score**: Your confidence in this analysis (0-100)
+5. **Reasoning**: Detailed explanation of your analysis and reasoning
+6. **Country**: The country of the ultimate financial beneficiary
 
-Respond in JSON format:
+For the ownership flow, provide an array of objects with:
+- name: Company name
+- type: Role in ownership chain (e.g., "Brand", "Subsidiary", "Parent Company", "Ultimate Owner")
+- country: Country of incorporation/operation
+- source: How you know this information
+
+Respond in valid JSON format:
 {
-  "company_type": "string",
-  "financial_beneficiary": "string", 
-  "beneficiary_country": "string",
-  "confidence_score": number,
-  "reasoning": "string",
-  "ownership_structure_type": "string",
+  "financial_beneficiary": "Company Name",
+  "beneficiary_country": "Country",
+  "ownership_structure_type": "Structure Type",
   "ownership_flow": [
-    { "name": "string", "type": "string", "country": "string" },
-    ...
-  ]
-}
-
-If you cannot determine with reasonable confidence, set financial_beneficiary to "Unknown" and confidence_score to a low value.`
+    {"name": "Brand Name", "type": "Brand", "country": "Country", "source": "knowledge"},
+    {"name": "Parent Company", "type": "Parent Company", "country": "Country", "source": "knowledge"}
+  ],
+  "confidence_score": 85,
+  "reasoning": "Detailed explanation of analysis..."
+}`
 
       const llmFirstResponse = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
@@ -313,7 +399,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
       await emitProgress(queryId, 'llm_first_analysis', 'completed', { method: 'llm_first_error' })
     }
     
-    // Step 3: Query Builder Analysis
+    // Step 4: Query Builder Analysis
     const queryStage = new EnhancedStageTracker(traceLogger, 'query_builder', 'Analyzing brand for optimal search queries')
     await emitProgress(queryId, 'query_builder', 'started', { brand })
     
@@ -351,7 +437,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
       await emitProgress(queryId, 'query_builder', 'completed', { result: 'not_available' })
     }
     
-    // Step 4: Web Research
+    // Step 5: Web Research
     const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web research for ownership information')
     await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
     
@@ -409,7 +495,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
       await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
     }
     
-    // Step 5: Ownership Analysis
+    // Step 6: Ownership Analysis
     const analysisStage = new EnhancedStageTracker(traceLogger, 'ownership_analysis', 'Performing LLM-based ownership analysis')
     await emitProgress(queryId, 'ownership_analysis', 'started', { 
       hasWebResearch: !!webResearchData?.success,
@@ -441,7 +527,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
     
     await emitProgress(queryId, 'ownership_analysis', 'success', analysisStage.stage.data)
     
-    // Step 6: Enhanced Confidence Calculation
+    // Step 7: Enhanced Confidence Calculation
     const confidenceStage = new EnhancedStageTracker(traceLogger, 'confidence_calculation', 'Calculating enhanced confidence score')
     await emitProgress(queryId, 'confidence_calculation', 'started', { initial_confidence: ownership.confidence_score })
     
@@ -476,7 +562,7 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
     
     await emitProgress(queryId, 'confidence_calculation', 'success', confidenceStage.stage.data)
     
-    // Step 7: Validation and Sanitization
+    // Step 8: Validation and Sanitization
     const validationStage = new EnhancedStageTracker(traceLogger, 'validation', 'Validating and sanitizing results')
     await emitProgress(queryId, 'validation', 'started', { confidence: ownership.confidence_score })
     
@@ -533,24 +619,73 @@ If you cannot determine with reasonable confidence, set financial_beneficiary to
       }
     }
     
-    // Step 8: Database Save
+    // Step 9: Database Save
     const saveStage = new EnhancedStageTracker(traceLogger, 'database_save', 'Saving result to database')
     await emitProgress(queryId, 'database_save', 'started', { 
-      beneficiary: validated.financial_beneficiary,
-      confidence: validated.confidence_score
+      financial_beneficiary: ownership.financial_beneficiary,
+      confidence_score: ownership.confidence_score 
     })
     
-    saveStage.reason('Saving research result to database', REASONING_TYPES.INFO)
-    const productData = ownershipResultToProductData(barcode, product_name, brand, validated)
-    const saveResult = await upsertProduct(productData)
-    
-    if (saveResult.success) {
-      validated.product_id = saveResult.data.id
-      saveStage.success({ product_id: saveResult.data.id }, ['Result saved to database successfully'])
-      await emitProgress(queryId, 'database_save', 'success', { product_id: saveResult.data.id })
-    } else {
-      saveStage.error(new Error(saveResult.error), {}, ['Failed to save to database'])
-      await emitProgress(queryId, 'database_save', 'error', null, saveResult.error)
+    try {
+      const { data: product, error: saveError } = await supabase
+        .from('products')
+        .upsert({
+          barcode,
+          product_name,
+          brand,
+          financial_beneficiary: ownership.financial_beneficiary,
+          beneficiary_country: ownership.beneficiary_country,
+          beneficiary_flag: ownership.beneficiary_flag,
+          confidence: ownership.confidence_score,
+          verification_status: ownership.verification_status,
+          sources: ownership.sources,
+          reasoning: ownership.reasoning,
+          result_type: ownership.result_type,
+          ownership_structure_type: ownership.ownership_structure_type,
+          ownership_flow: ownership.ownership_flow,
+          user_contributed: false,
+          agent_execution_trace: traceLogger.getTrace(),
+          confidence_factors: ownership.confidence_factors,
+          confidence_breakdown: ownership.confidence_breakdown,
+          confidence_reasoning: ownership.confidence_reasoning,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (saveError) throw saveError
+      
+      saveStage.success({ product_id: product.id }, ['Result saved to database'])
+      await emitProgress(queryId, 'database_save', 'completed', { product_id: product.id })
+      
+      // Store successful result in knowledge base for future RAG queries
+      if (ownership.confidence_score >= 70 && ownership.financial_beneficiary !== 'Unknown') {
+        try {
+          const knowledgeEntry = {
+            brand: brand.toLowerCase(),
+            product_name,
+            barcode,
+            financial_beneficiary: ownership.financial_beneficiary,
+            beneficiary_country: ownership.beneficiary_country,
+            ownership_structure_type: ownership.ownership_structure_type,
+            ownership_flow: ownership.ownership_flow,
+            confidence_score: ownership.confidence_score,
+            reasoning: ownership.reasoning,
+            sources: ownership.sources,
+            tags: ['enhanced_agent', 'web_research', ownership.confidence_score >= 90 ? 'high_confidence' : 'medium_confidence']
+          }
+          
+          await ragKnowledgeBase.storeEntry(knowledgeEntry)
+          console.log(`✅ Stored research result in knowledge base: ${brand} → ${ownership.financial_beneficiary}`)
+        } catch (knowledgeError) {
+          console.warn('Failed to store result in knowledge base:', knowledgeError.message)
+        }
+      }
+      
+    } catch (error) {
+      saveStage.failure(error, ['Failed to save result to database'])
+      await emitProgress(queryId, 'database_save', 'failed', { error: error.message })
+      console.error('Database save error:', error)
     }
     
     // Set final result
@@ -621,7 +756,7 @@ function getCountryFlag(country) {
     'Peru': '🇵🇪',
     'Venezuela': '🇻🇪',
     'Uruguay': '🇺🇾',
-    'Paraguay': '🇵��',
+    'Paraguay': '🇵🇾',
     'Bolivia': '🇧🇴',
     'Ecuador': '🇪🇨',
     'Guyana': '🇬🇾',

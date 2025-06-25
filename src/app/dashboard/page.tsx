@@ -172,10 +172,15 @@ const getStageInfo = (stage: string) => {
       description: 'Looking up in static ownership database',
       icon: '🗂️'
     },
+    rag_retrieval: {
+      name: 'RAG Knowledge Base',
+      description: 'Searching knowledge base for similar ownership patterns',
+      icon: '🧠'
+    },
     llm_first_analysis: {
       name: 'LLM-First Analysis',
       description: 'Initial LLM analysis of brand ownership',
-      icon: '🧠'
+      icon: '🤖'
     },
     query_builder: {
       name: 'Query Builder',
