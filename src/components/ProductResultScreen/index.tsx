@@ -153,10 +153,10 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
 
   const confidenceData = result ? {
     confidence: (() => {
-      if (!result.confidence_score) return 'Low';
-      if (result.confidence_score >= 80) return 'High';
-      if (result.confidence_score >= 60) return 'Medium';
-      return 'Low';
+      if (!result.confidence_score) return 'Low' as 'High' | 'Medium' | 'Low';
+      if (result.confidence_score >= 80) return 'High' as 'High' | 'Medium' | 'Low';
+      if (result.confidence_score >= 60) return 'Medium' as 'High' | 'Medium' | 'Low';
+      return 'Low' as 'High' | 'Medium' | 'Low';
     })(),
     attribution: result.confidence_score || 0,
     sources: result.sources?.length || 0,
