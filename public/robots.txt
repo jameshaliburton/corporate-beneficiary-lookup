@@ -1,0 +1,19 @@
+User-agent: *
+Disallow: /
+
+# Allow social media crawlers for sharing
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# Block all other crawlers
+User-agent: *
+Disallow: / 

@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getStageInfo } from '@/lib/utils';
-import ProductResultScreen from '@/components/ProductResultScreen/index';
 
 interface OwnershipFlowCompany {
   name: string;
@@ -33,6 +32,17 @@ interface ProductResult {
   ownership_structure_type?: string;
   user_contributed?: boolean;
   ownership_flow?: OwnershipFlowCompany[];
+  agent_execution_trace?: {
+    query_id: string;
+    stages: {
+      stage: string;
+      result: string;
+      description: string;
+      data?: any;
+      error?: string;
+      duration_ms?: number;
+    }[];
+  };
 }
 
 interface ProgressUpdate {
@@ -45,6 +55,34 @@ interface ProgressUpdate {
   timestamp?: string;
   reasoning?: string;
   description?: string;
+}
+
+// Helper to get flag emoji from country name
+function getFlag(country: string | undefined) {
+  if (!country || country === 'Unknown') return '🏳️';
+  const flagMap: { [key: string]: string } = {
+    'Sweden': '🇸🇪',
+    'United States': '🇺🇸',
+    'United Kingdom': '🇬🇧',
+    'Germany': '🇩🇪',
+    'France': '🇫🇷',
+    'Netherlands': '🇳🇱',
+    'Switzerland': '🇨🇭',
+    'Japan': '🇯🇵',
+    'China': '🇨🇳',
+    'Canada': '🇨🇦',
+    'Australia': '🇦🇺',
+    'Italy': '🇮🇹',
+    'Spain': '🇪🇸',
+    'Denmark': '🇩🇰',
+    'Norway': '🇳🇴',
+    'Finland': '🇫🇮',
+    'South Korea': '🇰🇷',
+    'Brazil': '🇧🇷',
+    'India': '🇮🇳',
+    'Mexico': '🇲🇽',
+  };
+  return flagMap[country] || '🏳️';
 }
 
 export default function Home() {
@@ -64,7 +102,6 @@ export default function Home() {
     product_name: '',
     brand: ''
   });
-  const [showDemo, setShowDemo] = useState(false);
   
   // Progress tracking
   const [currentProgress, setCurrentProgress] = useState<ProgressUpdate | null>(null);
@@ -231,43 +268,13 @@ export default function Home() {
     setResult(null);
     setShowManualEntry(false);
     setShowUserContribution(false);
-    setShowContributionSuccess(false);
-    setShowLowConfidenceFallback(false);
-    setShowDemo(false);
-    setCurrentBarcode('');
     setManualBarcode('');
     setUserContribution({ product_name: '', brand: '' });
+    setCurrentBarcode('');
+    setShowContributionSuccess(false);
+    setShowLowConfidenceFallback(false);
     setLowConfidenceData({ product_name: '', brand: '' });
-    stopProgressTracking();
   };
-
-  // Helper to get flag emoji from country name
-  function getFlag(country: string | undefined) {
-    if (!country || country === 'Unknown') return '🏳️';
-    const flagMap: { [key: string]: string } = {
-      'Sweden': '🇸🇪',
-      'United States': '🇺🇸',
-      'United Kingdom': '🇬🇧',
-      'Germany': '🇩🇪',
-      'France': '🇫🇷',
-      'Netherlands': '🇳🇱',
-      'Switzerland': '🇨🇭',
-      'Japan': '🇯🇵',
-      'China': '🇨🇳',
-      'Canada': '🇨🇦',
-      'Australia': '🇦🇺',
-      'Italy': '🇮🇹',
-      'Spain': '🇪🇸',
-      'Denmark': '🇩🇰',
-      'Norway': '🇳🇴',
-      'Finland': '🇫🇮',
-      'South Korea': '🇰🇷',
-      'Brazil': '🇧🇷',
-      'India': '🇮🇳',
-      'Mexico': '🇲🇽',
-    };
-    return flagMap[country] || '🏳️';
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 px-4 py-8">
@@ -284,7 +291,7 @@ export default function Home() {
         </div>
 
         {/* Main Scanner */}
-        {!showManualEntry && !showUserContribution && !result && !showDemo && (
+        {!showManualEntry && !showUserContribution && !result && (
           <Card className="w-full p-0 rounded-2xl shadow-xl border border-gray-100">
             <CardContent className="p-6 flex flex-col items-center">
               <BarcodeScanner
@@ -292,29 +299,9 @@ export default function Home() {
                 processing={processing}
                 onManualEntry={handleManualEntry}
               />
-              
-              {/* Demo Button */}
-              <div className="mt-6 w-full">
-                <Button
-                  onClick={() => setShowDemo(true)}
-                  variant="outline"
-                  className="w-full text-base py-3 font-semibold"
-                >
-                  Preview Demo Result
-                </Button>
-              </div>
+              <p className="text-gray-500 text-sm mt-4">Point your camera at a barcode to begin.</p>
             </CardContent>
           </Card>
-        )}
-
-        {/* Show Demo Result Screen */}
-        {showDemo && (
-          <ProductResultScreen onScanAnother={handleScanAnother} />
-        )}
-
-        {/* Show Actual Result Screen */}
-        {result && !processing && !showDemo && (
-          <ProductResultScreen onScanAnother={handleScanAnother} result={result} />
         )}
 
         {/* Manual Entry Form */}
@@ -474,6 +461,153 @@ export default function Home() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Result/Error State */}
+        {result && (
+          <Card className="w-full rounded-2xl shadow-xl border border-gray-100 mt-6">
+            <CardContent className="p-8">
+              {/* Success or Unknown State */}
+              <div className="mb-6">
+                <h2 className={`text-2xl font-bold mb-2 flex items-center gap-2 ${
+                  result.success && result.financial_beneficiary && result.financial_beneficiary !== 'Unknown'
+                    ? 'text-green-700'
+                    : 'text-yellow-700'
+                }`}>
+                  {result.success && result.financial_beneficiary && result.financial_beneficiary !== 'Unknown'
+                    ? 'Ownership Found'
+                    : 'Ownership Unknown'}
+                </h2>
+                <div className="mb-4">
+                  <span className="font-semibold">Product:</span> {result.product_name || 'Unknown'}<br />
+                  <span className="font-semibold">Brand:</span> {result.brand || 'Unknown'}<br />
+                  <span className="font-semibold">Owner:</span> {result.financial_beneficiary || 'Unknown'}<br />
+                  <span className="font-semibold">Country:</span> {result.beneficiary_country || 'Unknown'} {result.beneficiary_flag || ''}<br />
+                  {result.ownership_structure_type && (
+                    <span className="font-semibold">Structure:</span> {result.ownership_structure_type}<br />
+                  )}
+                  {typeof result.confidence_score === 'number' && (
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                      result.confidence_score >= 80 ? 'bg-green-100 text-green-800' :
+                      result.confidence_score >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {result.confidence_score >= 80 ? 'High Confidence' : result.confidence_score >= 50 ? 'Medium Confidence' : 'Low Confidence'}
+                    </span>
+                  )}
+                </div>
+                {result.reasoning && (
+                  <div className="bg-gray-50 border-l-4 border-blue-300 p-4 rounded mb-4 text-sm text-blue-900">
+                    <span className="font-semibold">Reasoning:</span> {result.reasoning}
+                  </div>
+                )}
+                {result.sources && result.sources.length > 0 && (
+                  <div className="mb-4">
+                    <span className="font-semibold">Sources:</span>
+                    <ul className="list-disc list-inside text-xs text-gray-600 mt-1">
+                      {result.sources.map((src, i) => (
+                        <li key={i}>{src}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Process Trace / Agent Execution Trace */}
+              {result.agent_execution_trace && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Process Trace</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="mb-2 text-xs text-gray-500">Query ID: {result.agent_execution_trace.query_id}</div>
+                    <div className="space-y-2">
+                      {result.agent_execution_trace.stages && result.agent_execution_trace.stages.map((stage, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-2 rounded border border-gray-100 bg-white">
+                          <div className="text-lg">{getStageInfo(stage.stage).icon}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-800">{getStageInfo(stage.stage).name}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                stage.result === 'success' ? 'bg-green-100 text-green-800' :
+                                stage.result === 'error' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {stage.result ? stage.result.toUpperCase() : 'IN PROGRESS'}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 mb-1">{stage.description}</div>
+                            {stage.data && (
+                              <div className="text-xs text-gray-700 mb-1">{JSON.stringify(stage.data)}</div>
+                            )}
+                            {stage.error && (
+                              <div className="text-xs text-red-600">Error: {stage.error}</div>
+                            )}
+                          </div>
+                          <div className="text-right text-xs text-gray-400 min-w-[60px]">{stage.duration_ms ? `${stage.duration_ms}ms` : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* User Contribution Form for Unknown/Low Confidence */}
+              {(!result.financial_beneficiary || result.financial_beneficiary === 'Unknown' || (typeof result.confidence_score === 'number' && result.confidence_score < 50)) && (
+                <div className="mt-6">
+                  <Card className="w-full rounded-2xl border border-yellow-200 bg-yellow-50">
+                    <CardContent className="p-6 flex flex-col items-center">
+                      <h3 className="text-lg font-semibold text-yellow-800 mb-2">Help Improve This Result</h3>
+                      <p className="text-yellow-700 text-sm mb-4">We couldn't find clear ownership information. If you know more, please contribute below.</p>
+                      <form onSubmit={handleUserContributionSubmit} className="w-full space-y-4">
+                        <div>
+                          <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+                          <Input
+                            type="text"
+                            id="product_name"
+                            value={userContribution.product_name}
+                            onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
+                            className="w-full text-lg bg-gray-50"
+                            placeholder="e.g., Kit Kat Matcha Green Tea"
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">Brand Name</label>
+                          <Input
+                            type="text"
+                            id="brand"
+                            value={userContribution.brand}
+                            onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
+                            className="w-full text-lg bg-gray-50"
+                            placeholder="e.g., Kit Kat, Nestlé"
+                          />
+                        </div>
+                        <div className="flex gap-4">
+                          <Button
+                            type="submit"
+                            className="flex-1 text-base py-3 font-semibold shadow"
+                            disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
+                          >
+                            Submit & Research
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setShowUserContribution(false)}
+                            className="flex-1 text-base py-3 font-semibold shadow"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                      <p className="text-xs text-gray-400 mt-4">Thank you for helping improve our database!</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <Button onClick={handleScanAnother} className="mt-8 w-full">Scan another</Button>
             </CardContent>
           </Card>
         )}

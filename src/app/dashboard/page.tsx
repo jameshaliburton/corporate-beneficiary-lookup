@@ -423,7 +423,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Ownership Research Dashboard</h1>
+          <h1 className="text-3xl font-bold">OwnedBy Dashboard</h1>
           <p className="text-gray-600">Monitor scan history and ownership data</p>
         </div>
         <div className="flex space-x-4">
