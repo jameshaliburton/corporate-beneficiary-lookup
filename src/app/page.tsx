@@ -261,7 +261,6 @@ export default function Home() {
       'Denmark': '🇩🇰',
       'Norway': '🇳🇴',
       'Finland': '🇫🇮',
-      'South Korea': '🇰🇷',
       'Brazil': '🇧🇷',
       'India': '🇮🇳',
       'Mexico': '🇲🇽',
