@@ -143,9 +143,7 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     barcode: result.barcode || 'Unknown Barcode',
   } : mockData.product;
 
-  // Handle ownership trail - if we have a real result with ownership flow, use it
-  // Otherwise, if we have beneficiary info, create a simple trail
-  // Otherwise, use mock data
+  // Ownership trail: always show at least brand and unknown owner if no parent found
   const ownershipTrailData = result ? (
     result.ownership_flow && result.ownership_flow.length > 0 ? 
       result.ownership_flow.map((company, index) => ({
@@ -154,8 +152,7 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
         type: company.type || 'Unknown',
         flag: company.country ? getFlag(company.country) : '🏳️',
         ultimate: index === result.ownership_flow!.length - 1,
-      })) : 
-      result.financial_beneficiary && result.financial_beneficiary !== 'Unknown' ? [
+      })) : [
         {
           name: result.brand || 'Unknown Brand',
           country: 'Unknown',
@@ -164,18 +161,10 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
           ultimate: false,
         },
         {
-          name: result.financial_beneficiary,
-          country: result.beneficiary_country || 'Unknown',
-          type: 'Ultimate Owner',
-          flag: result.beneficiary_flag || getFlag(result.beneficiary_country),
-          ultimate: true,
-        }
-      ] : [
-        {
-          name: result.brand || 'Unknown Brand',
+          name: 'Unknown Owner',
           country: 'Unknown',
-          type: 'Brand',
-          flag: '🏳️',
+          type: 'Ultimate Owner',
+          flag: '❓',
           ultimate: true,
         }
       ]
@@ -196,19 +185,22 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     sources: mockData.sources,
   };
 
+  // Trace: map backend fields correctly
   const traceData = result?.agent_execution_trace?.stages ? 
     result.agent_execution_trace.stages.map((stage: any) => {
       let status: 'success' | 'error' | 'in_progress' | 'pending' = 'pending';
-      if (stage.status === 'success') status = 'success';
-      else if (stage.status === 'error') status = 'error';
-      else if (stage.status === 'in_progress') status = 'in_progress';
-      
+      if (stage.result === 'success') status = 'success';
+      else if (stage.result === 'error') status = 'error';
+      else if (stage.result === 'in_progress') status = 'in_progress';
+      else if (stage.result === 'hit') status = 'success';
+      else if (stage.result === 'miss') status = 'error';
+      else if (stage.result === 'not_available') status = 'pending';
       return {
-        step: stage.name || 'Unknown Step',
+        step: stage.stage || 'Unknown Step',
         description: stage.description || 'No description available',
         status,
-        duration: stage.duration || 0,
-        details: stage.details || 'No details available',
+        duration: stage.duration_ms || 0,
+        details: stage.data ? JSON.stringify(stage.data) : (stage.error || 'No details available'),
       };
     }) : mockData.trace;
 
