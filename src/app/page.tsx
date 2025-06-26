@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { BarcodeScanner } from '../../components/BarcodeScanner';
+import ProductCamera from '@/components/ProductCamera';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,9 @@ export default function Home() {
     brand: ''
   });
   const [showDemo, setShowDemo] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [imageAnalysisResult, setImageAnalysisResult] = useState<any>(null);
+  const [imageProcessing, setImageProcessing] = useState(false);
   
   // Progress tracking
   const [currentProgress, setCurrentProgress] = useState<ProgressUpdate | null>(null);
@@ -245,12 +249,64 @@ export default function Home() {
     setShowContributionSuccess(false);
     setShowLowConfidenceFallback(false);
     setShowDemo(false);
+    setShowCamera(false);
+    setImageAnalysisResult(null);
     setCurrentBarcode('');
     setManualBarcode('');
     setUserContribution({ product_name: '', brand: '' });
     setLowConfidenceData({ product_name: '', brand: '' });
     setContributionReason('not_found');
     stopProgressTracking();
+  };
+
+  const handleImageCaptured = async (file: File) => {
+    setImageProcessing(true);
+    setShowCamera(false);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await fetch('/api/image-recognition', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      setImageAnalysisResult(result);
+      
+      if (result.success && result.data.confidence >= 70) {
+        // High confidence - proceed with ownership research
+        await handleBarcode('', {
+          product_name: result.data.product_name,
+          brand: result.data.brand_name
+        });
+      } else if (result.success) {
+        // Low confidence - show manual entry with suggestions
+        setContributionReason('insufficient_data');
+        setShowUserContribution(true);
+        setUserContribution({
+          product_name: result.data.product_name,
+          brand: result.data.brand_name
+        });
+      } else {
+        // Failed analysis - show manual entry
+        setContributionReason('not_found');
+        setShowUserContribution(true);
+        setUserContribution({ product_name: '', brand: '' });
+      }
+    } catch (error) {
+      console.error('Image analysis failed:', error);
+      setContributionReason('not_found');
+      setShowUserContribution(true);
+      setUserContribution({ product_name: '', brand: '' });
+    } finally {
+      setImageProcessing(false);
+    }
+  };
+
+  const handleCameraClose = () => {
+    setShowCamera(false);
   };
 
   // Helper to get flag emoji from country name
@@ -295,7 +351,7 @@ export default function Home() {
         </div>
 
         {/* Main Scanner */}
-        {!showManualEntry && !showUserContribution && !result && !showDemo && (
+        {!showManualEntry && !showUserContribution && !result && !showDemo && !showCamera && (
           <Card className="w-full p-0 rounded-2xl shadow-xl border border-gray-100">
             <CardContent className="p-6 flex flex-col items-center">
               <BarcodeScanner
@@ -304,8 +360,19 @@ export default function Home() {
                 onManualEntry={handleManualEntry}
               />
               
+              {/* Camera Button */}
+              <div className="mt-4 w-full">
+                <Button
+                  onClick={() => setShowCamera(true)}
+                  variant="outline"
+                  className="w-full text-base py-3 font-semibold border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  📸 Take Photo Instead
+                </Button>
+              </div>
+              
               {/* Demo Button */}
-              <div className="mt-6 w-full">
+              <div className="mt-4 w-full">
                 <Button
                   onClick={() => setShowDemo(true)}
                   variant="outline"
@@ -316,6 +383,14 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Camera Component */}
+        {showCamera && (
+          <ProductCamera
+            onImageCaptured={handleImageCaptured}
+            onClose={handleCameraClose}
+          />
         )}
 
         {/* Show Demo Result Screen */}
@@ -447,50 +522,29 @@ export default function Home() {
         {/* Processing State */}
         {processing && (
           <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
-            <CardContent className="p-8">
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  Agent Research Pipeline
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Our AI is researching ownership. This may take a few seconds.
-                </p>
-              </div>
-              {/* Process Flow Visualization */}
-              <div className="space-y-4">
-                {/* Current Active Stage */}
-                {currentProgress && currentProgress.stage && (
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">{getStageInfo(currentProgress.stage).icon}</div>
-                        <div>
-                          <h4 className="font-semibold text-blue-900">
-                            {getStageInfo(currentProgress.stage).name}
-                          </h4>
-                          <p className="text-sm text-blue-700">
-                            {getStageInfo(currentProgress.stage).description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin h-5 w-5 border-2 border-t-2 border-t-blue-600 border-blue-300 rounded-full"></div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          currentProgress.status === 'started' ? 'bg-blue-100 text-blue-800' :
-                          currentProgress.status === 'success' ? 'bg-green-100 text-green-800' :
-                          currentProgress.status === 'error' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {currentProgress.status}
-                        </span>
-                      </div>
-                    </div>
-                    {currentProgress.reasoning && (
-                      <div className="text-xs text-blue-700 mt-2">{currentProgress.reasoning}</div>
-                    )}
-                  </div>
-                )}
-              </div>
+            <CardContent className="p-8 flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Researching Ownership...
+              </h3>
+              <p className="text-gray-600 text-center">
+                {currentProgress ? getStageInfo(currentProgress.stage || '').description : 'Starting research...'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Image Processing State */}
+        {imageProcessing && (
+          <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
+            <CardContent className="p-8 flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Analyzing Product Image...
+              </h3>
+              <p className="text-gray-600 text-center">
+                Using AI to identify the brand and product from your photo
+              </p>
             </CardContent>
           </Card>
         )}

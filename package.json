@@ -36,6 +36,7 @@
     "lucide-react": "^0.517.0",
     "next": "^14.1.0",
     "node-fetch": "^3.3.2",
+    "openai": "^5.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^3.3.1",

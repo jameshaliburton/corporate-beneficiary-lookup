@@ -3,8 +3,8 @@ import { lookupProduct } from './src/lib/apis/enhanced-barcode-lookup.js';
 async function testEnhancedPipeline() {
   console.log('🧪 Testing Enhanced Barcode Lookup Pipeline...\n');
   
-  // Test with a known barcode
-  const testBarcode = '7318690499534'; // ICA tuna fish
+  // Test with the beans barcode that was causing issues
+  const testBarcode = '7710170009118'; // Beans barcode
   
   try {
     console.log(`📦 Testing barcode: ${testBarcode}`);
