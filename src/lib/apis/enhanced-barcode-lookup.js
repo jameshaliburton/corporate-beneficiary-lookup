@@ -16,6 +16,8 @@ import { EnhancedAgentOwnershipResearch } from '../agents/enhanced-ownership-res
 import { tryGEPIR, getCountryFlag } from './gepir-lookup.js'
 import { tryWikidata, tryWikidataBrandSearch } from './wikidata-lookup.js'
 import { tryGoogleShopping, tryBasicWebSearch } from './google-shopping-lookup.js'
+import { QualityAssessmentAgent } from '../agents/quality-assessment-agent.js'
+import { WebResearchAgent } from '../agents/web-research-agent.js'
 
 // Common result format for all lookup sources
 const createLookupResult = (data) => ({
@@ -458,7 +460,6 @@ export async function enhancedLookupProduct(barcode, userData = null) {
   
   if (productInfo) {
     try {
-      const { QualityAssessmentAgent } = require('../agents/quality-assessment-agent.js');
       const qualityAgent = new QualityAssessmentAgent();
       qualityAssessment = await qualityAgent.assessProductDataQuality(productInfo);
       
@@ -589,7 +590,6 @@ export async function enhancedLookupProduct(barcode, userData = null) {
       
       // Try SerpAPI and other web research services
       try {
-        const { WebResearchAgent } = require('../agents/web-research-agent.js');
         const webAgent = new WebResearchAgent();
         const webResult = await webAgent.researchOwnership(productInfo.brand || productInfo.product_name);
         
