@@ -9,6 +9,7 @@ import ErrorFallback from './ErrorFallback';
 import ManualEntryForm from './ManualEntryForm';
 import StickyActionBar from './StickyActionBar';
 import LookupTrace from './LookupTrace';
+import { ContextualCluesDisplay } from './ContextualCluesDisplay';
 
 // Mock data for demo
 const mockData = {
@@ -170,6 +171,7 @@ interface ProductResult {
       factors: Record<string, any>;
     }>;
   };
+  contextual_clues?: string[];
 }
 
 interface ProductResultScreenProps {
@@ -296,6 +298,11 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
       <ProductHeader product={productData} />
+      
+      {/* Show contextual clues from image analysis if available */}
+      {result?.contextual_clues && (
+        <ContextualCluesDisplay contextualClues={result.contextual_clues} />
+      )}
       
       {/* Show lookup trace if available */}
       {result?.lookup_trace && (

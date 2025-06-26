@@ -22,6 +22,9 @@ export const PROMPT_VERSIONS = {
   },
   QUALITY_ASSESSMENT: {
     'v1.0': 'current' // New quality assessment agent
+  },
+  VISION_AGENT: {
+    'v1.0': 'current' // New vision agent for image analysis
   }
 }
 
@@ -92,6 +95,8 @@ export function getPromptBuilder(agentType, version = null) {
       return getVerificationPrompt(version)
     case 'QUALITY_ASSESSMENT':
       return getQualityAssessmentPrompt(version)
+    case 'VISION_AGENT':
+      return getVisionAgentPrompt(version)
     default:
       throw new Error(`Unknown agent type: ${agentType}`)
   }
@@ -152,6 +157,18 @@ function getQualityAssessmentPrompt(version) {
 }
 
 /**
+ * Get vision agent prompt for specific version
+ */
+function getVisionAgentPrompt(version) {
+  switch (version) {
+    case 'v1.0':
+      return buildVisionAgentPromptV1_0
+    default:
+      throw new Error(`Unknown vision agent prompt version: ${version}`)
+  }
+}
+
+/**
  * Build quality assessment prompt v1.0
  */
 function buildQualityAssessmentPromptV1_0(productData) {
@@ -187,6 +204,46 @@ Respond with JSON only:
   "quality_score": 0-100,
   "reasoning": "brief explanation",
   "issues": ["list", "of", "problems"]
+}`
+  };
+}
+
+/**
+ * Build vision agent prompt v1.0
+ */
+function buildVisionAgentPromptV1_0(productContext) {
+  const { barcode, partialData } = productContext || {};
+  
+  let contextInfo = '';
+  if (barcode) {
+    contextInfo += `Barcode: ${barcode}\n`;
+  }
+  if (partialData && Object.keys(partialData).length > 0) {
+    contextInfo += `Partial data found: ${JSON.stringify(partialData)}\n`;
+  }
+
+  return {
+    system_prompt: `You are analyzing a product image to extract key information for corporate ownership research.
+
+Guidelines:
+- Focus on text that appears to be brand names, company names, or manufacturer information
+- Look for "Made in", "Manufactured by", "Produced by" type labels
+- If you can't read text clearly, note that in reasoning
+- Confidence should be 0-100 based on clarity and completeness of information
+- If no relevant information is visible, return empty strings with low confidence
+
+Return only valid JSON.`,
+    user_prompt: `Please analyze this image and extract the following information in JSON format:
+
+${contextInfo ? `Context information:\n${contextInfo}\n` : ''}
+
+{
+  "product_name": "Full product name as shown on packaging",
+  "brand": "Brand name (if clearly visible)",
+  "company": "Manufacturing company or parent company name",
+  "country_of_origin": "Country where product is made (if visible)",
+  "confidence": 85,
+  "reasoning": "Brief explanation of what you can see and your confidence level"
 }`
   };
 }

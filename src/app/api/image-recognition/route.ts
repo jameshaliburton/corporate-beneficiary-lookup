@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('📸 Processing image:', {
+    console.log('📸 Processing image with enhanced flow:', {
       name: file.name,
       type: file.type,
       size: file.size
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Determine image format
     const format = file.type.split('/')[1] || 'jpeg';
     
-    // Analyze the image
+    // Analyze the image using enhanced flow
     const result = await analyzeProductImage(base64, format);
     
     if (!result.success) {
@@ -53,15 +53,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract the main data for compatibility
+    const { data, flow } = result;
+    
+    // Return enhanced response with flow information
     return NextResponse.json({
       success: true,
-      data: result.data,
-      source: 'image_recognition',
-      timestamp: new Date().toISOString()
+      product_name: data.product_name,
+      brand: data.brand_name,
+      product_type: data.product_type,
+      confidence: data.confidence,
+      reasoning: data.reasoning,
+      quality_score: data.quality_score,
+      flow: flow, // Include the flow information for debugging
+      source: result.source,
+      timestamp: result.timestamp
     });
 
   } catch (error) {
-    console.error('❌ Image recognition API error:', error);
+    console.error('❌ Enhanced image recognition API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

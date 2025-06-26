@@ -5,10 +5,14 @@ import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
+import VisionAgent from '@/lib/agents/vision-agent.js';
 import { emitProgress } from '@/lib/utils';
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
+
+// Initialize the Vision Agent
+const visionAgent = new VisionAgent();
 
 // Helper function to check if product data is meaningful
 function isProductDataMeaningful(productData: any): boolean {
@@ -92,7 +96,7 @@ function isProductDataMeaningful(productData: any): boolean {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { barcode, product_name, brand, hints = {}, evaluation_mode = false } = body;
+    const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null } = body;
 
     if (!barcode) {
       return NextResponse.json({ error: 'Barcode is required' }, { status: 400 });
@@ -117,6 +121,9 @@ export async function POST(request: NextRequest) {
       
       const barcodeData = await enhancedLookupProduct(barcode, userData);
       await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
+
+      // Initialize currentBarcodeData for use throughout the function
+      let currentBarcodeData = { ...barcodeData };
 
       // Check if enhanced lookup requires manual entry (poor quality data)
       if (barcodeData.requires_manual_entry) {
@@ -167,7 +174,7 @@ export async function POST(request: NextRequest) {
       if (!userData && barcodeData) {
         console.log('🔍 Running Quality Assessment Agent...');
         
-        const qualityAssessment = await qualityAgent.assessProductDataQuality(barcodeData);
+        let qualityAssessment = await qualityAgent.assessProductDataQuality(currentBarcodeData);
         
         console.log('📊 Quality Assessment Result:', {
           is_meaningful: qualityAssessment.is_meaningful,
@@ -180,21 +187,107 @@ export async function POST(request: NextRequest) {
         if (!qualityAssessment.is_meaningful) {
           console.log('❌ Product data insufficient for agentic search:', qualityAssessment.reasoning);
           
-          return NextResponse.json({
-            success: false,
-            requires_manual_entry: true,
-            reason: 'insufficient_product_data',
-            barcode_data: barcodeData,
-            quality_assessment: qualityAssessment,
-            message: 'Product information is incomplete. Please provide brand and product name manually.'
-          });
+          // NEW: Try vision agent if image is available
+          if (image_base64) {
+            console.log('🔍 Attempting vision agent analysis...');
+            await emitProgress(queryId, 'vision_analysis', 'started', { reason: 'Quality assessment failed, trying vision analysis' });
+            
+            try {
+              const visionResult = await visionAgent.analyzeImage(image_base64, {
+                barcode,
+                partialData: currentBarcodeData
+              });
+              
+              await emitProgress(queryId, 'vision_analysis', 'completed', visionResult);
+              
+              console.log('📊 Vision Analysis Result:', {
+                success: visionResult.success,
+                confidence: visionResult.confidence,
+                extracted_data: visionResult.data,
+                reasoning: visionResult.reasoning
+              });
+              
+              // Check if vision results are sufficient
+              if (visionResult.success && visionAgent.isVisionResultSufficient(visionResult)) {
+                console.log('✅ Vision analysis provided sufficient data, proceeding to ownership research');
+                
+                // Use vision data to enhance the product data
+                let enhancedData = {
+                  ...currentBarcodeData,
+                  product_name: visionResult.data.product_name || currentBarcodeData.product_name,
+                  brand: visionResult.data.brand || currentBarcodeData.brand,
+                  // Add company and country_of_origin if they don't exist in the original data
+                  ...(visionResult.data.company && { company: visionResult.data.company }),
+                  ...(visionResult.data.country_of_origin && { country_of_origin: visionResult.data.country_of_origin })
+                };
+                
+                // Re-run quality assessment with enhanced data
+                const enhancedQualityAssessment = await qualityAgent.assessProductDataQuality(enhancedData);
+                
+                if (enhancedQualityAssessment.is_meaningful) {
+                  console.log('✅ Enhanced data passes quality assessment - proceeding to agentic search');
+                  currentBarcodeData = enhancedData;
+                  qualityAssessment = enhancedQualityAssessment;
+                } else {
+                  console.log('❌ Even with vision data, quality is insufficient');
+                  return NextResponse.json({
+                    success: false,
+                    requires_manual_entry: true,
+                    reason: 'insufficient_data_after_vision',
+                    barcode_data: currentBarcodeData,
+                    quality_assessment: enhancedQualityAssessment,
+                    vision_result: visionResult,
+                    message: 'Product information is still incomplete even after image analysis. Please provide details manually.',
+                    query_id: queryId
+                  });
+                }
+              } else {
+                console.log('❌ Vision analysis failed or provided insufficient data');
+                return NextResponse.json({
+                  success: false,
+                  requires_manual_entry: true,
+                  reason: 'vision_analysis_failed',
+                  barcode_data: currentBarcodeData,
+                  quality_assessment: qualityAssessment,
+                  vision_result: visionResult,
+                  message: 'Image analysis could not extract sufficient product information. Please provide details manually.',
+                  query_id: queryId
+                });
+              }
+            } catch (visionError) {
+              console.error('❌ Vision analysis error:', visionError);
+              await emitProgress(queryId, 'vision_analysis', 'error', { error: visionError.message });
+              
+              return NextResponse.json({
+                success: false,
+                requires_manual_entry: true,
+                reason: 'vision_analysis_error',
+                barcode_data: currentBarcodeData,
+                quality_assessment: qualityAssessment,
+                vision_error: visionError.message,
+                message: 'Image analysis failed. Please provide details manually.',
+                query_id: queryId
+              });
+            }
+          } else {
+            // No image available, trigger manual entry
+            return NextResponse.json({
+              success: false,
+              requires_manual_entry: true,
+              reason: 'insufficient_product_data',
+              barcode_data: currentBarcodeData,
+              quality_assessment: qualityAssessment,
+              message: 'Product information is incomplete. Please provide brand and product name manually or use camera capture.',
+              query_id: queryId
+            });
+          }
         }
         
         console.log('✅ Product data quality assessment passed - proceeding to agentic search');
       }
 
       // Step 2: Enhanced Ownership research (only if no ownership data found and we have meaningful product data)
-      await emitProgress(queryId, 'ownership_research', 'started', { brand: barcodeData.brand, product_name: barcodeData.product_name });
+      await emitProgress(queryId, 'ownership_research', 'started', { brand: currentBarcodeData.brand, product_name: currentBarcodeData.product_name });
       
       // Enable evaluation logging if requested
       if (evaluation_mode) {
@@ -203,8 +296,8 @@ export async function POST(request: NextRequest) {
       
       const ownershipResult = await EnhancedAgentOwnershipResearch({
         barcode,
-        product_name: barcodeData.product_name,
-        brand: barcodeData.brand,
+        product_name: currentBarcodeData.product_name,
+        brand: currentBarcodeData.brand,
         hints,
         enableEvaluation: evaluation_mode
       });
@@ -222,8 +315,8 @@ export async function POST(request: NextRequest) {
       // Merge barcode data and ownership result into a flat structure
       const mergedResult = {
         success: true,
-        product_name: barcodeData.product_name,
-        brand: barcodeData.brand,
+        product_name: currentBarcodeData.product_name,
+        brand: currentBarcodeData.brand,
         barcode: barcode,
         financial_beneficiary: ownershipResult.financial_beneficiary,
         beneficiary_country: ownershipResult.beneficiary_country,
@@ -240,7 +333,9 @@ export async function POST(request: NextRequest) {
         result_type: ownershipResult.result_type,
         user_contributed: !!(product_name || brand),
         agent_execution_trace: ownershipResult.agent_execution_trace,
-        lookup_trace: barcodeData.lookup_trace, // Include enhanced lookup trace
+        lookup_trace: currentBarcodeData.lookup_trace, // Include enhanced lookup trace
+        // Pass through contextual clues from image analysis if available
+        contextual_clues: (currentBarcodeData as any).contextual_clues || null,
         query_id: queryId
       };
 

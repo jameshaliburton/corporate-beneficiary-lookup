@@ -68,6 +68,7 @@ export default function Home() {
   const [showCamera, setShowCamera] = useState(false);
   const [imageAnalysisResult, setImageAnalysisResult] = useState<any>(null);
   const [imageProcessing, setImageProcessing] = useState(false);
+  const [showFallbackModal, setShowFallbackModal] = useState(false);
   
   // Progress tracking
   const [currentProgress, setCurrentProgress] = useState<ProgressUpdate | null>(null);
@@ -198,26 +199,14 @@ export default function Home() {
           brand: data.brand || ''
         });
       }
-      
-      // If lookup failed and no user data was provided, show contribution form
-      if (!data.success && !userData && !data.requires_manual_entry && (
-        data.error?.includes('No product found') || 
-        data.error?.includes('Please try manual entry')
-      )) {
-        setContributionReason('not_found');
-        setShowUserContribution(true);
-      }
     } catch (error) {
+      console.error('Error processing barcode:', error);
       setResult({
         success: false,
-        error: 'Failed to lookup product. Please try again.',
+        error: 'Failed to process barcode. Please try again.'
       });
     } finally {
       setProcessing(false);
-      // Stop progress tracking after a delay to allow final updates
-      setTimeout(() => {
-        stopProgressTracking();
-      }, 2000);
     }
   };
 
@@ -254,24 +243,20 @@ export default function Home() {
 
   const handleScanAnother = () => {
     setResult(null);
-    setShowManualEntry(false);
-    setShowUserContribution(false);
-    setShowContributionSuccess(false);
-    setShowLowConfidenceFallback(false);
     setShowDemo(false);
     setShowCamera(false);
     setImageAnalysisResult(null);
-    setCurrentBarcode('');
-    setManualBarcode('');
-    setUserContribution({ product_name: '', brand: '' });
-    setLowConfidenceData({ product_name: '', brand: '' });
-    setContributionReason('not_found');
+    setShowUserContribution(false);
+    setShowLowConfidenceFallback(false);
+    setShowContributionSuccess(false);
+    setShowFallbackModal(false);
     stopProgressTracking();
   };
 
   const handleImageCaptured = async (file: File) => {
     setImageProcessing(true);
     setShowCamera(false);
+    setImageAnalysisResult(null);
     
     try {
       const formData = new FormData();
@@ -282,31 +267,46 @@ export default function Home() {
         body: formData,
       });
       
-      const result = await response.json();
-      setImageAnalysisResult(result);
+      const data = await response.json();
+      setImageAnalysisResult(data);
       
-      if (result.success && result.data.confidence >= 70) {
-        // High confidence - proceed with ownership research
-        await handleBarcode('', {
-          product_name: result.data.product_name,
-          brand: result.data.brand_name
+      console.log('📸 Enhanced image analysis result:', data);
+      
+      // Check if we got good data from the enhanced analysis
+      if (data.success && data.brand && data.product_name && data.confidence >= 50) {
+        // If we got good data from image analysis, proceed to ownership research
+        console.log('✅ Image analysis successful, proceeding to ownership research');
+        
+        // Create a synthetic barcode for tracking
+        const syntheticBarcode = `img_${Date.now()}`;
+        setCurrentBarcode(syntheticBarcode);
+        
+        // Proceed to ownership research with the extracted data
+        await handleBarcode(syntheticBarcode, {
+          product_name: data.product_name,
+          brand: data.brand
         });
-      } else if (result.success) {
-        // Low confidence - show manual entry with suggestions
+      } else {
+        // If image analysis failed or returned insufficient data, show manual entry
+        console.log('⚠️ Image analysis insufficient for ownership research, showing manual entry');
+        console.log('Analysis details:', {
+          success: data.success,
+          brand: data.brand,
+          product_name: data.product_name,
+          confidence: data.confidence,
+          flow: data.flow,
+          reason: 'Data quality insufficient for ownership research'
+        });
+        
         setContributionReason('insufficient_data');
         setShowUserContribution(true);
         setUserContribution({
-          product_name: result.data.product_name,
-          brand: result.data.brand_name
+          product_name: data.product_name || '',
+          brand: data.brand || ''
         });
-      } else {
-        // Failed analysis - show manual entry
-        setContributionReason('not_found');
-        setShowUserContribution(true);
-        setUserContribution({ product_name: '', brand: '' });
       }
     } catch (error) {
-      console.error('Image analysis failed:', error);
+      console.error('❌ Error processing image:', error);
       setContributionReason('not_found');
       setShowUserContribution(true);
       setUserContribution({ product_name: '', brand: '' });
@@ -356,19 +356,41 @@ export default function Home() {
             <span className="inline-block bg-yellow-200 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full align-middle shadow-sm">Beta</span>
           </div>
           <p className="text-gray-600 text-lg mt-2">
-            Discover who owns the companies behind your purchases
+            Find out who really owns the products you buy
           </p>
         </div>
 
-        {/* Main Scanner */}
-        {!showManualEntry && !showUserContribution && !result && !showDemo && !showCamera && (
+        {/* Landing Screen - Primary CTA */}
+        {!showManualEntry && !showUserContribution && !result && !showDemo && !showCamera && !showFallbackModal && !processing && !imageProcessing && (
           <Card className="w-full p-0 rounded-2xl shadow-xl border border-gray-100">
-            <CardContent className="p-6 flex flex-col items-center">
-              <BarcodeScanner
-                onBarcode={handleBarcode}
-                processing={processing}
-                onManualEntry={handleManualEntry}
-              />
+            <CardContent className="p-8 flex flex-col items-center">
+              <div className="text-center mb-8">
+                <div className="text-6xl mb-4">📸</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Take a Photo
+                </h2>
+                <p className="text-gray-600 text-base mb-6">
+                  Point your camera at any product packaging to discover who owns the company behind it
+                </p>
+              </div>
+              
+              <Button
+                onClick={() => setShowCamera(true)}
+                className="w-full text-lg py-4 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700 mb-4"
+                size="lg"
+              >
+                📸 Take a Photo
+              </Button>
+              
+              <div className="w-full text-center">
+                <button
+                  onClick={() => setShowFallbackModal(true)}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                  Try manual or barcode entry
+                </button>
+              </div>
+              
               {/* Demo Button */}
               <div className="mt-6 w-full">
                 <Button
@@ -379,6 +401,67 @@ export default function Home() {
                   Preview Demo Result
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Fallback Modal */}
+        {showFallbackModal && !result && !processing && !imageProcessing && (
+          <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
+            <CardContent className="p-8 flex flex-col items-center">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-4">🔍</div>
+                <h2 className="text-xl font-bold text-gray-800 mb-3">
+                  Alternative Entry Methods
+                </h2>
+                <p className="text-gray-600 text-base">
+                  Choose how you'd like to identify the product
+                </p>
+              </div>
+              
+              <div className="w-full space-y-4">
+                <Button
+                  onClick={() => {
+                    setShowFallbackModal(false);
+                    setShowCamera(true);
+                  }}
+                  variant="outline"
+                  className="w-full text-base py-4 font-semibold border-2 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-500"
+                >
+                  📸 Take a Photo
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setShowFallbackModal(false);
+                    setShowManualEntry(true);
+                  }}
+                  variant="outline"
+                  className="w-full text-base py-4 font-semibold"
+                >
+                  ✏️ Enter Manually
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setShowFallbackModal(false);
+                    // Show barcode scanner in a modal-like context
+                    setShowManualEntry(true);
+                  }}
+                  variant="outline"
+                  className="w-full text-base py-4 font-semibold"
+                >
+                  📱 Scan Barcode
+                </Button>
+              </div>
+              
+              <Button
+                onClick={() => setShowFallbackModal(false)}
+                variant="secondary"
+                className="mt-6 w-full text-base py-3 font-semibold"
+              >
+                Cancel
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -677,9 +760,17 @@ export default function Home() {
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Analyzing Product Image...
               </h3>
-              <p className="text-gray-600 text-center">
-                Using AI to identify the brand and product from your photo
-              </p>
+              <div className="text-gray-600 text-center space-y-2">
+                <p className="text-sm">
+                  Step 1: Running OCR and lightweight brand extraction...
+                </p>
+                <p className="text-sm">
+                  Step 2: Assessing quality and confidence...
+                </p>
+                <p className="text-sm">
+                  Step 3: Escalating to advanced analysis if needed...
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
