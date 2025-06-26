@@ -416,7 +416,6 @@ export async function enhancedLookupProduct(barcode, userData = null) {
     { name: 'openfoodfacts', fn: () => tryOpenFoodFacts(barcode) },
     { name: 'wikidata', fn: () => tryWikidata(barcode) },
     { name: 'google_shopping', fn: () => tryGoogleShopping(barcode) },
-    { name: 'basic_web_search', fn: () => tryBasicWebSearch(barcode) }
   ]
   
   const dbResults = await Promise.allSettled(dbLookups.map(lookup => lookup.fn()))

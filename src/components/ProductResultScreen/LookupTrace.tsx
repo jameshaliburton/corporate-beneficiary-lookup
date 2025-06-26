@@ -33,7 +33,6 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
       'wikidata': '📚',
       'gepir': '🏢',
       'google_shopping': '🛒',
-      'basic_web_search': '🔍',
       'ai_inference': '🤖',
       'ownership_mappings': '🗂️',
       'enhanced_agent_research': '🧠',
@@ -52,7 +51,6 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
       'wikidata': 'Wikidata',
       'gepir': 'GS1 GEPIR',
       'google_shopping': 'Google Shopping',
-      'basic_web_search': 'Basic Web Search',
       'ai_inference': 'AI Inference',
       'ownership_mappings': 'Ownership Mappings',
       'enhanced_agent_research': 'Enhanced Agent Research',
@@ -65,21 +63,20 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
 
   const getSourceDescription = (source: string) => {
     const descMap: { [key: string]: string } = {
-      'supabase_cache': 'Checked local database cache',
-      'upcitemdb': 'US-focused product database',
-      'openfoodfacts': 'European food product database',
-      'wikidata': 'Structured data from Wikipedia',
-      'gepir': 'GS1 Global Electronic Party Information Registry',
-      'google_shopping': 'Google Shopping search results',
-      'basic_web_search': 'Basic web search for product info',
-      'ai_inference': 'AI-powered barcode analysis',
-      'ownership_mappings': 'Pre-mapped brand ownership data',
-      'enhanced_agent_research': 'Advanced AI ownership research',
-      'user_contribution': 'Manually entered product information',
-      'quality_assessment_agent': 'Assessed data quality and completeness',
-      'web_research_agent': 'Web research using SerpAPI and other services'
+      'supabase_cache': 'Checks the local Supabase cache for product info.',
+      'upcitemdb': 'Queries UPCitemdb for product details.',
+      'openfoodfacts': 'Queries Open Food Facts for product details.',
+      'wikidata': 'Queries Wikidata for product details.',
+      'gepir': 'Queries GS1 GEPIR for product details.',
+      'google_shopping': 'Queries Google Shopping for product details.',
+      'ai_inference': 'Uses AI to infer product details.',
+      'ownership_mappings': 'Checks static ownership mappings.',
+      'enhanced_agent_research': 'Performs advanced agentic research.',
+      'user_contribution': 'User-provided data.',
+      'quality_assessment_agent': 'Assesses the quality of the data.',
+      'web_research_agent': 'Performs web research for ownership.'
     };
-    return descMap[source] || 'Unknown source';
+    return descMap[source] || '';
   };
 
   const formatDuration = (ms: number) => {
