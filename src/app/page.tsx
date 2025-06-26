@@ -53,12 +53,10 @@ export default function Home() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [showUserContribution, setShowUserContribution] = useState(false);
-  const [userContribution, setUserContribution] = useState({
-    product_name: '',
-    brand: ''
-  });
-  const [currentBarcode, setCurrentBarcode] = useState('');
+  const [userContribution, setUserContribution] = useState({ product_name: '', brand: '' });
+  const [contributionReason, setContributionReason] = useState<string>('not_found'); // 'not_found' | 'insufficient_data'
   const [showContributionSuccess, setShowContributionSuccess] = useState(false);
+  const [currentBarcode, setCurrentBarcode] = useState('');
   const [showLowConfidenceFallback, setShowLowConfidenceFallback] = useState(false);
   const [lowConfidenceData, setLowConfidenceData] = useState({
     product_name: '',
@@ -161,6 +159,18 @@ export default function Home() {
         startProgressTracking(data.agent_execution_trace.query_id);
       }
       
+      // Handle requires_manual_entry response
+      if (data.requires_manual_entry && !userData) {
+        console.log('Manual entry required:', data.reason);
+        setContributionReason('insufficient_data');
+        setShowUserContribution(true);
+        setUserContribution({
+          product_name: data.barcode_data?.product_name || '',
+          brand: data.barcode_data?.brand || ''
+        });
+        return; // Don't show result screen, show manual entry form instead
+      }
+      
       // Show success message for user contributions
       if (data.success && userData) {
         setShowContributionSuccess(true);
@@ -176,10 +186,11 @@ export default function Home() {
       }
       
       // If lookup failed and no user data was provided, show contribution form
-      if (!data.success && !userData && (
+      if (!data.success && !userData && !data.requires_manual_entry && (
         data.error?.includes('No product found') || 
         data.error?.includes('Please try manual entry')
       )) {
+        setContributionReason('not_found');
         setShowUserContribution(true);
       }
     } catch (error) {
@@ -238,6 +249,7 @@ export default function Home() {
     setManualBarcode('');
     setUserContribution({ product_name: '', brand: '' });
     setLowConfidenceData({ product_name: '', brand: '' });
+    setContributionReason('not_found');
     stopProgressTracking();
   };
 
@@ -366,10 +378,16 @@ export default function Home() {
             <CardContent className="p-8 flex flex-col items-center">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  We couldn't find this product
+                  {contributionReason === 'insufficient_data' 
+                    ? 'We found limited product information' 
+                    : 'We couldn\'t find this product'
+                  }
                 </h2>
                 <p className="text-gray-600 text-sm mb-2">
-                  Want to help by entering its name and brand?
+                  {contributionReason === 'insufficient_data'
+                    ? 'Please help us by providing the product name and brand to research ownership.'
+                    : 'Want to help by entering its name and brand?'
+                  }
                 </p>
                 <p className="text-gray-500 text-xs">
                   Barcode: {currentBarcode}

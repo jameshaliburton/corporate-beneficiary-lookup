@@ -5,7 +5,11 @@
  * Run this after adding your SERP_API_KEY to environment variables
  */
 
+import { config } from 'dotenv'
 import { tryGoogleShopping } from './src/lib/apis/google-shopping-lookup.js'
+
+// Load environment variables from .env.local
+config({ path: '.env.local' })
 
 async function testSerpAPI() {
   console.log('🧪 Testing SerpAPI Google Shopping Search...\n')
@@ -24,45 +28,32 @@ async function testSerpAPI() {
   
   // Test barcodes
   const testBarcodes = [
-    '7318690499534', // ICA Tuna (Swedish)
-    '5000112548604', // Nestle KitKat (UK)
+    '7318690499534', // Swedish ICA tuna
     '4007817327321', // German product
-    '1234567890123'  // Invalid/unknown barcode
+    '5012345678900'  // UK product
   ]
   
   for (const barcode of testBarcodes) {
     console.log(`\n🔍 Testing barcode: ${barcode}`)
-    console.log('─'.repeat(50))
     
     try {
-      const startTime = Date.now()
       const result = await tryGoogleShopping(barcode)
-      const duration = Date.now() - startTime
       
       if (result.success) {
         console.log('✅ Success!')
-        console.log('   Product:', result.product_name)
-        console.log('   Brand:', result.brand)
-        console.log('   Price:', result.price)
-        console.log('   Source:', result.source_url)
-        console.log('   Duration:', duration + 'ms')
+        console.log('   Product:', result.product_name || 'Unknown')
+        console.log('   Brand:', result.brand || 'Unknown')
+        console.log('   Price:', result.price || 'Unknown')
+        console.log('   Source URL:', result.source_url || 'Unknown')
       } else {
-        console.log('❌ Failed')
-        console.log('   Reason:', result.reason)
-        console.log('   Duration:', duration + 'ms')
+        console.log('❌ Failed:', result.reason || result.error || 'Unknown error')
       }
-      
     } catch (error) {
       console.log('❌ Error:', error.message)
     }
   }
   
-  console.log('\n📊 Test Summary')
-  console.log('─'.repeat(50))
-  console.log('• SerpAPI is ready for integration')
-  console.log('• Add SERP_API_KEY to Vercel environment variables for deployment')
-  console.log('• The enhanced lookup pipeline will automatically use this when available')
+  console.log('\n🎉 SerpAPI test complete!')
 }
 
-// Run the test
 testSerpAPI().catch(console.error) 

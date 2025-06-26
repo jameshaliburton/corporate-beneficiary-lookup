@@ -6,6 +6,25 @@ import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { emitProgress } from '@/lib/utils';
 
+// Helper function to check if product data is meaningful
+function isProductDataMeaningful(productData: any): boolean {
+  // Check if we have a meaningful brand name
+  const hasMeaningfulBrand = productData.brand && 
+    !productData.brand.toLowerCase().includes('unknown') &&
+    !productData.brand.toLowerCase().includes('generic') &&
+    !productData.brand.toLowerCase().includes('brand') &&
+    productData.brand.trim().length > 0;
+  
+  // Check if we have a meaningful product name
+  const hasMeaningfulProduct = productData.product_name &&
+    !productData.product_name.toLowerCase().includes('product with') &&
+    !productData.product_name.toLowerCase().includes('unknown') &&
+    !productData.product_name.toLowerCase().includes('generic') &&
+    productData.product_name.trim().length > 0;
+  
+  return hasMeaningfulBrand || hasMeaningfulProduct;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -47,8 +66,36 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Step 2: Enhanced Ownership research (only if no ownership data found)
-      await emitProgress(queryId, 'ownership_research', 'started', { brand, product_name });
+      // Check if we have meaningful product data
+      const finalProductName = product_name || barcodeData.product_name;
+      const finalBrand = brand || barcodeData.brand;
+      
+      const productInfo = {
+        product_name: finalProductName,
+        brand: finalBrand,
+        barcode: barcode
+      };
+      
+      if (!isProductDataMeaningful(productInfo)) {
+        console.log('⚠️ Insufficient product data, requesting manual entry');
+        await emitProgress(queryId, 'manual_entry_required', 'started', { 
+          reason: 'Insufficient product information',
+          barcode_data: barcodeData 
+        });
+        await emitProgress(queryId, 'complete', 'completed', { success: false, requires_manual_entry: true });
+        
+        return NextResponse.json({
+          success: false,
+          requires_manual_entry: true,
+          reason: 'Insufficient product information from barcode lookup',
+          barcode_data: barcodeData,
+          query_id: queryId,
+          message: 'Please provide product name and brand manually'
+        });
+      }
+
+      // Step 2: Enhanced Ownership research (only if no ownership data found and we have meaningful product data)
+      await emitProgress(queryId, 'ownership_research', 'started', { brand: finalBrand, product_name: finalProductName });
       
       // Enable evaluation logging if requested
       if (evaluation_mode) {
@@ -57,8 +104,8 @@ export async function POST(request: NextRequest) {
       
       const ownershipResult = await EnhancedAgentOwnershipResearch({
         barcode,
-        product_name: product_name || barcodeData.product_name,
-        brand: brand || barcodeData.brand,
+        product_name: finalProductName,
+        brand: finalBrand,
         hints,
         enableEvaluation: evaluation_mode
       });
@@ -76,8 +123,8 @@ export async function POST(request: NextRequest) {
       // Merge barcode data and ownership result into a flat structure
       const mergedResult = {
         success: true,
-        product_name: product_name || barcodeData.product_name,
-        brand: brand || barcodeData.brand,
+        product_name: finalProductName,
+        brand: finalBrand,
         barcode: barcode,
         financial_beneficiary: ownershipResult.financial_beneficiary,
         beneficiary_country: ownershipResult.beneficiary_country,
