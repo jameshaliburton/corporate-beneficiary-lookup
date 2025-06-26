@@ -366,7 +366,9 @@ export async function enhancedLookupProduct(barcode, userData = null) {
     }
   }
   
-  // Stage 1: Check Supabase cache
+  // ===== CORRECTED PIPELINE =====
+  
+  // Stage 1: Check Supabase cache FIRST
   console.log('🔍 Stage 1: Checking Supabase cache')
   const { data: cached, error: cacheError } = await supabase
     .from('products')
@@ -402,101 +404,111 @@ export async function enhancedLookupProduct(barcode, userData = null) {
     }
   }
   
-  // Stage 2: External API lookups
-  console.log('🔍 Stage 2: External API lookups')
+  // Stage 2: Barcode/Product DBs (all in parallel for speed)
+  console.log('🔍 Stage 2: Barcode/Product DBs')
   let productInfo = null
   
-  // Try UPCitemdb first (fast US database)
-  console.log('  → Trying UPCitemdb')
-  const upcResult = await tryUPCItemDB(barcode)
-  lookupTrace.attempts.push({
-    source: 'upcitemdb',
-    success: upcResult.success,
-    timestamp: new Date().toISOString()
+  // Run all DB lookups in parallel
+  const dbLookups = [
+    { name: 'upcitemdb', fn: () => tryUPCItemDB(barcode) },
+    { name: 'openfoodfacts', fn: () => tryOpenFoodFacts(barcode) },
+    { name: 'wikidata', fn: () => tryWikidata(barcode) },
+    { name: 'google_shopping', fn: () => tryGoogleShopping(barcode) },
+    { name: 'basic_web_search', fn: () => tryBasicWebSearch(barcode) }
+  ]
+  
+  const dbResults = await Promise.allSettled(dbLookups.map(lookup => lookup.fn()))
+  
+  // Log all attempts
+  dbLookups.forEach((lookup, index) => {
+    const result = dbResults[index]
+    lookupTrace.attempts.push({
+      source: lookup.name,
+      success: result.status === 'fulfilled' && result.value.success,
+      timestamp: new Date().toISOString(),
+      error: result.status === 'rejected' ? result.reason.message : null
+    })
   })
   
-  if (upcResult.success) {
-    console.log('✅ Found in UPCitemdb')
-    productInfo = upcResult
-  } else {
-    // Try Open Food Facts (European coverage)
-    console.log('  → Trying Open Food Facts')
-    const offResult = await tryOpenFoodFacts(barcode)
-    lookupTrace.attempts.push({
-      source: 'openfoodfacts',
-      success: offResult.success,
-      timestamp: new Date().toISOString()
-    })
-    
-    if (offResult.success) {
-      console.log('✅ Found in Open Food Facts')
-      productInfo = offResult
-    } else {
-      // Try Wikidata (GTIN match)
-      console.log('  → Trying Wikidata')
-      const wikidataResult = await tryWikidata(barcode)
-      lookupTrace.attempts.push({
-        source: 'wikidata',
-        success: wikidataResult.success,
-        timestamp: new Date().toISOString()
-      })
-      
-      if (wikidataResult.success) {
-        console.log('✅ Found in Wikidata')
-        productInfo = wikidataResult
-      } else {
-        // Try GS1 GEPIR (prefix-based) - TEMPORARILY DISABLED
-        console.log('  → GEPIR lookup temporarily disabled (waiting for API access)')
-        lookupTrace.attempts.push({
-          source: 'gepir',
-          success: false,
-          reason: 'Temporarily disabled - waiting for API access',
-          timestamp: new Date().toISOString()
-        })
-        
-        // Try Google Shopping fallback
-        console.log('  → Trying Google Shopping')
-        const googleResult = await tryGoogleShopping(barcode)
-        lookupTrace.attempts.push({
-          source: 'google_shopping',
-          success: googleResult.success,
-          timestamp: new Date().toISOString()
-        })
-        
-        if (googleResult.success) {
-          console.log('✅ Found in Google Shopping')
-          productInfo = googleResult
-        } else {
-          // Try basic web search
-          console.log('  → Trying basic web search')
-          const basicResult = await tryBasicWebSearch(barcode)
-          lookupTrace.attempts.push({
-            source: 'basic_web_search',
-            success: basicResult.success,
-            timestamp: new Date().toISOString()
-          })
-          
-          if (basicResult.success) {
-            console.log('✅ Found with basic web search')
-            productInfo = basicResult
-          } else {
-            // AI inference fallback
-            console.log('  → Using AI inference fallback')
-            productInfo = await tryAIBarcodeInference(barcode)
-            lookupTrace.attempts.push({
-              source: 'ai_inference',
-              success: true,
-              timestamp: new Date().toISOString()
-            })
-          }
-        }
-      }
+  // Find the first successful result
+  for (let i = 0; i < dbResults.length; i++) {
+    const result = dbResults[i]
+    if (result.status === 'fulfilled' && result.value.success) {
+      console.log(`✅ Found in ${dbLookups[i].name}`)
+      productInfo = result.value
+      break
     }
   }
   
-  // Stage 3: Try ownership mappings if we have a brand
+  // If no DB found anything, use AI inference
+  if (!productInfo) {
+    console.log('  → Using AI inference fallback')
+    productInfo = await tryAIBarcodeInference(barcode)
+    lookupTrace.attempts.push({
+      source: 'ai_inference',
+      success: true,
+      timestamp: new Date().toISOString()
+    })
+  }
+  
+  // Stage 3: Quality Assessment Agent
+  console.log('🔍 Stage 3: Quality Assessment Agent')
+  let qualityAssessment = null
+  let requiresManualEntry = false
+  
+  if (productInfo) {
+    try {
+      const { QualityAssessmentAgent } = require('../agents/quality-assessment-agent.js');
+      const qualityAgent = new QualityAssessmentAgent();
+      qualityAssessment = await qualityAgent.assessProductDataQuality(productInfo);
+      
+      lookupTrace.attempts.push({
+        source: 'quality_assessment_agent',
+        success: qualityAssessment.success,
+        timestamp: new Date().toISOString(),
+        reasoning: qualityAssessment.reasoning || (qualityAssessment.assessment && qualityAssessment.assessment.reasoning),
+        issues: qualityAssessment.issues || (qualityAssessment.assessment && qualityAssessment.assessment.issues),
+        is_meaningful: qualityAssessment.is_meaningful
+      });
+      
+      // Check if quality is poor - if so, trigger manual entry
+      if (qualityAssessment.success && qualityAssessment.is_meaningful === false) {
+        console.log('❌ Quality assessment: Poor quality - triggering manual entry')
+        requiresManualEntry = true
+        lookupTrace.final_result = 'poor_quality_manual_entry'
+        lookupTrace.total_duration_ms = Date.now() - startTime
+        
+        return {
+          success: false,
+          requires_manual_entry: true,
+          product_name: productInfo.product_name || 'Unknown Product',
+          brand: productInfo.brand || 'Unknown Brand',
+          barcode,
+          confidence_score: 0,
+          source: 'barcode_dbs_poor_quality',
+          result_type: 'poor_quality_manual_entry',
+          quality_assessment: qualityAssessment,
+          lookup_trace: lookupTrace
+        }
+      }
+      
+      // Attach quality assessment to productInfo
+      productInfo.quality_assessment = qualityAssessment;
+      
+    } catch (err) {
+      console.error('Quality assessment agent error:', err)
+      lookupTrace.attempts.push({
+        source: 'quality_assessment_agent',
+        success: false,
+        timestamp: new Date().toISOString(),
+        error: err.message
+      });
+    }
+  }
+  
+  // Stage 4: Try ownership mappings if we have a brand
   if (productInfo && productInfo.brand) {
-    console.log('🔍 Stage 3: Trying ownership mappings for brand:', productInfo.brand)
+    console.log('🔍 Stage 4: Trying ownership mappings for brand:', productInfo.brand)
     const ownershipResult = await tryOwnershipMappings(productInfo.brand)
     lookupTrace.attempts.push({
       source: 'ownership_mappings',
@@ -516,19 +528,160 @@ export async function enhancedLookupProduct(barcode, userData = null) {
         beneficiary_flag: ownershipResult.beneficiary_flag,
         ownership_flow: ownershipResult.ownership_flow,
         result_type: ownershipResult.result_type,
+        quality_assessment: qualityAssessment,
         lookup_trace: lookupTrace
       }
     }
   }
   
-  // Stage 4: Return product info without ownership (will trigger AI agent in route.ts)
-  console.log('📋 Stage 4: Returning product info without ownership')
+  // Stage 5: LLM/RAG Ownership Research (Enhanced Agent)
+  console.log('🔍 Stage 5: LLM/RAG Ownership Research')
+  try {
+    const agentResult = await EnhancedAgentOwnershipResearch({
+      barcode,
+      product_name: productInfo?.product_name,
+      brand: productInfo?.brand,
+      hints: {
+        country_of_origin: productInfo?.region_hint
+      }
+    })
+    
+    lookupTrace.attempts.push({
+      source: 'enhanced_agent_research',
+      success: true,
+      timestamp: new Date().toISOString()
+    })
+    
+    // Check if LLM/RAG returned good results
+    const hasGoodResults = agentResult.confidence_score >= 50 || 
+                          (agentResult.financial_beneficiary && agentResult.financial_beneficiary !== 'Unknown')
+    
+    if (hasGoodResults) {
+      console.log('✅ LLM/RAG found good results')
+      lookupTrace.final_result = 'llm_rag_success'
+      lookupTrace.total_duration_ms = Date.now() - startTime
+      
+      return {
+        ...productInfo,
+        financial_beneficiary: agentResult.financial_beneficiary,
+        beneficiary_country: agentResult.beneficiary_country,
+        beneficiary_flag: agentResult.beneficiary_flag,
+        ownership_structure_type: agentResult.ownership_structure_type,
+        confidence_score: agentResult.confidence_score,
+        confidence_level: agentResult.confidence_level,
+        confidence_factors: agentResult.confidence_factors,
+        confidence_breakdown: agentResult.confidence_breakdown,
+        confidence_reasoning: agentResult.confidence_reasoning,
+        ownership_flow: agentResult.ownership_flow,
+        sources: agentResult.sources,
+        reasoning: agentResult.reasoning,
+        source: 'barcode_dbs + llm_rag',
+        result_type: 'llm-rag-success',
+        quality_assessment: qualityAssessment,
+        agent_execution_trace: agentResult.agent_execution_trace,
+        lookup_trace: lookupTrace
+      }
+    } else {
+      console.log('⚠️ LLM/RAG returned poor results - trying web query services')
+      
+      // Stage 6: Web Query Services (only if LLM/RAG poor results)
+      console.log('🔍 Stage 6: Web Query Services (SerpAPI, etc.)')
+      
+      // Try SerpAPI and other web research services
+      try {
+        const { WebResearchAgent } = require('../agents/web-research-agent.js');
+        const webAgent = new WebResearchAgent();
+        const webResult = await webAgent.researchOwnership(productInfo.brand || productInfo.product_name);
+        
+        lookupTrace.attempts.push({
+          source: 'web_research_agent',
+          success: webResult.success,
+          timestamp: new Date().toISOString()
+        })
+        
+        if (webResult.success && webResult.data) {
+          console.log('✅ Web research found additional data')
+          lookupTrace.final_result = 'web_research_success'
+          lookupTrace.total_duration_ms = Date.now() - startTime
+          
+          return {
+            ...productInfo,
+            financial_beneficiary: webResult.data.financial_beneficiary || agentResult.financial_beneficiary,
+            beneficiary_country: webResult.data.beneficiary_country || agentResult.beneficiary_country,
+            beneficiary_flag: webResult.data.beneficiary_flag || agentResult.beneficiary_flag,
+            ownership_structure_type: webResult.data.ownership_structure_type || agentResult.ownership_structure_type,
+            confidence_score: Math.max(webResult.data.confidence_score || 0, agentResult.confidence_score),
+            confidence_level: webResult.data.confidence_level || agentResult.confidence_level,
+            confidence_factors: webResult.data.confidence_factors || agentResult.confidence_factors,
+            confidence_breakdown: webResult.data.confidence_breakdown || agentResult.confidence_breakdown,
+            confidence_reasoning: webResult.data.confidence_reasoning || agentResult.confidence_reasoning,
+            ownership_flow: webResult.data.ownership_flow || agentResult.ownership_flow,
+            sources: [...(agentResult.sources || []), ...(webResult.data.sources || [])],
+            reasoning: webResult.data.reasoning || agentResult.reasoning,
+            source: 'barcode_dbs + llm_rag + web_research',
+            result_type: 'web-research-enhanced',
+            quality_assessment: qualityAssessment,
+            agent_execution_trace: agentResult.agent_execution_trace,
+            web_research_trace: webResult.trace,
+            lookup_trace: lookupTrace
+          }
+        }
+      } catch (webError) {
+        console.error('Web research agent error:', webError)
+        lookupTrace.attempts.push({
+          source: 'web_research_agent',
+          success: false,
+          timestamp: new Date().toISOString(),
+          error: webError.message
+        })
+      }
+      
+      // If web research also failed, return LLM/RAG results anyway
+      console.log('📋 Returning LLM/RAG results (even if poor)')
+      lookupTrace.final_result = 'llm_rag_poor_results'
+      lookupTrace.total_duration_ms = Date.now() - startTime
+      
+      return {
+        ...productInfo,
+        financial_beneficiary: agentResult.financial_beneficiary,
+        beneficiary_country: agentResult.beneficiary_country,
+        beneficiary_flag: agentResult.beneficiary_flag,
+        ownership_structure_type: agentResult.ownership_structure_type,
+        confidence_score: agentResult.confidence_score,
+        confidence_level: agentResult.confidence_level,
+        confidence_factors: agentResult.confidence_factors,
+        confidence_breakdown: agentResult.confidence_breakdown,
+        confidence_reasoning: agentResult.confidence_reasoning,
+        ownership_flow: agentResult.ownership_flow,
+        sources: agentResult.sources,
+        reasoning: agentResult.reasoning,
+        source: 'barcode_dbs + llm_rag',
+        result_type: 'llm-rag-poor-results',
+        quality_assessment: qualityAssessment,
+        agent_execution_trace: agentResult.agent_execution_trace,
+        lookup_trace: lookupTrace
+      }
+    }
+    
+  } catch (agentError) {
+    console.error('EnhancedAgentOwnershipResearch failed:', agentError)
+    lookupTrace.attempts.push({
+      source: 'enhanced_agent_research',
+      success: false,
+      error: agentError.message,
+      timestamp: new Date().toISOString()
+    })
+  }
+  
+  // Stage 7: Final fallback - return product info without ownership
+  console.log('📋 Stage 7: Final fallback - returning product info without ownership')
   lookupTrace.final_result = 'external_api_only'
   lookupTrace.total_duration_ms = Date.now() - startTime
   
   return {
     ...productInfo,
     result_type: 'external_api_only',
+    quality_assessment: qualityAssessment,
     lookup_trace: lookupTrace
   }
 }

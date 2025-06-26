@@ -8,6 +8,8 @@ interface LookupAttempt {
   timestamp: string;
   reason?: string;
   error?: string;
+  reasoning?: string;
+  issues?: string[];
 }
 
 interface LookupTrace {
@@ -25,17 +27,19 @@ interface LookupTraceProps {
 const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
   const getSourceIcon = (source: string) => {
     const iconMap: { [key: string]: string } = {
-      'supabase_cache': '🗄️',
+      'supabase_cache': '💾',
       'upcitemdb': '🏷️',
-      'openfoodfacts': '🍎',
+      'openfoodfacts': '🌍',
       'wikidata': '📚',
       'gepir': '🏢',
       'google_shopping': '🛒',
-      'basic_web_search': '🌐',
+      'basic_web_search': '🔍',
       'ai_inference': '🤖',
-      'ownership_mappings': '🔗',
+      'ownership_mappings': '🗂️',
       'enhanced_agent_research': '🧠',
-      'user_contribution': '👤'
+      'user_contribution': '👤',
+      'quality_assessment_agent': '🧐',
+      'web_research_agent': '🌐'
     };
     return iconMap[source] || '❓';
   };
@@ -52,24 +56,28 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
       'ai_inference': 'AI Inference',
       'ownership_mappings': 'Ownership Mappings',
       'enhanced_agent_research': 'Enhanced Agent Research',
-      'user_contribution': 'User Contribution'
+      'user_contribution': 'User Contribution',
+      'quality_assessment_agent': 'Quality Assessment Agent',
+      'web_research_agent': 'Web Research Agent'
     };
     return nameMap[source] || source;
   };
 
   const getSourceDescription = (source: string) => {
     const descMap: { [key: string]: string } = {
-      'supabase_cache': 'Local database cache',
+      'supabase_cache': 'Checked local database cache',
       'upcitemdb': 'US-focused product database',
-      'openfoodfacts': 'European food products database',
-      'wikidata': 'Global knowledge base (GTIN-13)',
-      'gepir': 'Company prefix registry',
-      'google_shopping': 'Web search for products',
-      'basic_web_search': 'Fallback web search',
-      'ai_inference': 'Pattern-based region detection',
-      'ownership_mappings': 'Static ownership database',
-      'enhanced_agent_research': 'AI-powered ownership research',
-      'user_contribution': 'User-provided information'
+      'openfoodfacts': 'European food product database',
+      'wikidata': 'Structured data from Wikipedia',
+      'gepir': 'GS1 Global Electronic Party Information Registry',
+      'google_shopping': 'Google Shopping search results',
+      'basic_web_search': 'Basic web search for product info',
+      'ai_inference': 'AI-powered barcode analysis',
+      'ownership_mappings': 'Pre-mapped brand ownership data',
+      'enhanced_agent_research': 'Advanced AI ownership research',
+      'user_contribution': 'Manually entered product information',
+      'quality_assessment_agent': 'Assessed data quality and completeness',
+      'web_research_agent': 'Web research using SerpAPI and other services'
     };
     return descMap[source] || 'Unknown source';
   };
@@ -135,6 +143,18 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
                 {attempt.reason && (
                   <div className="text-xs text-gray-500">
                     Reason: {attempt.reason}
+                  </div>
+                )}
+                
+                {attempt.reasoning && (
+                  <div className="text-xs text-blue-700">
+                    Reasoning: {attempt.reasoning}
+                  </div>
+                )}
+                
+                {attempt.issues && Array.isArray(attempt.issues) && attempt.issues.length > 0 && (
+                  <div className="text-xs text-yellow-700">
+                    Issues: {attempt.issues.join(', ')}
                   </div>
                 )}
                 

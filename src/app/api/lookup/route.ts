@@ -118,6 +118,27 @@ export async function POST(request: NextRequest) {
       const barcodeData = await enhancedLookupProduct(barcode, userData);
       await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
+      // Check if enhanced lookup requires manual entry (poor quality data)
+      if (barcodeData.requires_manual_entry) {
+        console.log('❌ Enhanced lookup requires manual entry due to poor quality data');
+        await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
+        
+        return NextResponse.json({
+          success: false,
+          requires_manual_entry: true,
+          reason: barcodeData.result_type || 'poor_quality_manual_entry',
+          barcode_data: {
+            product_name: barcodeData.product_name,
+            brand: barcodeData.brand,
+            barcode: barcodeData.barcode
+          },
+          quality_assessment: barcodeData.quality_assessment,
+          lookup_trace: barcodeData.lookup_trace,
+          message: 'Product information is incomplete or of poor quality. Please provide details manually or use camera capture.',
+          query_id: queryId
+        });
+      }
+
       // If barcode lookup returns no data at all, trigger manual entry/camera fallback
       if (!userData && (!barcodeData || Object.keys(barcodeData).length === 0)) {
         console.log('❌ No product data returned from barcode lookup. Triggering manual entry/camera fallback.');
