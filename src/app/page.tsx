@@ -168,7 +168,13 @@ export default function Home() {
         console.log('Manual entry required:', data.reason);
         setContributionReason('insufficient_data');
         setShowUserContribution(true);
+        // Pre-fill with any partial data, or empty strings if not present
         setUserContribution({
+          product_name: data.barcode_data?.product_name || '',
+          brand: data.barcode_data?.brand || ''
+        });
+        // Store the full barcode_data for display
+        setLowConfidenceData({
           product_name: data.barcode_data?.product_name || '',
           brand: data.barcode_data?.brand || ''
         });
@@ -455,6 +461,18 @@ export default function Home() {
                 <p className="text-gray-500 text-xs">
                   Barcode: {currentBarcode}
                 </p>
+                {/* Show what was found from barcode lookup, if any */}
+                {(lowConfidenceData.product_name || lowConfidenceData.brand) && (
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+                    <div className="text-xs text-blue-700 font-semibold mb-1">What we found from barcode lookup:</div>
+                    {lowConfidenceData.product_name && (
+                      <div className="text-sm text-blue-900"><b>Product:</b> {lowConfidenceData.product_name}</div>
+                    )}
+                    {lowConfidenceData.brand && (
+                      <div className="text-sm text-blue-900"><b>Brand:</b> {lowConfidenceData.brand}</div>
+                    )}
+                  </div>
+                )}
               </div>
               <form onSubmit={handleUserContributionSubmit} className="w-full space-y-6">
                 <div>

@@ -118,6 +118,18 @@ export async function POST(request: NextRequest) {
       const barcodeData = await enhancedLookupProduct(barcode, userData);
       await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
+      // If barcode lookup returns no data at all, trigger manual entry/camera fallback
+      if (!userData && (!barcodeData || Object.keys(barcodeData).length === 0)) {
+        console.log('❌ No product data returned from barcode lookup. Triggering manual entry/camera fallback.');
+        return NextResponse.json({
+          success: false,
+          requires_manual_entry: true,
+          reason: 'no_product_data',
+          barcode_data: null,
+          message: 'No product information found for this barcode. Please provide details manually or use camera capture.'
+        });
+      }
+
       // If we already have ownership data from the enhanced lookup, return it
       if (barcodeData.financial_beneficiary) {
         console.log('✅ Ownership data found in enhanced lookup, skipping agent research');
