@@ -39,7 +39,9 @@ export default function PromptDashboard() {
         if (result.data.length > 0) {
           setSelectedAgent(result.data[0]);
           setSelectedVersion(result.data[0].versions[0]);
-          setPromptText(result.data[0].versions[0].prompt);
+          setPromptText(
+            typeof result.data[0].versions[0].prompt === 'string' ? result.data[0].versions[0].prompt : JSON.stringify(result.data[0].versions[0].prompt, null, 2)
+          );
         }
       } else {
         setError(result.error || 'Failed to fetch prompts');
@@ -63,7 +65,9 @@ export default function PromptDashboard() {
       // Select the current active version if available, otherwise the first version
       const currentVersion = agent.versions.find(v => v.isCurrent) || agent.versions[0];
       setSelectedVersion(currentVersion);
-      setPromptText(currentVersion.prompt);
+      setPromptText(
+        typeof currentVersion.prompt === 'string' ? currentVersion.prompt : JSON.stringify(currentVersion.prompt, null, 2)
+      );
     }
   };
 
@@ -72,7 +76,9 @@ export default function PromptDashboard() {
       const v = selectedAgent.versions.find(v => v.version === version);
       if (v) {
         setSelectedVersion(v);
-        setPromptText(v.prompt);
+        setPromptText(
+          typeof v.prompt === 'string' ? v.prompt : JSON.stringify(v.prompt, null, 2)
+        );
       }
     }
   };
@@ -84,6 +90,13 @@ export default function PromptDashboard() {
     try {
       setSaving(true);
       setSaveMessage(null);
+      let promptToSave = promptText;
+      try {
+        const parsed = JSON.parse(promptText);
+        promptToSave = parsed;
+      } catch (e) {
+        // Not JSON, keep as string
+      }
       const response = await fetch('/api/prompts', {
         method: 'POST',
         headers: {
@@ -92,7 +105,7 @@ export default function PromptDashboard() {
         body: JSON.stringify({
           agentKey: selectedAgent.key,
           version: selectedVersion.version,
-          prompt: promptText,
+          prompt: promptToSave,
         }),
       });
 
