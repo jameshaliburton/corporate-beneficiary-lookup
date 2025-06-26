@@ -19,6 +19,9 @@ export const PROMPT_VERSIONS = {
   VERIFICATION: {
     'v1.0': 'current',
     'v1.1': 'development'
+  },
+  QUALITY_ASSESSMENT: {
+    'v1.0': 'current' // New quality assessment agent
   }
 }
 
@@ -87,6 +90,8 @@ export function getPromptBuilder(agentType, version = null) {
       return getQueryBuilderPrompt(version)
     case 'VERIFICATION':
       return getVerificationPrompt(version)
+    case 'QUALITY_ASSESSMENT':
+      return getQualityAssessmentPrompt(version)
     default:
       throw new Error(`Unknown agent type: ${agentType}`)
   }
@@ -132,6 +137,58 @@ function getVerificationPrompt(version) {
     default:
       throw new Error(`Unknown verification prompt version: ${version}`)
   }
+}
+
+/**
+ * Get quality assessment prompt for specific version
+ */
+function getQualityAssessmentPrompt(version) {
+  switch (version) {
+    case 'v1.0':
+      return buildQualityAssessmentPromptV1_0
+    default:
+      throw new Error(`Unknown quality assessment prompt version: ${version}`)
+  }
+}
+
+/**
+ * Build quality assessment prompt v1.0
+ */
+function buildQualityAssessmentPromptV1_0(productData) {
+  return {
+    system_prompt: `You are a Product Data Quality Assessment Agent. Your job is to determine if product data from a barcode lookup is meaningful enough to proceed with ownership research.
+
+CRITERIA FOR MEANINGFUL DATA:
+1. BRAND: Must be a specific brand name (not "Unknown", "N/A", "Generic", etc.)
+2. PRODUCT NAME: Must be specific (not "Product with barcode", "Item with barcode", etc.)
+3. COMPLETENESS: Should have at least brand + product name + some additional data
+4. SPECIFICITY: Data should be specific enough to identify the actual product
+
+EXAMPLES:
+✅ MEANINGFUL: Brand="Nestlé", Product="KitKat Chocolate Bar", Category="Snacks"
+❌ NOT MEANINGFUL: Brand="Unknown Brand", Product="Product with 1234567890"
+
+Respond with valid JSON only. Be conservative - if in doubt, mark as not meaningful.`,
+    user_prompt: `Please assess the quality of this product data:
+
+BRAND: "${productData.brand || 'MISSING'}"
+PRODUCT NAME: "${productData.product_name || 'MISSING'}"
+BARCODE: "${productData.barcode || 'MISSING'}"
+CATEGORY: "${productData.category || 'MISSING'}"
+COUNTRY: "${productData.country || 'MISSING'}"
+MANUFACTURER: "${productData.manufacturer || 'MISSING'}"
+INGREDIENTS: "${productData.ingredients || 'MISSING'}"
+WEIGHT: "${productData.weight || 'MISSING'}"
+
+Respond with JSON only:
+{
+  "is_meaningful": true/false,
+  "confidence": 0-100,
+  "quality_score": 0-100,
+  "reasoning": "brief explanation",
+  "issues": ["list", "of", "problems"]
+}`
+  };
 }
 
 // Import prompt builders (these will be implemented in separate files)

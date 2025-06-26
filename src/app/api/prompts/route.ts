@@ -160,6 +160,18 @@ export async function GET() {
                 sampleData.ownership_result,
                 sampleData.sources_used
               );
+            } else if (agentKey === 'QUALITY_ASSESSMENT') {
+              const sampleData = {
+                brand: 'Sample Brand',
+                product_name: 'Sample Product',
+                barcode: '1234567890123',
+                category: 'Sample Category',
+                country: 'Sample Country',
+                manufacturer: 'Sample Manufacturer',
+                ingredients: 'Sample ingredients',
+                weight: '100g'
+              };
+              promptContent = promptBuilder(sampleData);
             } else {
               promptContent = promptBuilder();
             }

@@ -359,20 +359,8 @@ export default function Home() {
                 processing={processing}
                 onManualEntry={handleManualEntry}
               />
-              
-              {/* Camera Button */}
-              <div className="mt-4 w-full">
-                <Button
-                  onClick={() => setShowCamera(true)}
-                  variant="outline"
-                  className="w-full text-base py-3 font-semibold border-blue-300 text-blue-700 hover:bg-blue-50"
-                >
-                  📸 Take Photo Instead
-                </Button>
-              </div>
-              
               {/* Demo Button */}
-              <div className="mt-4 w-full">
+              <div className="mt-6 w-full">
                 <Button
                   onClick={() => setShowDemo(true)}
                   variant="outline"
@@ -514,6 +502,15 @@ export default function Home() {
                   </Button>
                 </div>
               </form>
+              <div className="mt-4 w-full">
+                <Button
+                  onClick={() => setShowCamera(true)}
+                  variant="outline"
+                  className="w-full text-base py-3 font-semibold border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  📸 Take a Photo of the Brand/Company
+                </Button>
+              </div>
               <p className="text-xs text-gray-400 mt-4">Thank you for helping improve our database!</p>
             </CardContent>
           </Card>
