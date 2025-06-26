@@ -167,18 +167,21 @@ export default function Home() {
       if (data.requires_manual_entry && !userData) {
         console.log('Manual entry required:', data.reason);
         setContributionReason('insufficient_data');
+        
+        // Show a more prominent modal with options
         setShowUserContribution(true);
-        // Pre-fill with any partial data, or empty strings if not present
-        setUserContribution({
-          product_name: data.barcode_data?.product_name || '',
-          brand: data.barcode_data?.brand || ''
-        });
-        // Store the full barcode_data for display
-        setLowConfidenceData({
-          product_name: data.barcode_data?.product_name || '',
-          brand: data.barcode_data?.brand || ''
-        });
-        return; // Don't show result screen, show manual entry form instead
+        
+        // Pre-fill with any partial data from barcode lookup
+        const partialData = {
+          product_name: data.barcode_data?.product_name || data.product_name || '',
+          brand: data.barcode_data?.brand || data.brand || ''
+        };
+        
+        setUserContribution(partialData);
+        setLowConfidenceData(partialData);
+        
+        // Don't show result screen, show manual entry form instead
+        return;
       }
       
       // Show success message for user contributions
@@ -443,93 +446,109 @@ export default function Home() {
 
         {/* User Contribution Form */}
         {showUserContribution && !result && (
-          <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
+          <Card className="w-full rounded-2xl shadow-xl border border-blue-200 bg-blue-50">
             <CardContent className="p-8 flex flex-col items-center">
               <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                <div className="text-4xl mb-4">🧐</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-3">
                   {contributionReason === 'insufficient_data' 
-                    ? 'We found limited product information' 
+                    ? 'Quality Check: More Information Needed' 
                     : 'We couldn\'t find this product'
                   }
                 </h2>
-                <p className="text-gray-600 text-sm mb-2">
+                <p className="text-gray-700 text-base mb-3">
                   {contributionReason === 'insufficient_data'
-                    ? 'Please help us by providing the product name and brand to research ownership.'
+                    ? 'Our quality assessment found the barcode data wasn\'t detailed enough for accurate ownership research. Please help us by providing the product name and brand.'
                     : 'Want to help by entering its name and brand?'
                   }
                 </p>
-                <p className="text-gray-500 text-xs">
-                  Barcode: {currentBarcode}
+                <p className="text-gray-600 text-sm">
+                  Barcode: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{currentBarcode}</span>
                 </p>
                 {/* Show what was found from barcode lookup, if any */}
                 {(lowConfidenceData.product_name || lowConfidenceData.brand) && (
-                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
-                    <div className="text-xs text-blue-700 font-semibold mb-1">What we found from barcode lookup:</div>
+                  <div className="mt-4 bg-white border border-blue-300 rounded-lg p-4 text-left">
+                    <div className="text-sm text-blue-800 font-semibold mb-2">📋 Partial data found from barcode lookup:</div>
                     {lowConfidenceData.product_name && (
-                      <div className="text-sm text-blue-900"><b>Product:</b> {lowConfidenceData.product_name}</div>
+                      <div className="text-sm text-gray-800 mb-1"><b>Product:</b> {lowConfidenceData.product_name}</div>
                     )}
                     {lowConfidenceData.brand && (
-                      <div className="text-sm text-blue-900"><b>Brand:</b> {lowConfidenceData.brand}</div>
+                      <div className="text-sm text-gray-800"><b>Brand:</b> {lowConfidenceData.brand}</div>
                     )}
+                    <div className="text-xs text-blue-600 mt-2">Please verify and complete this information below.</div>
                   </div>
                 )}
               </div>
-              <form onSubmit={handleUserContributionSubmit} className="w-full space-y-6">
-                <div>
-                  <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Name
-                  </label>
-                  <Input
-                    type="text"
-                    id="product_name"
-                    value={userContribution.product_name}
-                    onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
-                    className="w-full text-lg bg-gray-50"
-                    placeholder="e.g., Kit Kat Matcha Green Tea"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
-                    Brand Name
-                  </label>
-                  <Input
-                    type="text"
-                    id="brand"
-                    value={userContribution.brand}
-                    onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
-                    className="w-full text-lg bg-gray-50"
-                    placeholder="e.g., Kit Kat, Nestlé"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    className="flex-1 text-base py-3 font-semibold shadow"
-                    disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
-                  >
-                    Submit & Research
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowUserContribution(false)}
-                    className="flex-1 text-base py-3 font-semibold shadow"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-              <div className="mt-4 w-full">
+              
+              {/* Camera Option - Make it more prominent */}
+              <div className="w-full mb-6">
                 <Button
                   onClick={() => setShowCamera(true)}
                   variant="outline"
-                  className="w-full text-base py-3 font-semibold border-blue-300 text-blue-700 hover:bg-blue-50"
+                  className="w-full text-base py-4 font-semibold border-2 border-blue-400 text-blue-700 hover:bg-blue-100 hover:border-blue-500 transition-colors"
                 >
-                  📸 Take a Photo of the Brand/Company
+                  📸 Take a Photo Instead
                 </Button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Use your camera to capture the product packaging for AI analysis
+                </p>
               </div>
-              <p className="text-xs text-gray-400 mt-4">Thank you for helping improve our database!</p>
+              
+              <div className="w-full border-t border-blue-200 pt-4">
+                <p className="text-sm text-gray-600 mb-4 text-center">Or enter the information manually:</p>
+                <form onSubmit={handleUserContributionSubmit} className="w-full space-y-4">
+                  <div>
+                    <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name *
+                    </label>
+                    <Input
+                      type="text"
+                      id="product_name"
+                      value={userContribution.product_name}
+                      onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
+                      className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
+                      placeholder="e.g., Kit Kat Matcha Green Tea"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
+                      Brand Name *
+                    </label>
+                    <Input
+                      type="text"
+                      id="brand"
+                      value={userContribution.brand}
+                      onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
+                      className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
+                      placeholder="e.g., Kit Kat, Nestlé"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      type="submit"
+                      className="flex-1 text-base py-3 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700"
+                      disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
+                    >
+                      🔍 Research Ownership
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowUserContribution(false)}
+                      className="flex-1 text-base py-3 font-semibold shadow"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-xs text-gray-500">
+                  💡 <strong>Tip:</strong> More specific brand names (e.g., "Nestlé" instead of "Kit Kat") help us find the ultimate owner.
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
