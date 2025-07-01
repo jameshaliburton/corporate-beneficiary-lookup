@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { analyzeProductImage } from '../../../lib/apis/image-recognition.js';
 
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || '';
     
     // Handle both FormData (real usage) and JSON (testing)
-    let imageData = null;
+    let imageBase64 = null;
+    let imageFormat = 'jpeg';
     
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
@@ -26,49 +28,85 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      imageData = {
+      // Convert file to base64
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      imageBase64 = buffer.toString('base64');
+      
+      // Determine image format
+      imageFormat = file.type.split('/')[1] || 'jpeg';
+      
+      console.log('📸 Processing real image file:', {
         name: file.name,
         type: file.type,
-        size: file.size
-      };
+        size: file.size,
+        format: imageFormat
+      });
     } else {
       // Handle JSON for testing
       const jsonData = await request.json();
-      imageData = {
-        name: jsonData.image_name || 'test_image.jpg',
-        type: jsonData.image_type || 'image/jpeg',
-        size: jsonData.image_size || 1024
-      };
+      imageBase64 = jsonData.image_base64;
+      imageFormat = jsonData.image_format || 'jpeg';
+      
+      if (!imageBase64) {
+        return NextResponse.json(
+          { error: 'image_base64 is required for JSON requests' },
+          { status: 400 }
+        );
+      }
+      
+      console.log('📸 Processing base64 image for testing');
     }
 
-    console.log('📸 Processing image (simplified mock):', imageData);
+    // Use the actual image analysis function
+    const analysisResult = await analyzeProductImage(imageBase64, imageFormat);
+    
+    if (analysisResult.success) {
+      // Transform the result to match the expected format
+      const result = {
+        success: true,
+        product_name: analysisResult.data.product_name,
+        brand: analysisResult.data.brand_name,
+        product_type: analysisResult.data.product_type,
+        confidence: analysisResult.data.confidence,
+        reasoning: analysisResult.data.reasoning,
+        quality_score: analysisResult.data.confidence, // Use confidence as quality score
+        flow: analysisResult.flow,
+        source: analysisResult.source,
+        contextual_clues: analysisResult.contextual_clues,
+        timestamp: analysisResult.timestamp
+      };
 
-    // For testing purposes, return mock successful image recognition
-    // In production, this would call the real image analysis
-    const mockResult = {
-      success: true,
-      product_name: 'Test Product',
-      brand: 'TestBrand',
-      product_type: 'Food',
-      confidence: 75,
-      reasoning: 'Mock image analysis for testing',
-      quality_score: 80,
-      flow: {
-        step1: 'ocr_lightweight_extractor',
-        step1_5: 'cache_check_failed',
-        final_confidence: 75,
-        cache_hit: false
-      },
-      source: 'mock_image_recognition',
-      timestamp: new Date().toISOString()
-    };
+      console.log('✅ Image analysis successful:', {
+        brand: result.brand,
+        product_name: result.product_name,
+        confidence: result.confidence
+      });
 
-    return NextResponse.json(mockResult);
+      return NextResponse.json(result);
+    } else {
+      console.error('❌ Image analysis failed:', analysisResult.error);
+      return NextResponse.json({
+        success: false,
+        error: analysisResult.error || 'Image analysis failed',
+        product_name: 'Unknown Product',
+        brand: 'Unknown Brand',
+        confidence: 0,
+        reasoning: 'Image analysis failed'
+      });
+    }
 
   } catch (error) {
-    console.error('❌ Image recognition API error:', error);
+    console.error('❌ Enhanced image recognition API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        product_name: 'Unknown Product', 
+        brand: 'Unknown Brand',
+        confidence: 0,
+        reasoning: 'Internal server error occurred'
+      },
       { status: 500 }
     );
   }
