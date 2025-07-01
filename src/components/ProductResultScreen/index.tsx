@@ -171,7 +171,43 @@ interface ProductResult {
       factors: Record<string, any>;
     }>;
   };
-  contextual_clues?: string[];
+  contextual_clues?: {
+    step: string;
+    step_name: string;
+    extracted_data: {
+      brand_name: string;
+      product_name: string;
+      product_type: string;
+      confidence: number;
+      reasoning: string;
+      language_indicators: string[];
+      country_indicators: string[];
+      product_style: string;
+      packaging_characteristics: string[];
+      regional_clues: string[];
+      certification_marks: string[];
+      store_brand_indicators: boolean;
+      premium_indicators: boolean;
+      dietary_indicators: string[];
+      size_format: string;
+    };
+    raw_extraction: string;
+    extraction_timestamp: string;
+    quality_assessment?: {
+      step: string;
+      step_name: string;
+      result: any;
+      needs_escalation: boolean;
+    };
+    vision_agent?: {
+      step: string;
+      step_name: string;
+      used: boolean;
+      result?: any;
+      improved_results?: boolean;
+      reason?: string;
+    };
+  };
 }
 
 interface ProductResultScreenProps {
