@@ -67,47 +67,66 @@ export class QualityAssessmentAgent {
   }
 
   /**
+   * Get the system prompt for the agent
+   */
+  getSystemPrompt() {
+    return `You are a Product Data Quality Assessment Agent. Your job is to determine if product data is meaningful enough to proceed with corporate ownership research.
+
+CRITERIA FOR MEANINGFUL DATA (for ownership research):
+1. BRAND: Must be a recognizable brand/company name (not "Unknown", "N/A", "Generic", etc.)
+2. PRODUCT NAME: Helpful but NOT required if brand is meaningful
+3. OWNERSHIP RESEARCH READINESS: Brand should be a real company that can be researched
+
+IMPORTANT: For ownership research, a meaningful brand alone is sufficient. We can research "Nike" even without knowing the specific product.
+
+EXAMPLES:
+✅ MEANINGFUL (sufficient for ownership research):
+- Brand="Apple", Product="iPhone 15" 
+- Brand="Coca-Cola", Product="Coke"
+- Brand="Nike" (no product name needed)
+- Brand="Samsung" (no product name needed)
+- Brand="Pepsi" (no product name needed)
+
+❌ NOT MEANINGFUL:
+- Brand="Unknown Brand", Product="Product with 1234567890"
+- Brand="Generic", Product="Soda"
+- Brand="Store Brand", Product="Item 12345"
+- No brand provided
+
+QUALITY SCORING:
+- 80-100: Strong brand + specific product (perfect for ownership research)
+- 60-79: Strong brand alone or weak brand + product (good for ownership research)  
+- 40-59: Weak brand or very generic brand (marginal)
+- 0-39: Missing/generic brand (not suitable)
+
+Respond with valid JSON only. Be reasonable - if brand is identifiable, mark as meaningful even without product name.`;
+  }
+
+  /**
    * Build the assessment prompt with product data
    */
   buildAssessmentPrompt(productData) {
-    return `Please assess the quality of this product data:
+    const dataSource = productData.result_type || 'unknown';
+    
+    return `Please assess if this product data is sufficient for corporate ownership research:
 
 BRAND: "${productData.brand || 'MISSING'}"
 PRODUCT NAME: "${productData.product_name || 'MISSING'}"
-BARCODE: "${productData.barcode || 'MISSING'}"
-CATEGORY: "${productData.category || 'MISSING'}"
-COUNTRY: "${productData.country || 'MISSING'}"
-MANUFACTURER: "${productData.manufacturer || 'MISSING'}"
-INGREDIENTS: "${productData.ingredients || 'MISSING'}"
-WEIGHT: "${productData.weight || 'MISSING'}"
+DATA SOURCE: "${dataSource}"
+${productData.barcode ? `BARCODE: "${productData.barcode}"` : ''}
+${productData.category ? `CATEGORY: "${productData.category}"` : ''}
+${productData.country ? `COUNTRY: "${productData.country}"` : ''}
+
+QUESTION: Can we research the corporate ownership of this brand/product with the given information?
 
 Respond with JSON only:
 {
   "is_meaningful": true/false,
   "confidence": 0-100,
   "quality_score": 0-100,
-  "reasoning": "brief explanation",
-  "issues": ["list", "of", "problems"]
+  "reasoning": "brief explanation focusing on ownership research readiness",
+  "issues": ["list", "of", "problems", "if", "any"]
 }`;
-  }
-
-  /**
-   * Get the system prompt for the agent
-   */
-  getSystemPrompt() {
-    return `You are a Product Data Quality Assessment Agent. Your job is to determine if product data from a barcode lookup is meaningful enough to proceed with ownership research.
-
-CRITERIA FOR MEANINGFUL DATA:
-1. BRAND: Must be a specific brand name (not "Unknown", "N/A", "Generic", etc.)
-2. PRODUCT NAME: Must be specific (not "Product with barcode", "Item with barcode", etc.)
-3. COMPLETENESS: Should have at least brand + product name + some additional data
-4. SPECIFICITY: Data should be specific enough to identify the actual product
-
-EXAMPLES:
-✅ MEANINGFUL: Brand="Nestlé", Product="KitKat Chocolate Bar", Category="Snacks"
-❌ NOT MEANINGFUL: Brand="Unknown Brand", Product="Product with 1234567890"
-
-Respond with valid JSON only. Be conservative - if in doubt, mark as not meaningful.`;
   }
 
   /**
@@ -149,17 +168,24 @@ Respond with valid JSON only. Be conservative - if in doubt, mark as not meaning
   fallbackAssessment(productData) {
     const hasBrand = productData.brand && 
       !productData.brand.toLowerCase().includes('unknown') &&
+      !productData.brand.toLowerCase().includes('generic') &&
       productData.brand.trim().length > 2;
       
     const hasProduct = productData.product_name &&
       !productData.product_name.toLowerCase().includes('product with') &&
       productData.product_name.trim().length > 2;
       
+    // For ownership research, brand alone is sufficient
+    const isMeaningful = hasBrand;
+    const qualityScore = hasBrand ? (hasProduct ? 75 : 65) : 20;
+      
     return {
-      is_meaningful: hasBrand && hasProduct,
-      confidence: 50,
-      quality_score: hasBrand && hasProduct ? 60 : 20,
-      reasoning: 'Fallback assessment using basic pattern matching',
+      is_meaningful: isMeaningful,
+      confidence: 60,
+      quality_score: qualityScore,
+      reasoning: hasBrand ? 
+        (hasProduct ? 'Fallback: Brand and product identified' : 'Fallback: Brand identified (sufficient for ownership research)') :
+        'Fallback: No meaningful brand identified',
       issues: !hasBrand ? ['Missing or generic brand'] : [],
       fallback: true
     };
@@ -174,37 +200,54 @@ Respond with valid JSON only. Be conservative - if in doubt, mark as not meaning
       version: '1.0',
       description: 'Assesses product data quality from barcode lookups to determine if data is meaningful enough for ownership research',
       model: 'gpt-3.5-turbo',
-      system_prompt: `You are a Product Data Quality Assessment Agent. Your job is to determine if product data from a barcode lookup is meaningful enough to proceed with ownership research.
+      system_prompt: `You are a Product Data Quality Assessment Agent. Your job is to determine if product data from a barcode lookup is meaningful enough to proceed with corporate ownership research.
 
-CRITERIA FOR MEANINGFUL DATA:
-1. BRAND: Must be a specific brand name (not "Unknown", "N/A", "Generic", etc.)
-2. PRODUCT NAME: Must be specific (not "Product with barcode", "Item with barcode", etc.)
-3. COMPLETENESS: Should have at least brand + product name + some additional data
-4. SPECIFICITY: Data should be specific enough to identify the actual product
+CRITERIA FOR MEANINGFUL DATA (for ownership research):
+1. BRAND: Must be a recognizable brand/company name (not "Unknown", "N/A", "Generic", etc.)
+2. PRODUCT NAME: Helpful but NOT required if brand is meaningful
+3. OWNERSHIP RESEARCH READINESS: Brand should be a real company that can be researched
+
+IMPORTANT: For ownership research, a meaningful brand alone is sufficient. We can research "Nike" even without knowing the specific product.
 
 EXAMPLES:
-✅ MEANINGFUL: Brand="Nestlé", Product="KitKat Chocolate Bar", Category="Snacks"
-❌ NOT MEANINGFUL: Brand="Unknown Brand", Product="Product with 1234567890"
+✅ MEANINGFUL (sufficient for ownership research):
+- Brand="Apple", Product="iPhone 15" 
+- Brand="Coca-Cola", Product="Coke"
+- Brand="Nike" (no product name needed)
+- Brand="Samsung" (no product name needed)
+- Brand="Pepsi" (no product name needed)
 
-Respond with valid JSON only. Be conservative - if in doubt, mark as not meaningful.`,
-      user_prompt_template: `Please assess the quality of this product data:
+❌ NOT MEANINGFUL:
+- Brand="Unknown Brand", Product="Product with 1234567890"
+- Brand="Generic", Product="Soda"
+- Brand="Store Brand", Product="Item 12345"
+- No brand provided
+
+QUALITY SCORING:
+- 80-100: Strong brand + specific product (perfect for ownership research)
+- 60-79: Strong brand alone or weak brand + product (good for ownership research)  
+- 40-59: Weak brand or very generic brand (marginal)
+- 0-39: Missing/generic brand (not suitable)
+
+Respond with valid JSON only. Be reasonable - if brand is identifiable, mark as meaningful even without product name.`,
+      user_prompt_template: `Please assess if this product data is sufficient for corporate ownership research:
 
 BRAND: "{{brand}}"
 PRODUCT NAME: "{{product_name}}"
-BARCODE: "{{barcode}}"
-CATEGORY: "{{category}}"
-COUNTRY: "{{country}}"
-MANUFACTURER: "{{manufacturer}}"
-INGREDIENTS: "{{ingredients}}"
-WEIGHT: "{{weight}}"
+DATA SOURCE: "{{result_type || 'unknown'}}"
+{{productData.barcode ? 'BARCODE: "' + productData.barcode + '"' : ''}}
+{{productData.category ? 'CATEGORY: "' + productData.category + '"' : ''}}
+{{productData.country ? 'COUNTRY: "' + productData.country + '"' : ''}}
+
+QUESTION: Can we research the corporate ownership of this brand/product with the given information?
 
 Respond with JSON only:
 {
   "is_meaningful": true/false,
   "confidence": 0-100,
   "quality_score": 0-100,
-  "reasoning": "brief explanation",
-  "issues": ["list", "of", "problems"]
+  "reasoning": "brief explanation focusing on ownership research readiness",
+  "issues": ["list", "of", "problems", "if", "any"]
 }`,
       parameters: {
         max_tokens: 150,

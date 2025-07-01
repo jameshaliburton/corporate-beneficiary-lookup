@@ -681,51 +681,51 @@ export default function Home() {
               <div className="w-full border-t border-blue-200 pt-4">
                 <p className="text-sm text-gray-600 mb-4 text-center">Or enter the information manually:</p>
                 <form onSubmit={handleUserContributionSubmit} className="w-full space-y-4">
-                  <div>
-                    <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
+                <div>
+                  <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
                       Product Name *
-                    </label>
-                    <Input
-                      type="text"
-                      id="product_name"
-                      value={userContribution.product_name}
-                      onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
+                  </label>
+                  <Input
+                    type="text"
+                    id="product_name"
+                    value={userContribution.product_name}
+                    onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                      placeholder="e.g., Kit Kat Matcha Green Tea"
-                      autoFocus
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
+                    placeholder="e.g., Kit Kat Matcha Green Tea"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
                       Brand Name *
-                    </label>
-                    <Input
-                      type="text"
-                      id="brand"
-                      value={userContribution.brand}
-                      onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
+                  </label>
+                  <Input
+                    type="text"
+                    id="brand"
+                    value={userContribution.brand}
+                    onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                      placeholder="e.g., Kit Kat, Nestlé"
-                    />
-                  </div>
+                    placeholder="e.g., Kit Kat, Nestlé"
+                  />
+                </div>
                   <div className="flex gap-3 pt-2">
-                    <Button
-                      type="submit"
+                  <Button
+                    type="submit"
                       className="flex-1 text-base py-3 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700"
-                      disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
-                    >
+                    disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
+                  >
                       🔍 Research Ownership
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setShowUserContribution(false)}
-                      className="flex-1 text-base py-3 font-semibold shadow"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowUserContribution(false)}
+                    className="flex-1 text-base py-3 font-semibold shadow"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
               </div>
               
               <div className="mt-6 text-center">
@@ -744,7 +744,7 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Researching Ownership...
-              </h3>
+                </h3>
               <p className="text-gray-600 text-center">
                 {currentProgress ? getStageInfo(currentProgress.stage || '').description : 'Starting research...'}
               </p>
@@ -759,7 +759,7 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Analyzing Product Image...
-              </h3>
+                        </h3>
               <div className="text-gray-600 text-center space-y-2">
                 <p className="text-sm">
                   Step 1: Running OCR and lightweight brand extraction...
@@ -770,7 +770,7 @@ export default function Home() {
                 <p className="text-sm">
                   Step 3: Escalating to advanced analysis if needed...
                 </p>
-              </div>
+                </div>
             </CardContent>
           </Card>
         )}
