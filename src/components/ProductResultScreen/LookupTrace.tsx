@@ -13,11 +13,11 @@ interface LookupAttempt {
 }
 
 interface LookupTrace {
-  barcode: string;
-  start_time: string;
-  attempts: LookupAttempt[];
-  final_result: string;
-  total_duration_ms: number;
+  barcode?: string;
+  start_time?: string;
+  attempts?: LookupAttempt[];
+  final_result?: string;
+  total_duration_ms?: number;
 }
 
 interface LookupTraceProps {
@@ -94,18 +94,18 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
         <CardTitle className="flex items-center gap-2">
           🔍 Barcode Lookup Trace
           <Badge variant="outline" className="text-xs">
-            {trace.attempts.length} attempts
+            {trace.attempts?.length || 0} attempts
           </Badge>
         </CardTitle>
         <div className="text-sm text-gray-600">
-          <div>Barcode: {trace.barcode}</div>
-          <div>Total duration: {formatDuration(trace.total_duration_ms)}</div>
-          <div>Final result: {trace.final_result}</div>
+          <div>Barcode: {trace.barcode || 'N/A'}</div>
+          <div>Total duration: {formatDuration(trace.total_duration_ms || 0)}</div>
+          <div>Final result: {trace.final_result || 'N/A'}</div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {trace.attempts.map((attempt, index) => (
+          {(trace.attempts || []).map((attempt, index) => (
             <div
               key={index}
               className={`flex items-start gap-3 p-3 rounded-lg border ${
@@ -169,7 +169,7 @@ const LookupTrace: React.FC<LookupTraceProps> = ({ trace }) => {
           ))}
         </div>
         
-        {trace.attempts.length === 0 && (
+        {(trace.attempts?.length || 0) === 0 && (
           <div className="text-center text-gray-500 py-4">
             No lookup attempts recorded
           </div>

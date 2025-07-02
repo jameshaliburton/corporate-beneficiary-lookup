@@ -88,9 +88,11 @@ EXAMPLES:
 - Brand="Pepsi" (no product name needed)
 
 ❌ NOT MEANINGFUL:
+- Brand="Unknown Brand", Product="Unknown Product" 
 - Brand="Unknown Brand", Product="Product with 1234567890"
 - Brand="Generic", Product="Soda"
 - Brand="Store Brand", Product="Item 12345"
+- Brand contains "Unknown", "N/A", "Generic", "Undefined"
 - No brand provided
 
 QUALITY SCORING:
@@ -166,14 +168,20 @@ Respond with JSON only:
    * Fallback assessment when AI fails
    */
   fallbackAssessment(productData) {
+    const brandValue = (productData.brand || '').toLowerCase().trim();
+    const productValue = (productData.product_name || '').toLowerCase().trim();
+    
+    // Check for clearly invalid/unknown brand values
+    const invalidBrandTerms = ['unknown', 'generic', 'n/a', 'null', 'undefined', 'brand'];
     const hasBrand = productData.brand && 
-      !productData.brand.toLowerCase().includes('unknown') &&
-      !productData.brand.toLowerCase().includes('generic') &&
-      productData.brand.trim().length > 2;
+      brandValue.length > 2 &&
+      !invalidBrandTerms.some(term => brandValue.includes(term));
       
+    // Check for clearly invalid/unknown product values  
+    const invalidProductTerms = ['unknown', 'product with', 'generic', 'n/a', 'null', 'undefined'];
     const hasProduct = productData.product_name &&
-      !productData.product_name.toLowerCase().includes('product with') &&
-      productData.product_name.trim().length > 2;
+      productValue.length > 2 &&
+      !invalidProductTerms.some(term => productValue.includes(term));
       
     // For ownership research, brand alone is sufficient
     const isMeaningful = hasBrand;
@@ -185,7 +193,7 @@ Respond with JSON only:
       quality_score: qualityScore,
       reasoning: hasBrand ? 
         (hasProduct ? 'Fallback: Brand and product identified' : 'Fallback: Brand identified (sufficient for ownership research)') :
-        'Fallback: No meaningful brand identified',
+        `Fallback: No meaningful brand identified (brand: "${productData.brand || 'missing'}")`,
       issues: !hasBrand ? ['Missing or generic brand'] : [],
       fallback: true
     };
@@ -218,9 +226,11 @@ EXAMPLES:
 - Brand="Pepsi" (no product name needed)
 
 ❌ NOT MEANINGFUL:
+- Brand="Unknown Brand", Product="Unknown Product" 
 - Brand="Unknown Brand", Product="Product with 1234567890"
 - Brand="Generic", Product="Soda"
 - Brand="Store Brand", Product="Item 12345"
+- Brand contains "Unknown", "N/A", "Generic", "Undefined"
 - No brand provided
 
 QUALITY SCORING:

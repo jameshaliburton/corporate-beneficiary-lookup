@@ -114,8 +114,11 @@ export async function POST(request: NextRequest) {
     try {
       let currentBarcodeData = null;
       
-      // Step 1: If we have a barcode, try enhanced barcode lookup first
-      if (barcode) {
+      // Check if this is a synthetic barcode from image capture
+      const isSyntheticBarcode = barcode && barcode.startsWith('img_');
+      
+      // Step 1: If we have a real barcode (not synthetic), try enhanced barcode lookup first
+      if (barcode && !isSyntheticBarcode) {
         await emitProgress(queryId, 'barcode_lookup', 'started', { barcode });
         
         // Prepare user data if provided
@@ -161,6 +164,37 @@ export async function POST(request: NextRequest) {
             ...barcodeData,
             query_id: queryId
           });
+        }
+      } else if (isSyntheticBarcode) {
+        // Synthetic barcode from image capture - use provided manual data
+        console.log('🔍 Synthetic barcode from image capture, using provided data for vision analysis');
+        
+        if (product_name || brand) {
+          console.log('📝 Using image-extracted manual data:', { product_name, brand });
+          currentBarcodeData = {
+            product_name: product_name || null,
+            brand: brand || null,
+            barcode: barcode, // Keep the synthetic barcode for tracking
+            result_type: 'image_extracted',
+            lookup_trace: ['image_extracted'],
+            confidence: 70, // Image-extracted data has medium confidence
+            sources: ['image_analysis']
+          };
+          
+          await emitProgress(queryId, 'image_extraction', 'completed', currentBarcodeData);
+        } else {
+          // Only synthetic barcode provided - we'll handle this in the vision analysis section below
+          currentBarcodeData = {
+            product_name: null,
+            brand: null,
+            barcode: barcode,
+            result_type: 'image_only',
+            lookup_trace: ['image_input'],
+            confidence: 0,
+            sources: ['image_input']
+          };
+          
+          await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided with synthetic barcode, attempting analysis' });
         }
       } else {
         // No barcode provided - start with manual/user provided data

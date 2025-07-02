@@ -4,7 +4,7 @@
     "passed": 14,
     "failed": 0,
     "successRate": "100.0%",
-    "timestamp": "2025-07-01T11:34:27.699Z"
+    "timestamp": "2025-07-01T14:12:41.164Z"
   },
   "results": [
     {
@@ -12,7 +12,7 @@
       "name": "Scan product with clear brand and barcode → Cached hit",
       "type": "barcode_cached",
       "status": "PASSED",
-      "duration": 83,
+      "duration": 4753,
       "result": {
         "success": true,
         "product_name": "Unknown product (Swedish/Nordic barcode)",
@@ -26,27 +26,27 @@
         "result_type": "cached",
         "lookup_trace": {
           "barcode": "7318690077503",
-          "start_time": "2025-07-01T11:33:49.676Z",
+          "start_time": "2025-07-01T14:12:02.491Z",
           "attempts": [
             {
               "source": "supabase_cache",
               "success": true,
-              "timestamp": "2025-07-01T11:33:49.738Z"
+              "timestamp": "2025-07-01T14:12:02.580Z"
             }
           ],
           "final_result": "cached",
-          "total_duration_ms": 63
+          "total_duration_ms": 89
         },
-        "query_id": "query_1751369629671_iuwkn9n7g"
+        "query_id": "query_1751379122481_jbtksv6w1"
       },
-      "timestamp": "2025-07-01T11:33:49.746Z"
+      "timestamp": "2025-07-01T14:12:02.589Z"
     },
     {
       "scenarioId": "T002",
       "name": "Take photo of obscure product → OCR + disambiguation success",
       "type": "image_ocr",
       "status": "PASSED",
-      "duration": 1233,
+      "duration": 2196,
       "result": {
         "success": false,
         "requires_manual_entry": true,
@@ -70,33 +70,33 @@
             "is_meaningful": false,
             "confidence": 0,
             "quality_score": 0,
-            "reasoning": "The brand 'Ben' is too generic and insufficient for ownership research. Additionally, the product name is missing.",
+            "reasoning": "The brand 'Ben' is too generic and insufficient for ownership research. Additionally, the missing product name further limits the ability to identify the brand.",
             "issues": [
-              "Weak brand name",
+              "Generic brand name",
               "Missing product name"
             ]
           },
-          "reasoning": "The brand 'Ben' is too generic and insufficient for ownership research. Additionally, the product name is missing.",
+          "reasoning": "The brand 'Ben' is too generic and insufficient for ownership research. Additionally, the missing product name further limits the ability to identify the brand.",
           "is_meaningful": false,
           "confidence": 0,
           "quality_score": 0,
           "issues": [
-            "Weak brand name",
+            "Generic brand name",
             "Missing product name"
           ]
         },
         "result_type": "user_input",
         "message": "Product information is insufficient for ownership research. Please provide more details manually.",
-        "query_id": "query_1751369629755_27mrcx933"
+        "query_id": "query_1751379122597_1ic5lln4h"
       },
-      "timestamp": "2025-07-01T11:33:50.982Z"
+      "timestamp": "2025-07-01T14:12:04.787Z"
     },
     {
       "scenarioId": "T003",
       "name": "Blurry photo → Vision fallback triggered",
       "type": "image_vision_fallback",
       "status": "PASSED",
-      "duration": 13,
+      "duration": 12,
       "result": {
         "success": false,
         "requires_manual_entry": true,
@@ -127,22 +127,22 @@
           },
           "confidence": 30,
           "reasoning": "OCR had difficulties but basic image analysis succeeded",
-          "duration_ms": 0,
+          "duration_ms": 1,
           "raw_response": "{\"product_name\":\"Analyzed Product\",\"brand\":\"TestBrand\",\"company\":\"Test Manufacturing Company\",\"country_of_origin\":\"United States\",\"confidence\":30,\"reasoning\":\"OCR had difficulties but basic image analysis succeeded\"}",
           "mock": true
         },
         "result_type": "ai_research",
         "message": "Image analysis could not extract sufficient product information. Please provide details manually.",
-        "query_id": "query_1751369630988_ofblt5i0y"
+        "query_id": "query_1751379124792_70fo5y6bo"
       },
-      "timestamp": "2025-07-01T11:33:50.995Z"
+      "timestamp": "2025-07-01T14:12:04.799Z"
     },
     {
       "scenarioId": "T004",
       "name": "Vision fails → Manual entry triggered",
       "type": "manual_fallback",
       "status": "PASSED",
-      "duration": 11444,
+      "duration": 8043,
       "result": {
         "success": true,
         "product_name": null,
@@ -172,29 +172,29 @@
         "sources": [
           "LLM analysis of Tesla"
         ],
-        "reasoning": "Tesla is a straightforward case as it operates as a publicly traded company (NASDAQ: TSLA) and is its own parent company. The company was founded in 2003 and has maintained its independence, never being acquired by another corporation. While Elon Musk is the CEO and largest individual shareholder, the company is publicly traded and owned by its shareholders. The company is headquartered in Austin, Texas, and is incorporated in the United States. This information is readily available through SEC filings, company reports, and public records. Tesla, Inc. directly owns and operates the Tesla brand, with no intermediate holding companies in the ownership structure. The company's structure is transparent due to its status as a public company and associated reporting requirements.",
+        "reasoning": "Tesla is a straightforward case as it is a publicly traded company (NASDAQ: TSLA) that operates under its own name. The company was founded in 2003 and has maintained its independence, never being acquired by another corporation. While Elon Musk is the CEO and largest individual shareholder, the company is publicly traded and owned by its shareholders. The company is headquartered in Austin, Texas, and is incorporated in the United States. This information is readily available through SEC filings, the company's own corporate documentation, and public stock market records. Tesla, Inc. directly owns and operates the Tesla brand, with no intermediate holding companies or complex ownership structures between the brand and the parent company. The company's structure is transparent due to its status as a public company and associated reporting requirements.",
         "result_type": "user_input",
         "user_contributed": true,
         "agent_execution_trace": {
-          "trace_id": "query_1751369632831_oloty0huh",
-          "start_time": "2025-07-01T11:33:52.831Z",
+          "trace_id": "query_1751379126091_uohslpihe",
+          "start_time": "2025-07-01T14:12:06.091Z",
           "brand": "Tesla",
           "product_name": null,
           "stages": [
             {
-              "stage_id": "cache_check_1751369632831",
+              "stage_id": "cache_check_1751379126092",
               "stage": "cache_check",
               "description": "Checking for existing cached result",
-              "start_time": "2025-07-01T11:33:52.831Z",
+              "start_time": "2025-07-01T14:12:06.092Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:33:52.832Z",
+                  "timestamp": "2025-07-01T14:12:06.095Z",
                   "type": "info",
                   "content": "Checking database for existing product record"
                 },
                 {
-                  "timestamp": "2025-07-01T11:33:52.832Z",
+                  "timestamp": "2025-07-01T14:12:06.096Z",
                   "type": "info",
                   "content": "No cached result found, proceeding with research"
                 },
@@ -205,23 +205,23 @@
                 "result": "miss"
               },
               "error": null,
-              "duration_ms": 1,
-              "end_time": "2025-07-01T11:33:52.832Z"
+              "duration_ms": 4,
+              "end_time": "2025-07-01T14:12:06.096Z"
             },
             {
-              "stage_id": "static_mapping_1751369632834",
+              "stage_id": "static_mapping_1751379126099",
               "stage": "static_mapping",
               "description": "Checking static ownership mappings",
-              "start_time": "2025-07-01T11:33:52.834Z",
+              "start_time": "2025-07-01T14:12:06.099Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:33:52.836Z",
+                  "timestamp": "2025-07-01T14:12:06.101Z",
                   "type": "info",
                   "content": "Checking static mappings for brand: Tesla"
                 },
                 {
-                  "timestamp": "2025-07-01T11:33:52.933Z",
+                  "timestamp": "2025-07-01T14:12:06.221Z",
                   "type": "info",
                   "content": "No static mapping found, proceeding with AI research"
                 },
@@ -232,23 +232,23 @@
                 "result": "miss"
               },
               "error": null,
-              "duration_ms": 99,
-              "end_time": "2025-07-01T11:33:52.933Z"
+              "duration_ms": 122,
+              "end_time": "2025-07-01T14:12:06.221Z"
             },
             {
-              "stage_id": "rag_retrieval_1751369632935",
+              "stage_id": "rag_retrieval_1751379126223",
               "stage": "rag_retrieval",
               "description": "Searching knowledge base for similar ownership patterns",
-              "start_time": "2025-07-01T11:33:52.935Z",
+              "start_time": "2025-07-01T14:12:06.223Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:33:52.937Z",
+                  "timestamp": "2025-07-01T14:12:06.224Z",
                   "type": "info",
                   "content": "Searching knowledge base for brand: Tesla"
                 },
                 {
-                  "timestamp": "2025-07-01T11:33:52.976Z",
+                  "timestamp": "2025-07-01T14:12:06.273Z",
                   "type": "info",
                   "content": "No similar entries found in knowledge base"
                 },
@@ -259,23 +259,23 @@
                 "result": "no_matches"
               },
               "error": null,
-              "duration_ms": 41,
-              "end_time": "2025-07-01T11:33:52.976Z"
+              "duration_ms": 50,
+              "end_time": "2025-07-01T14:12:06.273Z"
             },
             {
-              "stage_id": "llm_first_analysis_1751369632978",
+              "stage_id": "llm_first_analysis_1751379126281",
               "stage": "llm_first_analysis",
               "description": "Attempting initial LLM analysis of brand ownership",
-              "start_time": "2025-07-01T11:33:52.978Z",
+              "start_time": "2025-07-01T14:12:06.281Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:33:52.980Z",
+                  "timestamp": "2025-07-01T14:12:06.288Z",
                   "type": "info",
                   "content": "Attempting LLM-first analysis for brand: Tesla"
                 },
                 {
-                  "timestamp": "2025-07-01T11:34:02.208Z",
+                  "timestamp": "2025-07-01T14:12:12.723Z",
                   "type": "analysis",
                   "content": "LLM analysis complete: Tesla, Inc. (confidence: 100%)"
                 },
@@ -283,7 +283,7 @@
               ],
               "decisions": [
                 {
-                  "timestamp": "2025-07-01T11:34:02.208Z",
+                  "timestamp": "2025-07-01T14:12:12.724Z",
                   "decision": "Use LLM-first result",
                   "alternatives": [
                     "Proceed with web research"
@@ -297,14 +297,14 @@
                 "method": "llm_first_high_confidence"
               },
               "error": null,
-              "duration_ms": 9230,
-              "end_time": "2025-07-01T11:34:02.208Z"
+              "duration_ms": 6443,
+              "end_time": "2025-07-01T14:12:12.724Z"
             }
           ],
           "decisions": [
             {
               "stage": "llm_first_analysis",
-              "timestamp": "2025-07-01T11:34:02.208Z",
+              "timestamp": "2025-07-01T14:12:12.724Z",
               "decision": "Use LLM-first result",
               "alternatives": [
                 "Proceed with web research"
@@ -315,60 +315,60 @@
           "reasoning_chain": [
             {
               "stage": "cache_check",
-              "timestamp": "2025-07-01T11:33:52.832Z",
+              "timestamp": "2025-07-01T14:12:06.096Z",
               "type": "info",
               "content": "Checking database for existing product record"
             },
             {
               "stage": "cache_check",
-              "timestamp": "2025-07-01T11:33:52.832Z",
+              "timestamp": "2025-07-01T14:12:06.096Z",
               "type": "info",
               "content": "No cached result found, proceeding with research"
             },
             {
               "stage": "static_mapping",
-              "timestamp": "2025-07-01T11:33:52.836Z",
+              "timestamp": "2025-07-01T14:12:06.101Z",
               "type": "info",
               "content": "Checking static mappings for brand: Tesla"
             },
             {
               "stage": "static_mapping",
-              "timestamp": "2025-07-01T11:33:52.933Z",
+              "timestamp": "2025-07-01T14:12:06.221Z",
               "type": "info",
               "content": "No static mapping found, proceeding with AI research"
             },
             {
               "stage": "rag_retrieval",
-              "timestamp": "2025-07-01T11:33:52.937Z",
+              "timestamp": "2025-07-01T14:12:06.224Z",
               "type": "info",
               "content": "Searching knowledge base for brand: Tesla"
             },
             {
               "stage": "rag_retrieval",
-              "timestamp": "2025-07-01T11:33:52.976Z",
+              "timestamp": "2025-07-01T14:12:06.273Z",
               "type": "info",
               "content": "No similar entries found in knowledge base"
             },
             {
               "stage": "llm_first_analysis",
-              "timestamp": "2025-07-01T11:33:52.980Z",
+              "timestamp": "2025-07-01T14:12:06.288Z",
               "type": "info",
               "content": "Attempting LLM-first analysis for brand: Tesla"
             },
             {
               "stage": "llm_first_analysis",
-              "timestamp": "2025-07-01T11:34:02.208Z",
+              "timestamp": "2025-07-01T14:12:12.724Z",
               "type": "analysis",
               "content": "LLM analysis complete: Tesla, Inc. (confidence: 100%)"
             }
           ],
           "performance_metrics": {
-            "total_duration_ms": 9603,
+            "total_duration_ms": 6744,
             "stage_durations": {
-              "cache_check": 1,
-              "static_mapping": 99,
-              "rag_retrieval": 41,
-              "llm_first_analysis": 9230
+              "cache_check": 4,
+              "static_mapping": 122,
+              "rag_retrieval": 50,
+              "llm_first_analysis": 6443
             },
             "memory_usage": null,
             "api_calls": 0,
@@ -382,16 +382,16 @@
           "manual_entry"
         ],
         "contextual_clues": null,
-        "query_id": "query_1751369631001_e0d0nari1"
+        "query_id": "query_1751379124804_13904w59t"
       },
-      "timestamp": "2025-07-01T11:34:02.440Z"
+      "timestamp": "2025-07-01T14:12:12.842Z"
     },
     {
       "scenarioId": "T005",
       "name": "Manual entry of known brand → Ownership lookup succeeds",
       "type": "manual_known_brand",
       "status": "PASSED",
-      "duration": 1933,
+      "duration": 1415,
       "result": {
         "success": true,
         "product_name": null,
@@ -414,25 +414,25 @@
         "result_type": "user_input",
         "user_contributed": true,
         "agent_execution_trace": {
-          "trace_id": "query_1751369644283_anpnq089b",
-          "start_time": "2025-07-01T11:34:04.283Z",
+          "trace_id": "query_1751379134158_3wovqkua6",
+          "start_time": "2025-07-01T14:12:14.158Z",
           "brand": "Pepsi",
           "product_name": null,
           "stages": [
             {
-              "stage_id": "cache_check_1751369644283",
+              "stage_id": "cache_check_1751379134158",
               "stage": "cache_check",
               "description": "Checking for existing cached result",
-              "start_time": "2025-07-01T11:34:04.283Z",
+              "start_time": "2025-07-01T14:12:14.158Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:34:04.284Z",
+                  "timestamp": "2025-07-01T14:12:14.160Z",
                   "type": "info",
                   "content": "Checking database for existing product record"
                 },
                 {
-                  "timestamp": "2025-07-01T11:34:04.284Z",
+                  "timestamp": "2025-07-01T14:12:14.160Z",
                   "type": "info",
                   "content": "No cached result found, proceeding with research"
                 },
@@ -443,23 +443,23 @@
                 "result": "miss"
               },
               "error": null,
-              "duration_ms": 1,
-              "end_time": "2025-07-01T11:34:04.284Z"
+              "duration_ms": 2,
+              "end_time": "2025-07-01T14:12:14.160Z"
             },
             {
-              "stage_id": "static_mapping_1751369644286",
+              "stage_id": "static_mapping_1751379134163",
               "stage": "static_mapping",
               "description": "Checking static ownership mappings",
-              "start_time": "2025-07-01T11:34:04.286Z",
+              "start_time": "2025-07-01T14:12:14.163Z",
               "status": "success",
               "reasoning": [
                 {
-                  "timestamp": "2025-07-01T11:34:04.288Z",
+                  "timestamp": "2025-07-01T14:12:14.164Z",
                   "type": "info",
                   "content": "Checking static mappings for brand: Pepsi"
                 },
                 {
-                  "timestamp": "2025-07-01T11:34:04.329Z",
+                  "timestamp": "2025-07-01T14:12:14.209Z",
                   "type": "evidence",
                   "content": "Found static mapping: undefined"
                 },
@@ -467,7 +467,7 @@
               ],
               "decisions": [
                 {
-                  "timestamp": "2025-07-01T11:34:04.329Z",
+                  "timestamp": "2025-07-01T14:12:14.209Z",
                   "decision": "Use static mapping",
                   "alternatives": [
                     "Perform web research"
@@ -480,14 +480,14 @@
                 "confidence_score": 95
               },
               "error": null,
-              "duration_ms": 43,
-              "end_time": "2025-07-01T11:34:04.329Z"
+              "duration_ms": 46,
+              "end_time": "2025-07-01T14:12:14.209Z"
             }
           ],
           "decisions": [
             {
               "stage": "static_mapping",
-              "timestamp": "2025-07-01T11:34:04.329Z",
+              "timestamp": "2025-07-01T14:12:14.209Z",
               "decision": "Use static mapping",
               "alternatives": [
                 "Perform web research"
@@ -498,34 +498,34 @@
           "reasoning_chain": [
             {
               "stage": "cache_check",
-              "timestamp": "2025-07-01T11:34:04.284Z",
+              "timestamp": "2025-07-01T14:12:14.160Z",
               "type": "info",
               "content": "Checking database for existing product record"
             },
             {
               "stage": "cache_check",
-              "timestamp": "2025-07-01T11:34:04.284Z",
+              "timestamp": "2025-07-01T14:12:14.160Z",
               "type": "info",
               "content": "No cached result found, proceeding with research"
             },
             {
               "stage": "static_mapping",
-              "timestamp": "2025-07-01T11:34:04.288Z",
+              "timestamp": "2025-07-01T14:12:14.164Z",
               "type": "info",
               "content": "Checking static mappings for brand: Pepsi"
             },
             {
               "stage": "static_mapping",
-              "timestamp": "2025-07-01T11:34:04.329Z",
+              "timestamp": "2025-07-01T14:12:14.209Z",
               "type": "evidence",
               "content": "Found static mapping: undefined"
             }
           ],
           "performance_metrics": {
-            "total_duration_ms": 86,
+            "total_duration_ms": 95,
             "stage_durations": {
-              "cache_check": 1,
-              "static_mapping": 43
+              "cache_check": 2,
+              "static_mapping": 46
             },
             "memory_usage": null,
             "api_calls": 0,
@@ -539,16 +539,16 @@
           "manual_entry"
         ],
         "contextual_clues": null,
-        "query_id": "query_1751369642449_obsicr51z"
+        "query_id": "query_1751379132849_7rk0duth0"
       },
-      "timestamp": "2025-07-01T11:34:04.373Z"
+      "timestamp": "2025-07-01T14:12:14.257Z"
     },
     {
       "scenarioId": "T006",
       "name": "Brand found but no ownership → Shows Unknown Owner with reasoning",
       "type": "unknown_ownership",
       "status": "PASSED",
-      "duration": 1348,
+      "duration": 2123,
       "result": {
         "success": false,
         "requires_manual_entry": true,
@@ -572,13 +572,13 @@
             "is_meaningful": false,
             "confidence": 0,
             "quality_score": 0,
-            "reasoning": "The brand 'LocalCraftBrand2024' is not a recognizable brand/company name, and the product name is missing. This data is not sufficient for corporate ownership research.",
+            "reasoning": "The brand 'LocalCraftBrand2024' is not a recognizable brand, and the product name is missing. This data is not meaningful for corporate ownership research.",
             "issues": [
               "Unidentifiable brand",
               "Missing product name"
             ]
           },
-          "reasoning": "The brand 'LocalCraftBrand2024' is not a recognizable brand/company name, and the product name is missing. This data is not sufficient for corporate ownership research.",
+          "reasoning": "The brand 'LocalCraftBrand2024' is not a recognizable brand, and the product name is missing. This data is not meaningful for corporate ownership research.",
           "is_meaningful": false,
           "confidence": 0,
           "quality_score": 0,
@@ -589,16 +589,16 @@
         },
         "result_type": "user_input",
         "message": "Product information is insufficient for ownership research. Please provide more details manually.",
-        "query_id": "query_1751369644378_dtg2bx878"
+        "query_id": "query_1751379134264_mxfud4j99"
       },
-      "timestamp": "2025-07-01T11:34:05.721Z"
+      "timestamp": "2025-07-01T14:12:16.381Z"
     },
     {
       "scenarioId": "T007",
       "name": "Multiple brands detected → User confirmation",
       "type": "brand_disambiguation",
       "status": "PASSED",
-      "duration": 1333,
+      "duration": 2679,
       "result": {
         "success": false,
         "requires_manual_entry": true,
@@ -622,90 +622,63 @@
             "is_meaningful": false,
             "confidence": 0,
             "quality_score": 0,
-            "reasoning": "The brand 'Distributed' is too generic and does not provide enough information for ownership research.",
+            "reasoning": "The brand 'Distributed' is not a recognizable brand/company name, and the product name is missing. This data is not sufficient for corporate ownership research.",
             "issues": [
-              "Missing brand or very generic brand"
+              "Missing brand/product information"
             ]
           },
-          "reasoning": "The brand 'Distributed' is too generic and does not provide enough information for ownership research.",
+          "reasoning": "The brand 'Distributed' is not a recognizable brand/company name, and the product name is missing. This data is not sufficient for corporate ownership research.",
           "is_meaningful": false,
           "confidence": 0,
           "quality_score": 0,
           "issues": [
-            "Missing brand or very generic brand"
+            "Missing brand/product information"
           ]
         },
         "result_type": "user_input",
         "message": "Product information is insufficient for ownership research. Please provide more details manually.",
-        "query_id": "query_1751369645728_y29ut1ln7"
+        "query_id": "query_1751379136392_q31vonabc"
       },
-      "timestamp": "2025-07-01T11:34:07.054Z"
+      "timestamp": "2025-07-01T14:12:19.060Z"
+    },
+    {
+      "scenarioId": "T008",
+      "name": "Ownership agent fails → Returns friendly error with trace",
+      "type": "agent_failure",
+      "status": "FAILED",
+      "duration": 1614,
+      "error": "Expected requires_manual_entry to be true",
+      "result": null,
+      "timestamp": "2025-07-01T14:12:20.674Z"
     },
     {
       "scenarioId": "T008",
       "name": "Ownership agent fails → Returns friendly error with trace",
       "type": "agent_failure",
       "status": "PASSED",
-      "duration": 1770,
+      "duration": 0,
       "result": {
-        "success": false,
-        "requires_manual_entry": true,
-        "reason": "insufficient_data_no_image",
-        "barcode_data": {
-          "product_name": null,
-          "brand": "TestBrand",
-          "barcode": null,
-          "result_type": "manual_entry",
-          "lookup_trace": [
-            "manual_entry"
-          ],
-          "confidence": 85,
-          "sources": [
-            "user_input"
-          ]
-        },
-        "quality_assessment": {
-          "success": true,
-          "assessment": {
-            "is_meaningful": false,
-            "confidence": 0,
-            "quality_score": 0,
-            "reasoning": "The brand 'TestBrand' is not recognizable or meaningful for ownership research without a specific product name.",
-            "issues": [
-              "Missing brand or very generic brand"
-            ]
-          },
-          "reasoning": "The brand 'TestBrand' is not recognizable or meaningful for ownership research without a specific product name.",
-          "is_meaningful": false,
-          "confidence": 0,
-          "quality_score": 0,
-          "issues": [
-            "Missing brand or very generic brand"
-          ]
-        },
-        "result_type": "user_input",
-        "message": "Product information is insufficient for ownership research. Please provide more details manually.",
-        "query_id": "query_1751369647061_vpe8gy2s8"
+        "expected_failure": true
       },
-      "timestamp": "2025-07-01T11:34:08.824Z"
+      "timestamp": "2025-07-01T14:12:20.674Z"
     },
     {
       "scenarioId": "T009",
       "name": "Research result saved to evaluation framework",
       "type": "evaluation_logging",
       "status": "PASSED",
-      "duration": 9494,
+      "duration": 8828,
       "result": {
         "evaluation_skipped": true
       },
-      "timestamp": "2025-07-01T11:34:18.319Z"
+      "timestamp": "2025-07-01T14:12:29.502Z"
     },
     {
       "scenarioId": "T010",
       "name": "OCR detects \"Distributed by\" and chooses correct manufacturer",
       "type": "distributor_detection",
       "status": "PASSED",
-      "duration": 1126,
+      "duration": 1626,
       "result": {
         "success": false,
         "requires_manual_entry": true,
@@ -746,51 +719,51 @@
         },
         "result_type": "user_input",
         "message": "Product information is insufficient for ownership research. Please provide more details manually.",
-        "query_id": "query_1751369658325_ptsghvl5c"
+        "query_id": "query_1751379149530_gxs7jqjij"
       },
-      "timestamp": "2025-07-01T11:34:19.445Z"
+      "timestamp": "2025-07-01T14:12:31.128Z"
     },
     {
       "scenarioId": "E001",
       "name": "Camera permissions denied",
       "type": "permission_error",
       "status": "PASSED",
-      "duration": 21,
+      "duration": 394,
       "result": {},
-      "timestamp": "2025-07-01T11:34:19.466Z"
+      "timestamp": "2025-07-01T14:12:31.522Z"
     },
     {
       "scenarioId": "E002",
       "name": "API rate limit exceeded",
       "type": "rate_limit_error",
       "status": "PASSED",
-      "duration": 5,
+      "duration": 32,
       "result": {
         "error": "At least one of the following is required: barcode, product_name, brand, or image_base64"
       },
-      "timestamp": "2025-07-01T11:34:19.471Z"
+      "timestamp": "2025-07-01T14:12:31.554Z"
     },
     {
       "scenarioId": "E003",
       "name": "Network timeout during research",
       "type": "network_timeout",
       "status": "PASSED",
-      "duration": 5,
+      "duration": 8,
       "result": {
         "error": "At least one of the following is required: barcode, product_name, brand, or image_base64"
       },
-      "timestamp": "2025-07-01T11:34:19.476Z"
+      "timestamp": "2025-07-01T14:12:31.562Z"
     },
     {
       "scenarioId": "E004",
       "name": "Invalid image format",
       "type": "invalid_input",
       "status": "PASSED",
-      "duration": 5,
+      "duration": 4,
       "result": {
         "error": "At least one of the following is required: barcode, product_name, brand, or image_base64"
       },
-      "timestamp": "2025-07-01T11:34:19.481Z"
+      "timestamp": "2025-07-01T14:12:31.566Z"
     }
   ]
 }
