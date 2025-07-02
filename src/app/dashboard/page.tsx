@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { InlineBuildInfo } from '@/components/BuildInfo'
 
 interface Product {
   id: number
@@ -1035,6 +1036,11 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Build info for version tracking */}
+      <div className="mt-8 text-center">
+        <InlineBuildInfo variant="full" className="text-gray-400" />
+      </div>
     </div>
   )
 } 

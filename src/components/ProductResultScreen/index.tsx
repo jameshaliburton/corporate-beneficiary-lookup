@@ -10,6 +10,7 @@ import ManualEntryForm from './ManualEntryForm';
 import StickyActionBar from './StickyActionBar';
 import LookupTrace from './LookupTrace';
 import { ContextualCluesDisplay } from './ContextualCluesDisplay';
+import { InlineBuildInfo } from '@/components/BuildInfo';
 
 // Mock data for demo
 const mockData = {
@@ -364,6 +365,11 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       )}
       <ManualEntryForm productName={productData.name} brandName={productData.brand} />
       <StickyActionBar onScanAnother={onScanAnother} />
+      
+      {/* Build info for version tracking */}
+      <div className="mt-8 text-center">
+        <InlineBuildInfo variant="compact" className="text-gray-400" />
+      </div>
     </div>
   );
 };

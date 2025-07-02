@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getStageInfo } from '@/lib/utils';
 import ProductResultScreen from '@/components/ProductResultScreen/index';
+import BuildInfo from '@/components/BuildInfo';
 
 interface OwnershipFlowCompany {
   name: string;
@@ -817,6 +818,9 @@ export default function Home() {
           </div>
         )}
       </div>
+      
+      {/* Build Info - Always visible for version tracking */}
+      <BuildInfo variant="compact" position="bottom-right" />
     </div>
   );
 } 
