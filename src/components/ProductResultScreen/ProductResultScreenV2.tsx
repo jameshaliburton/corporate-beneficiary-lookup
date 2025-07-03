@@ -1,0 +1,336 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Camera, Barcode, Edit, RefreshCw } from 'lucide-react';
+
+interface OwnershipFlowCompany {
+  name: string;
+  country?: string;
+  type?: string;
+  source?: string;
+  flag?: string;
+  ultimate?: boolean;
+}
+
+interface TraceStep {
+  name: string;
+  duration?: number;
+  status: 'started' | 'success' | 'error' | 'completed';
+  error?: string;
+  data?: any;
+}
+
+interface ProductResult {
+  success: boolean;
+  product_name?: string;
+  brand?: string;
+  barcode?: string;
+  financial_beneficiary?: string;
+  beneficiary_country?: string;
+  beneficiary_flag?: string;
+  confidence_score?: number;
+  ownership_structure_type?: string;
+  user_contributed?: boolean;
+  ownership_flow?: OwnershipFlowCompany[];
+  reasoning?: string;
+  sources?: string[];
+  result_type?: string;
+  agent_execution_trace?: {
+    trace_id?: string;
+    stages?: any[];
+    reasoning_chain?: any[];
+    performance_metrics?: {
+      total_duration_ms?: number;
+      api_calls?: number;
+    };
+  };
+  lookup_trace?: string[];
+  requires_manual_entry?: boolean;
+}
+
+interface ProductResultScreenV2Props {
+  result: ProductResult;
+  onScanAnother: () => void;
+  onManualEntry?: () => void;
+  onConfirmResult?: () => void;
+  onFlagIssue?: () => void;
+}
+
+export default function ProductResultScreenV2({
+  result,
+  onScanAnother,
+  onManualEntry,
+  onConfirmResult,
+  onFlagIssue
+}: ProductResultScreenV2Props) {
+  const [showReasoning, setShowReasoning] = useState(false);
+  const [showTrace, setShowTrace] = useState(false);
+
+  // Extract data with fallbacks
+  const brandName = result.brand || 'Unknown Brand';
+  const companyName = result.financial_beneficiary || 'Unknown Company';
+  const productName = result.product_name;
+  const confidenceScore = result.confidence_score || 0;
+  const ownershipFlow = result.ownership_flow || [];
+  const reasoning = result.reasoning || 'No reasoning provided';
+  const sources = result.sources || [];
+  
+  // Determine detection method
+  const wasBarcodeUsed = result.barcode && !result.barcode.startsWith('img_');
+  const detectionMethod = wasBarcodeUsed ? '📱 Barcode scan' : '📷 Photo analysis';
+  
+  // Get confidence label and color
+  const getConfidenceInfo = (score: number) => {
+    if (score >= 90) return { label: 'Very High', color: 'bg-green-100 text-green-800', barColor: 'bg-green-500' };
+    if (score >= 75) return { label: 'High', color: 'bg-blue-100 text-blue-800', barColor: 'bg-blue-500' };
+    if (score >= 60) return { label: 'Moderate', color: 'bg-yellow-100 text-yellow-800', barColor: 'bg-yellow-500' };
+    return { label: 'Low', color: 'bg-red-100 text-red-800', barColor: 'bg-red-500' };
+  };
+
+  const confidenceInfo = getConfidenceInfo(confidenceScore);
+
+  // Extract trace steps from agent execution trace
+  const getTraceSteps = (): TraceStep[] => {
+    if (!result.agent_execution_trace?.stages) return [];
+    
+    return result.agent_execution_trace.stages.map((stage: any) => ({
+      name: stage.name || 'Unknown Step',
+      duration: stage.duration_ms,
+      status: stage.status || 'completed',
+      error: stage.error,
+      data: stage.data
+    }));
+  };
+
+  const traceSteps = getTraceSteps();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 px-4 py-8">
+      <div className="w-full max-w-2xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="text-center">
+          <div className="flex justify-center items-center mb-2">
+            <img src="/logo.png" alt="OwnedBy Logo" className="h-12 mr-2" />
+            <span className="inline-block bg-yellow-200 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full align-middle shadow-sm">Beta</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Ownership Analysis Complete</h1>
+        </div>
+
+        {/* 1. Top Summary Block */}
+        <Card className="shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-gray-500">{detectionMethod}</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-1">{brandName}</h2>
+                {productName && (
+                  <p className="text-gray-600 mb-2">{productName}</p>
+                )}
+                {companyName && companyName !== 'Unknown' && companyName !== brandName && (
+                  <div className="text-blue-700 font-semibold text-lg">{companyName}</div>
+                )}
+              </div>
+              <div className="text-right">
+                <Badge className={`${confidenceInfo.color} font-semibold`}>
+                  {confidenceInfo.label} ({confidenceScore}%)
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Confidence Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <div 
+                className={`h-2 rounded-full transition-all duration-300 ${confidenceInfo.barColor}`}
+                style={{ width: `${confidenceScore}%` }}
+              />
+            </div>
+            
+            {confidenceScore < 70 && (
+              <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                ⚠️ This structure is estimated and may not be definitive.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 2. Ownership Structure */}
+        <Card className="shadow-lg border-0">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              👥 Ownership Structure
+            </h3>
+            
+            <div className="space-y-3">
+              {ownershipFlow.map((company, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{company.flag || '🏳️'}</span>
+                      <span className="font-medium">{company.name}</span>
+                    </div>
+                    {company.type && (
+                      <Badge variant="outline" className="text-xs">
+                        {company.type}
+                      </Badge>
+                    )}
+                  </div>
+                  {company.ultimate && (
+                    <Badge className="bg-green-100 text-green-800">
+                      Ultimate Owner
+                    </Badge>
+                  )}
+                </div>
+              ))}
+              
+              {ownershipFlow.length === 0 && (
+                <p className="text-gray-500 text-center py-4">
+                  No ownership structure found
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 3. Action Buttons */}
+        <div className="flex gap-3">
+          <Button
+            onClick={onScanAnother}
+            variant="ghost"
+            className="w-full py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            📷 Scan Another Product
+          </Button>
+        </div>
+
+        {/* 4. Explanation + Trace (Collapsible) */}
+        <Card className="shadow-lg border-0">
+          <CardContent className="p-6">
+            {/* Reasoning Section */}
+            <div className="mt-6">
+              <button
+                className="flex items-center gap-2 text-pink-600 font-semibold mb-2 focus:outline-none"
+                onClick={() => setShowReasoning(v => !v)}
+              >
+                <span>🧠 See how we researched this</span>
+                {showReasoning ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {showReasoning && (
+                <div className="bg-gray-50 rounded-lg p-4 border text-sm text-gray-700 whitespace-pre-line">
+                  {reasoning}
+                  {/* If sources exist, show them as a list */}
+                  {sources && sources.length > 0 && (
+                    <div className="mt-2">
+                      <div className="font-semibold text-xs text-gray-500 mb-1">Sources:</div>
+                      <ul className="list-disc pl-5">
+                        {sources.map((src, i) => (
+                          <li key={i} className="break-all"><a href={src} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{src}</a></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Trace Section */}
+            <div className="mt-4">
+              <button
+                className="flex items-center gap-2 text-gray-700 font-semibold mb-2 focus:outline-none"
+                onClick={() => setShowTrace(v => !v)}
+              >
+                <span>🔍 View step-by-step trace</span>
+                {showTrace ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </button>
+              {showTrace && traceSteps.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border text-sm">
+                  {traceSteps.map((step, i) => (
+                    <div key={i} className="flex items-center justify-between py-1 px-2 border-b last:border-b-0">
+                      <span>{step.name || `Step ${i + 1}`}</span>
+                      <span className={`text-xs ml-2 ${step.status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{step.status}</span>
+                      <span className="text-xs text-gray-400 ml-2">{step.duration ? `${step.duration}ms` : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 5. Barcode Trace (Conditional Only) */}
+        {wasBarcodeUsed && result.agent_execution_trace?.performance_metrics && (
+          <Card className="shadow-lg border-0">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Barcode className="w-5 h-5" />
+                Barcode Analysis
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">Total Time:</span>
+                  <span className="ml-2 font-medium">
+                    {result.agent_execution_trace.performance_metrics.total_duration_ms}ms
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">API Calls:</span>
+                  <span className="ml-2 font-medium">
+                    {result.agent_execution_trace.performance_metrics.api_calls || 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Result Type:</span>
+                  <span className="ml-2 font-medium">{result.result_type || 'Unknown'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Barcode:</span>
+                  <span className="ml-2 font-medium font-mono">{result.barcode}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 6. Bottom Action Buttons */}
+        <div className="flex flex-col gap-3">
+          {onManualEntry && (
+            <Button
+              onClick={onManualEntry}
+              variant="outline"
+              className="w-full py-3 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              ✏️ Manual Entry
+            </Button>
+          )}
+          
+          <Button
+            onClick={onScanAnother}
+            variant="ghost"
+            className="w-full py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            📷 Scan Another Product
+          </Button>
+        </div>
+
+        {/* Debug Info (Hidden by default, but preserved) */}
+        <details className="mt-8">
+          <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
+            Debug Info
+          </summary>
+          <div className="mt-2 p-4 bg-gray-100 rounded text-xs font-mono text-gray-600 overflow-auto">
+            <pre>{JSON.stringify(result, null, 2)}</pre>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+} 

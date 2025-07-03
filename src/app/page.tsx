@@ -8,7 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getStageInfo } from '@/lib/utils';
 import ProductResultScreen from '@/components/ProductResultScreen/index';
+import ProductResultScreenV2 from '@/components/ProductResultScreen/ProductResultScreenV2';
 import BuildInfo from '@/components/BuildInfo';
+import DisambiguationModal from '@/components/ProductResultScreen/DisambiguationModal';
+import VisionFallbackModal from '@/components/ProductResultScreen/VisionFallbackModal';
 
 interface OwnershipFlowCompany {
   name: string;
@@ -70,6 +73,12 @@ export default function Home() {
   const [imageAnalysisResult, setImageAnalysisResult] = useState<any>(null);
   const [imageProcessing, setImageProcessing] = useState(false);
   const [showFallbackModal, setShowFallbackModal] = useState(false);
+  
+  // New state for enhanced UX flow
+  const [showDisambiguationModal, setShowDisambiguationModal] = useState(false);
+  const [showVisionFallbackModal, setShowVisionFallbackModal] = useState(false);
+  const [disambiguationCandidates, setDisambiguationCandidates] = useState<any[]>([]);
+  const [visionFallbackReason, setVisionFallbackReason] = useState<string>('');
   
   // Progress tracking
   const [currentProgress, setCurrentProgress] = useState<ProgressUpdate | null>(null);
@@ -257,67 +266,123 @@ export default function Home() {
   const handleImageCaptured = async (file: File) => {
     setImageProcessing(true);
     setShowCamera(false);
-    setImageAnalysisResult(null);
-    
+    setResult(null);
+    setShowContributionSuccess(false);
+    setShowLowConfidenceFallback(false);
+    stopProgressTracking();
+
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const response = await fetch('/api/image-recognition', {
-        method: 'POST',
-        body: formData,
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result);
+        };
+        reader.readAsDataURL(file);
       });
+
+      // Generate synthetic identifier for image
+      const imageId = `img_${Date.now()}`;
+
+      console.log('🔍 Starting enhanced image analysis flow...');
       
+      // Step 1: OCR + Brand Detection (Lightweight Agent)
+      const response = await fetch('/api/lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barcode: imageId,
+          image_base64: base64,
+          evaluation_mode: false
+        }),
+      });
+
       const data = await response.json();
-      setImageAnalysisResult(data);
-      
-      console.log('📸 Enhanced image analysis result:', data);
-      
-      // Check if we got good data from the enhanced analysis
-      if (data.success && data.brand && data.product_name && data.confidence >= 50) {
-        // If we got good data from image analysis, proceed to ownership research
-        console.log('✅ Image analysis successful, proceeding to ownership research');
+      setImageProcessing(false);
+
+      // Handle different response scenarios based on the new UX flow
+      if (data.success) {
+        // High confidence match found - proceed to ownership research
+        console.log('✅ High confidence match found, proceeding to ownership research');
+        setResult(data);
         
-        // Create a synthetic barcode for tracking
-        const syntheticBarcode = `img_${Date.now()}`;
-        setCurrentBarcode(syntheticBarcode);
-        
-        // Proceed to ownership research with the extracted data
-        await handleBarcode(syntheticBarcode, {
-          product_name: data.product_name,
-          brand: data.brand
-        });
+        if (data.agent_execution_trace?.query_id) {
+          startProgressTracking(data.agent_execution_trace.query_id);
+        }
+      } else if (data.requires_manual_entry) {
+        // Check if this is a disambiguation scenario
+        if (data.disambiguation_candidates && data.disambiguation_candidates.length > 1) {
+          console.log('🔍 Multiple companies found, showing disambiguation modal');
+          setDisambiguationCandidates(data.disambiguation_candidates);
+          setShowDisambiguationModal(true);
+        } else if (data.vision_fallback_needed) {
+          // Vision agent fallback needed
+          console.log('🔍 Vision fallback needed, showing retake photo modal');
+          setVisionFallbackReason(data.reason || 'Low confidence in image analysis');
+          setShowVisionFallbackModal(true);
+        } else {
+          // Standard manual entry required
+          console.log('📝 Manual entry required');
+          setContributionReason('insufficient_data');
+          setShowUserContribution(true);
+          
+          // Pre-fill with any partial data
+          const partialData = {
+            product_name: data.product_data?.product_name || data.product_name || '',
+            brand: data.product_data?.brand || data.brand || ''
+          };
+          setUserContribution(partialData);
+          setLowConfidenceData(partialData);
+        }
       } else {
-        // If image analysis failed or returned insufficient data, show manual entry
-        console.log('⚠️ Image analysis insufficient for ownership research, showing manual entry');
-        console.log('Analysis details:', {
-          success: data.success,
-          brand: data.brand,
-          product_name: data.product_name,
-          confidence: data.confidence,
-          flow: data.flow,
-          reason: 'Data quality insufficient for ownership research'
-        });
-        
-        setContributionReason('insufficient_data');
+        // Error or other failure
+        console.error('❌ Image analysis failed:', data.error);
+        setContributionReason('analysis_failed');
         setShowUserContribution(true);
-        setUserContribution({
-          product_name: data.product_name || '',
-          brand: data.brand || ''
-        });
       }
     } catch (error) {
       console.error('❌ Error processing image:', error);
-      setContributionReason('not_found');
-      setShowUserContribution(true);
-      setUserContribution({ product_name: '', brand: '' });
-    } finally {
       setImageProcessing(false);
+      setContributionReason('error');
+      setShowUserContribution(true);
     }
   };
 
   const handleCameraClose = () => {
     setShowCamera(false);
+  };
+
+  // New handlers for enhanced UX flow
+  const handleDisambiguationSelect = (candidate: any) => {
+    setShowDisambiguationModal(false);
+    // Use the selected candidate to proceed with ownership research
+    handleUserContributionSubmit({
+      preventDefault: () => {},
+      target: {
+        brand: { value: candidate.name },
+        product_name: { value: candidate.product_name || '' }
+      }
+    } as any);
+  };
+
+  const handleDisambiguationManualEntry = () => {
+    setShowDisambiguationModal(false);
+    setShowUserContribution(true);
+    setContributionReason('disambiguation');
+  };
+
+  const handleVisionFallbackRetake = () => {
+    setShowVisionFallbackModal(false);
+    setShowCamera(true);
+  };
+
+  const handleVisionFallbackManualEntry = () => {
+    setShowVisionFallbackModal(false);
+    setShowUserContribution(true);
+    setContributionReason('vision_fallback');
   };
 
   // Helper to get flag emoji from country name
@@ -368,29 +433,51 @@ export default function Home() {
               <div className="text-center mb-8">
                 <div className="text-6xl mb-4">📸</div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Take a Photo
+                  Discover who owns the companies behind your purchases
                 </h2>
                 <p className="text-gray-600 text-base mb-6">
-                  Point your camera at any product packaging to discover who owns the company behind it
+                  Take a photo of any product packaging to reveal the corporate ownership behind it
                 </p>
               </div>
               
               <Button
-                onClick={() => setShowCamera(true)}
+                onClick={() => {
+                  console.log('📸 Camera button clicked');
+                  setShowCamera(true);
+                }}
                 className="w-full text-lg py-4 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700 mb-4"
                 size="lg"
               >
-                📸 Take a Photo
+                📸 Take a photo of the product
               </Button>
+              
+              <p className="text-sm text-gray-500 mb-6 text-center">
+                Make sure the brand or company name is clearly visible
+              </p>
               
               <div className="w-full text-center">
                 <button
-                  onClick={() => setShowFallbackModal(true)}
+                  onClick={() => {
+                    console.log('✏️ Manual entry button clicked');
+                    setShowFallbackModal(true);
+                  }}
                   className="text-sm text-gray-500 hover:text-gray-700 underline"
                 >
-                  Try manual or barcode entry
+                  ✏️ Enter brand/company manually
                 </button>
               </div>
+              
+              {/* Dev/debug link (hidden in production) */}
+              {true && (
+                <div className="mt-4 w-full text-center">
+                  <button
+                    onClick={() => setShowManualEntry(true)}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    Scan barcode (legacy fallback)
+                  </button>
+                </div>
+              )}
               
               {/* Demo Button */}
               <div className="mt-6 w-full">
@@ -435,7 +522,8 @@ export default function Home() {
                 <Button
                   onClick={() => {
                     setShowFallbackModal(false);
-                    setShowManualEntry(true);
+                    setShowUserContribution(true);
+                    setContributionReason('manual_entry');
                   }}
                   variant="outline"
                   className="w-full text-base py-4 font-semibold"
@@ -443,17 +531,18 @@ export default function Home() {
                   ✏️ Enter Manually
                 </Button>
                 
-                <Button
-                  onClick={() => {
-                    setShowFallbackModal(false);
-                    // Show barcode scanner in a modal-like context
-                    setShowManualEntry(true);
-                  }}
-                  variant="outline"
-                  className="w-full text-base py-4 font-semibold"
-                >
-                  📱 Scan Barcode
-                </Button>
+                {true && (
+                  <Button
+                    onClick={() => {
+                      setShowFallbackModal(false);
+                      setShowManualEntry(true);
+                    }}
+                    variant="outline"
+                    className="w-full text-base py-4 font-semibold"
+                  >
+                    📱 Scan Barcode (Dev)
+                  </Button>
+                )}
               </div>
               
               <Button
@@ -475,6 +564,24 @@ export default function Home() {
           />
         )}
 
+        {/* Disambiguation Modal */}
+        <DisambiguationModal
+          candidates={disambiguationCandidates}
+          onSelect={handleDisambiguationSelect}
+          onManualEntry={handleDisambiguationManualEntry}
+          onClose={() => setShowDisambiguationModal(false)}
+          isOpen={showDisambiguationModal}
+        />
+
+        {/* Vision Fallback Modal */}
+        <VisionFallbackModal
+          onRetakePhoto={handleVisionFallbackRetake}
+          onManualEntry={handleVisionFallbackManualEntry}
+          onClose={() => setShowVisionFallbackModal(false)}
+          isOpen={showVisionFallbackModal}
+          reason={visionFallbackReason}
+        />
+
         {/* Show Demo Result Screen */}
         {showDemo && (
           <ProductResultScreen onScanAnother={handleScanAnother} />
@@ -482,7 +589,19 @@ export default function Home() {
 
         {/* Show Actual Result Screen */}
         {result && !processing && !showDemo && !result.requires_manual_entry && (
-          <ProductResultScreen onScanAnother={handleScanAnother} result={result} />
+          <ProductResultScreenV2 
+            result={result} 
+            onScanAnother={handleScanAnother}
+            onManualEntry={() => setShowUserContribution(true)}
+            onConfirmResult={() => {
+              console.log('Result confirmed by user');
+              // Could add analytics or feedback collection here
+            }}
+            onFlagIssue={() => {
+              console.log('Issue flagged by user');
+              // Could add issue reporting functionality here
+            }}
+          />
         )}
 
         {/* Manual/Camera Entry Modal if required by quality agent */}
@@ -589,13 +708,20 @@ export default function Home() {
         {showManualEntry && !result && (
           <Card className="w-full rounded-2xl shadow-xl border border-gray-100">
             <CardContent className="p-8 flex flex-col items-center">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">
-                Enter Barcode Manually
-              </h2>
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-4">✏️</div>
+                <h2 className="text-xl font-semibold text-gray-800 mb-3">
+                  Enter Product Information
+                </h2>
+                <p className="text-gray-600 text-base">
+                  Can you tell us who made this product?
+                </p>
+              </div>
+              
               <form onSubmit={handleManualSubmit} className="w-full space-y-6">
                 <div>
                   <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-2">
-                    Barcode
+                    Product Barcode (Optional)
                   </label>
                   <Input
                     type="text"
@@ -603,10 +729,14 @@ export default function Home() {
                     value={manualBarcode}
                     onChange={(e) => setManualBarcode(e.target.value)}
                     className="w-full text-lg bg-gray-50"
-                    placeholder="Enter product barcode..."
+                    placeholder="Enter product barcode if available..."
                     autoFocus
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    If you don't have the barcode, you can still proceed with manual entry
+                  </p>
                 </div>
+                
                 <div className="flex gap-4">
                   <Button
                     type="submit"
@@ -625,6 +755,23 @@ export default function Home() {
                   </Button>
                 </div>
               </form>
+              
+              <div className="mt-6 w-full text-center">
+                <p className="text-sm text-gray-500 mb-3">
+                  Or try a different approach:
+                </p>
+                <Button
+                  onClick={() => {
+                    setShowManualEntry(false);
+                    setShowUserContribution(true);
+                    setContributionReason('manual_entry');
+                  }}
+                  variant="outline"
+                  className="w-full text-base py-3 font-semibold"
+                >
+                  ✏️ Enter brand/company manually
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -634,22 +781,44 @@ export default function Home() {
           <Card className="w-full rounded-2xl shadow-xl border border-blue-200 bg-blue-50">
             <CardContent className="p-8 flex flex-col items-center">
               <div className="text-center mb-6">
-                <div className="text-4xl mb-4">🧐</div>
+                <div className="text-4xl mb-4">✏️</div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-3">
                   {contributionReason === 'insufficient_data' 
                     ? 'Quality Check: More Information Needed' 
+                    : contributionReason === 'manual_entry'
+                    ? 'Enter Product Information'
+                    : contributionReason === 'disambiguation'
+                    ? 'Manual Entry Required'
+                    : contributionReason === 'vision_fallback'
+                    ? 'Manual Entry Required'
+                    : contributionReason === 'analysis_failed'
+                    ? 'Analysis Failed'
+                    : contributionReason === 'error'
+                    ? 'Error Occurred'
                     : 'We couldn\'t find this product'
                   }
                 </h2>
                 <p className="text-gray-700 text-base mb-3">
                   {contributionReason === 'insufficient_data'
                     ? 'Our quality assessment found the barcode data wasn\'t detailed enough for accurate ownership research. Please help us by providing the product name and brand.'
+                    : contributionReason === 'manual_entry'
+                    ? 'Can you tell us who made this product?'
+                    : contributionReason === 'disambiguation'
+                    ? 'None of the detected companies matched. Please enter the correct company information.'
+                    : contributionReason === 'vision_fallback'
+                    ? 'Image analysis couldn\'t identify the company clearly. Please enter the information manually.'
+                    : contributionReason === 'analysis_failed'
+                    ? 'Image analysis failed to extract company information. Please provide the details manually.'
+                    : contributionReason === 'error'
+                    ? 'An error occurred during analysis. Please enter the information manually.'
                     : 'Want to help by entering its name and brand?'
                   }
                 </p>
-                <p className="text-gray-600 text-sm">
-                  Barcode: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{currentBarcode}</span>
-                </p>
+                {currentBarcode && (
+                  <p className="text-gray-600 text-sm">
+                    Barcode: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{currentBarcode}</span>
+                  </p>
+                )}
                 {/* Show what was found from barcode lookup, if any */}
                 {(lowConfidenceData.product_name || lowConfidenceData.brand) && (
                   <div className="mt-4 bg-white border border-blue-300 rounded-lg p-4 text-left">
@@ -682,56 +851,62 @@ export default function Home() {
               <div className="w-full border-t border-blue-200 pt-4">
                 <p className="text-sm text-gray-600 mb-4 text-center">Or enter the information manually:</p>
                 <form onSubmit={handleUserContributionSubmit} className="w-full space-y-4">
-                <div>
-                  <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Name *
-                  </label>
-                  <Input
-                    type="text"
-                    id="product_name"
-                    value={userContribution.product_name}
-                    onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
+                  <div>
+                    <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
+                      Brand or Company Name *
+                    </label>
+                    <Input
+                      type="text"
+                      id="brand"
+                      value={userContribution.brand}
+                      onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                    placeholder="e.g., Kit Kat Matcha Green Tea"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
-                      Brand Name *
-                  </label>
-                  <Input
-                    type="text"
-                    id="brand"
-                    value={userContribution.brand}
-                    onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
+                      placeholder="e.g., Nestlé, Coca-Cola, Apple"
+                      autoFocus
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the company that owns or produces this product
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name (Optional)
+                    </label>
+                    <Input
+                      type="text"
+                      id="product_name"
+                      value={userContribution.product_name}
+                      onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                    placeholder="e.g., Kit Kat, Nestlé"
-                  />
-                </div>
+                      placeholder="e.g., Kit Kat Matcha Green Tea"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Helpful but not required for ownership research
+                    </p>
+                  </div>
                   <div className="flex gap-3 pt-2">
-                  <Button
-                    type="submit"
+                    <Button
+                      type="submit"
                       className="flex-1 text-base py-3 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700"
-                    disabled={!userContribution.product_name.trim() || !userContribution.brand.trim()}
-                  >
+                      disabled={!userContribution.brand.trim()}
+                    >
                       🔍 Research Ownership
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setShowUserContribution(false)}
-                    className="flex-1 text-base py-3 font-semibold shadow"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowUserContribution(false)}
+                      className="flex-1 text-base py-3 font-semibold shadow"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
               </div>
               
               <div className="mt-6 text-center">
                 <p className="text-xs text-gray-500">
-                  💡 <strong>Tip:</strong> More specific brand names (e.g., "Nestlé" instead of "Kit Kat") help us find the ultimate owner.
+                  💡 <strong>Tip:</strong> More specific company names (e.g., "Nestlé" instead of "Kit Kat") help us find the ultimate owner.
                 </p>
               </div>
             </CardContent>
@@ -760,18 +935,18 @@ export default function Home() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Analyzing Product Image...
-                        </h3>
+              </h3>
               <div className="text-gray-600 text-center space-y-2">
                 <p className="text-sm">
-                  Step 1: Running OCR and lightweight brand extraction...
+                  Step 1: Running OCR and brand detection...
                 </p>
                 <p className="text-sm">
-                  Step 2: Assessing quality and confidence...
+                  Step 2: Assessing confidence and quality...
                 </p>
                 <p className="text-sm">
-                  Step 3: Escalating to advanced analysis if needed...
+                  Step 3: Determining next steps...
                 </p>
-                </div>
+              </div>
             </CardContent>
           </Card>
         )}

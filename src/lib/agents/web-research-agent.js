@@ -4,6 +4,7 @@
  */
 
 import dotenv from 'dotenv'
+import OpenAI from 'openai'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -18,6 +19,10 @@ const OPENCORPORATES_API_KEY = process.env.OPENCORPORATES_API_KEY || process.env
 // Simple in-memory cache
 const searchCache = new Map()
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 // Debug logging
 console.log('[WebResearchAgent] Environment check:', {
@@ -362,11 +367,14 @@ async function scrapeRelevantWebsites(searchResults, brand) {
     try {
       const scrapedContent = await scrapeWebsite(result.url, brand)
       if (scrapedContent) {
+        // LLM summarize company info
+        const llmSummary = await summarizeCompanyInfo(scrapedContent.content, result.url)
         scrapedData.push({
           url: result.url,
           title: result.title,
           content: scrapedContent.content,
           ownershipInfo: scrapedContent.ownershipInfo,
+          llm_company_summary: llmSummary,
           source: 'web_scraping',
           priorityScore: result.score
         })
@@ -856,5 +864,39 @@ export function getRequiredEnvVars() {
     GOOGLE_API_KEY: !!GOOGLE_API_KEY,
     GOOGLE_CSE_ID: !!GOOGLE_CSE_ID,
     OPENCORPORATES_API_KEY: !!OPENCORPORATES_API_KEY
+  }
+}
+
+// Add helper to summarize company info using LLM
+async function summarizeCompanyInfo(text, url) {
+  if (!text || text.length < 100) return null;
+  try {
+    const prompt = `You are a company information extraction agent. Given the following text from a company's website (possibly from an About, Company, or Footer page), extract the most likely company name, a one-sentence summary of what the company does, and any parent/ownership info if present. If no company name is found, return null for company. Respond in JSON:
+{
+  "company_name": string | null,
+  "summary": string,
+  "parent_company": string | null
+}
+
+Text:
+"""
+${text.substring(0, 3500)}
+"""`;
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'You are a company info extraction agent.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 300,
+      temperature: 0.2
+    });
+    const result = response.choices[0].message.content;
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    return JSON.parse(jsonMatch[0]);
+  } catch (e) {
+    console.error('[WebResearchAgent] LLM summarization failed:', e);
+    return null;
   }
 } 

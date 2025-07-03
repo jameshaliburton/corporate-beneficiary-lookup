@@ -108,18 +108,27 @@ export async function POST(request: NextRequest) {
     // Generate a unique query ID for progress tracking
     const queryId = `query_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Determine the type of identifier we're working with
+    const identifier = barcode;
+    const isRealBarcode = identifier && !identifier.startsWith('img_') && !identifier.startsWith('data:');
+    const isImageIdentifier = identifier && identifier.startsWith('img_');
+    const isImageData = image_base64 && image_base64.startsWith('data:');
+
     // Emit initial progress
-    await emitProgress(queryId, 'start', 'started', { barcode, brand, product_name, has_image: !!image_base64 });
+    await emitProgress(queryId, 'start', 'started', { 
+      identifier_type: isRealBarcode ? 'barcode' : isImageIdentifier ? 'image_id' : 'manual',
+      identifier,
+      brand, 
+      product_name, 
+      has_image: !!image_base64 
+    });
 
     try {
-      let currentBarcodeData = null;
+      let currentProductData = null;
       
-      // Check if this is a synthetic barcode from image capture
-      const isSyntheticBarcode = barcode && barcode.startsWith('img_');
-      
-      // Step 1: If we have a real barcode (not synthetic), try enhanced barcode lookup first
-      if (barcode && !isSyntheticBarcode) {
-        await emitProgress(queryId, 'barcode_lookup', 'started', { barcode });
+      // Step 1: If we have a real barcode, try enhanced barcode lookup first
+      if (isRealBarcode) {
+        await emitProgress(queryId, 'barcode_lookup', 'started', { barcode: identifier });
         
         // Prepare user data if provided
         const userData = (product_name || brand) ? {
@@ -128,10 +137,10 @@ export async function POST(request: NextRequest) {
           region_hint: hints.country_of_origin
         } : null;
         
-        const barcodeData = await enhancedLookupProduct(barcode, userData);
+        const barcodeData = await enhancedLookupProduct(identifier, userData);
         await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
-        currentBarcodeData = { ...barcodeData };
+        currentProductData = { ...barcodeData };
 
         // Check if enhanced lookup requires manual entry (poor quality data)
         if (barcodeData.requires_manual_entry) {
@@ -142,10 +151,10 @@ export async function POST(request: NextRequest) {
             success: false,
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
-            barcode_data: {
+            product_data: {
               product_name: barcodeData.product_name,
               brand: barcodeData.brand,
-              barcode: barcodeData.barcode
+              identifier: barcodeData.barcode
             },
             quality_assessment: barcodeData.quality_assessment,
             lookup_trace: barcodeData.lookup_trace,
@@ -165,36 +174,36 @@ export async function POST(request: NextRequest) {
             query_id: queryId
           });
         }
-      } else if (isSyntheticBarcode) {
-        // Synthetic barcode from image capture - use provided manual data
-        console.log('🔍 Synthetic barcode from image capture, using provided data for vision analysis');
+      } else if (isImageIdentifier) {
+        // Image identifier from camera capture - use provided manual data
+        console.log('🔍 Image identifier from camera capture, using provided data for vision analysis');
         
         if (product_name || brand) {
           console.log('📝 Using image-extracted manual data:', { product_name, brand });
-          currentBarcodeData = {
+          currentProductData = {
             product_name: product_name || null,
             brand: brand || null,
-            barcode: barcode, // Keep the synthetic barcode for tracking
+            identifier: identifier, // Keep the image identifier for tracking
             result_type: 'image_extracted',
             lookup_trace: ['image_extracted'],
             confidence: 70, // Image-extracted data has medium confidence
             sources: ['image_analysis']
           };
           
-          await emitProgress(queryId, 'image_extraction', 'completed', currentBarcodeData);
+          await emitProgress(queryId, 'image_extraction', 'completed', currentProductData);
         } else {
-          // Only synthetic barcode provided - we'll handle this in the vision analysis section below
-          currentBarcodeData = {
+          // Only image identifier provided - we'll handle this in the vision analysis section below
+          currentProductData = {
             product_name: null,
             brand: null,
-            barcode: barcode,
+            identifier: identifier,
             result_type: 'image_only',
             lookup_trace: ['image_input'],
             confidence: 0,
             sources: ['image_input']
           };
           
-          await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided with synthetic barcode, attempting analysis' });
+          await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided with identifier, attempting analysis' });
         }
       } else {
         // No barcode provided - start with manual/user provided data
@@ -202,23 +211,23 @@ export async function POST(request: NextRequest) {
         
         if (product_name || brand) {
           console.log('📝 Using manual entry data:', { product_name, brand });
-          currentBarcodeData = {
+          currentProductData = {
             product_name: product_name || null,
             brand: brand || null,
-            barcode: null,
+            identifier: null,
             result_type: 'manual_entry',
             lookup_trace: ['manual_entry'],
             confidence: 85, // Manual entry assumed to be high quality
             sources: ['user_input']
           };
           
-          await emitProgress(queryId, 'manual_entry', 'completed', currentBarcodeData);
+          await emitProgress(queryId, 'manual_entry', 'completed', currentProductData);
         } else {
           // Only image provided - we'll handle this in the vision analysis section below
-          currentBarcodeData = {
+          currentProductData = {
             product_name: null,
             brand: null,
-            barcode: null,
+            identifier: null,
             result_type: 'image_only',
             lookup_trace: ['image_input'],
             confidence: 0,
@@ -233,10 +242,10 @@ export async function POST(request: NextRequest) {
       let needsVisionAnalysis = false;
       let qualityAssessment = null;
 
-      if (currentBarcodeData && (currentBarcodeData.product_name || currentBarcodeData.brand)) {
+      if (currentProductData && (currentProductData.product_name || currentProductData.brand)) {
         console.log('🔍 Running Quality Assessment Agent...');
         
-        qualityAssessment = await qualityAgent.assessProductDataQuality(currentBarcodeData);
+        qualityAssessment = await qualityAgent.assessProductDataQuality(currentProductData);
         
         console.log('📊 Quality Assessment Result:', {
           is_meaningful: qualityAssessment.is_meaningful,
@@ -254,9 +263,9 @@ export async function POST(request: NextRequest) {
             success: false,
             requires_manual_entry: true,
             reason: 'insufficient_data_no_image',
-            barcode_data: currentBarcodeData,
+            product_data: currentProductData,
             quality_assessment: qualityAssessment,
-            result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'manual_entry', 'insufficient_data'),
+            result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
             message: 'Product information is insufficient for ownership research. Please provide more details manually.',
             query_id: queryId
           });
@@ -270,8 +279,8 @@ export async function POST(request: NextRequest) {
           success: false,
           requires_manual_entry: true,
           reason: 'no_meaningful_data',
-          barcode_data: currentBarcodeData,
-          result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'manual_entry', 'insufficient_data'),
+          product_data: currentProductData,
+          result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
           message: 'No meaningful product information provided. Please enter brand and product name manually.',
           query_id: queryId
         });
@@ -286,8 +295,8 @@ export async function POST(request: NextRequest) {
         
         try {
           const visionResult = await visionAgent.analyzeImage(image_base64, {
-            barcode,
-            partialData: currentBarcodeData,
+            identifier,
+            partialData: currentProductData,
             test_mode: body.test_mode || false,
             simulateVisionFailure: body.simulateVisionFailure || false,
             simulateOCRFailure: body.simulateOCRFailure || false
@@ -308,11 +317,11 @@ export async function POST(request: NextRequest) {
             
             // Use vision data to enhance the product data
             let enhancedData = {
-              ...currentBarcodeData,
-              product_name: visionResult.data.product_name || currentBarcodeData?.product_name,
-              brand: visionResult.data.brand || currentBarcodeData?.brand,
+              ...currentProductData,
+              product_name: visionResult.data.product_name || currentProductData?.product_name,
+              brand: visionResult.data.brand || currentProductData?.brand,
               result_type: 'vision_enhanced',
-              lookup_trace: [...(currentBarcodeData?.lookup_trace || []), 'vision_analysis'],
+              lookup_trace: [...(currentProductData?.lookup_trace || []), 'vision_analysis'],
               // Add company and country_of_origin if they don't exist in the original data
               ...(visionResult.data.company && { company: visionResult.data.company }),
               ...(visionResult.data.country_of_origin && { country_of_origin: visionResult.data.country_of_origin })
@@ -323,7 +332,7 @@ export async function POST(request: NextRequest) {
             
             if (enhancedQualityAssessment.is_meaningful) {
               console.log('✅ Enhanced data passes quality assessment - proceeding to agentic search');
-              currentBarcodeData = enhancedData;
+              currentProductData = enhancedData;
               qualityAssessment = enhancedQualityAssessment;
             } else {
               console.log('❌ Even with vision data, quality is insufficient');
@@ -331,10 +340,10 @@ export async function POST(request: NextRequest) {
                 success: false,
                 requires_manual_entry: true,
                 reason: 'insufficient_data_after_vision',
-                barcode_data: currentBarcodeData,
+                product_data: currentProductData,
                 quality_assessment: enhancedQualityAssessment,
                 vision_result: visionResult,
-                result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'vision_enhanced', 'insufficient_data'),
+                result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'insufficient_data'),
                 message: 'Product information is still incomplete even after image analysis. Please provide details manually.',
                 query_id: queryId
               });
@@ -345,10 +354,10 @@ export async function POST(request: NextRequest) {
               success: false,
               requires_manual_entry: true,
               reason: 'vision_analysis_failed',
-              barcode_data: currentBarcodeData,
+              product_data: currentProductData,
               quality_assessment: qualityAssessment,
               vision_result: visionResult,
-              result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'vision_enhanced', 'vision_failed'),
+              result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'vision_failed'),
               message: 'Image analysis could not extract sufficient product information. Please provide details manually.',
               query_id: queryId
             });
@@ -361,10 +370,10 @@ export async function POST(request: NextRequest) {
             success: false,
             requires_manual_entry: true,
             reason: 'vision_analysis_error',
-            barcode_data: currentBarcodeData,
+            product_data: currentProductData,
             quality_assessment: qualityAssessment,
             vision_error: visionError.message,
-            result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'vision_enhanced', 'error'),
+            result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'error'),
             message: 'Image analysis failed. Please provide details manually.',
             query_id: queryId
           });
@@ -372,33 +381,33 @@ export async function POST(request: NextRequest) {
       }
 
       // If barcode lookup returns no data at all, trigger manual entry/camera fallback
-      if (!currentBarcodeData || (!currentBarcodeData.product_name && !currentBarcodeData.brand)) {
+      if (!currentProductData || (!currentProductData.product_name && !currentProductData.brand)) {
         console.log('❌ No meaningful product data available. Triggering manual entry.');
         return NextResponse.json({
           success: false,
           requires_manual_entry: true,
           reason: 'no_product_data',
-          barcode_data: currentBarcodeData,
-          result_type: mapToExternalResultType(currentBarcodeData?.result_type || 'manual_entry', 'insufficient_data'),
+          product_data: currentProductData,
+          result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
           message: 'No meaningful product information found. Please provide details manually or use camera capture.'
         });
       }
 
       // Step 4: Enhanced Ownership research (only if no ownership data found and we have meaningful product data)
-      await emitProgress(queryId, 'ownership_research', 'started', { brand: currentBarcodeData.brand, product_name: currentBarcodeData.product_name });
+      await emitProgress(queryId, 'ownership_research', 'started', { brand: currentProductData.brand, product_name: currentProductData.product_name });
       
       // Enable evaluation logging if requested
       if (evaluation_mode) {
         process.env.ENABLE_EVALUATION_LOGGING = 'true';
       }
       
-      const ownershipResult = await EnhancedAgentOwnershipResearch({
-        barcode,
-        product_name: currentBarcodeData.product_name,
-        brand: currentBarcodeData.brand,
-        hints,
-        enableEvaluation: evaluation_mode
-      });
+              const ownershipResult = await EnhancedAgentOwnershipResearch({
+          barcode: identifier,
+          product_name: currentProductData.product_name,
+          brand: currentProductData.brand,
+          hints,
+          enableEvaluation: evaluation_mode
+        });
       
       // Reset evaluation logging
       if (evaluation_mode) {
@@ -410,13 +419,13 @@ export async function POST(request: NextRequest) {
       // Step 5: Final result
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
-      // Merge barcode data and ownership result into a flat structure
-      const mergedResult = {
-        success: true,
-        product_name: currentBarcodeData.product_name,
-        brand: currentBarcodeData.brand,
-        barcode: barcode,
-        financial_beneficiary: ownershipResult.financial_beneficiary,
+      // Merge product data and ownership result into a flat structure
+              const mergedResult = {
+          success: true,
+          product_name: currentProductData.product_name,
+          brand: currentProductData.brand,
+          barcode: identifier,
+          financial_beneficiary: ownershipResult.financial_beneficiary,
         beneficiary_country: ownershipResult.beneficiary_country,
         beneficiary_flag: ownershipResult.beneficiary_flag,
         confidence_score: ownershipResult.confidence_score,
@@ -428,12 +437,12 @@ export async function POST(request: NextRequest) {
         ownership_flow: ownershipResult.ownership_flow,
         sources: ownershipResult.sources,
         reasoning: ownershipResult.reasoning,
-        result_type: mapToExternalResultType(currentBarcodeData.result_type, ownershipResult.result_type),
+        result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
         user_contributed: !!(product_name || brand),
         agent_execution_trace: ownershipResult.agent_execution_trace,
-        lookup_trace: currentBarcodeData.lookup_trace, // Include enhanced lookup trace
+        lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
-        contextual_clues: (currentBarcodeData as any).contextual_clues || null,
+        contextual_clues: (currentProductData as any).contextual_clues || null,
         query_id: queryId
       };
 

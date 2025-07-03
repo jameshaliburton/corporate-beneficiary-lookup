@@ -103,7 +103,7 @@ export default function ProductCamera({ onImageCaptured, onClose }: ProductCamer
             📸 Take Product Photo
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            Point your camera at the product's brand logo and name
+            Take a clear photo of the <strong>brand name or company name</strong> on the product.
           </p>
         </div>
 
@@ -164,7 +164,8 @@ export default function ProductCamera({ onImageCaptured, onClose }: ProductCamer
 
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-xs text-blue-700">
-            <strong>💡 Tips:</strong> Make sure the brand logo and product name are clearly visible in the frame. 
+            <strong>💡 Tips:</strong> Look for logos, brand names, or company information. 
+            Focus on the main branding area where the company name is displayed. 
             Good lighting and a steady hand will improve recognition accuracy.
           </p>
         </div>

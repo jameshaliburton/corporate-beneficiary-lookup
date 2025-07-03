@@ -405,23 +405,23 @@ Return your analysis as JSON with all fields.`
 
     // Ensure all required fields are present
     const result = {
-      brand_name: parsedData.brand_name || parsedData.brand || 'Unknown Brand',
-      product_name: parsedData.product_name || 'Unknown Product',
-      product_type: parsedData.product_type || 'Unknown',
-      confidence: parsedData.confidence || 50,
-      reasoning: parsedData.reasoning || 'Extracted from image analysis',
+      brand_name: parsedData.brand_name || parsedData.brand || parsedData['Brand Name'] || 'Unknown Brand',
+      product_name: parsedData.product_name || parsedData['Product Name'] || 'Unknown Product',
+      product_type: parsedData.product_type || parsedData['Product Type'] || 'Unknown',
+      confidence: parsedData.confidence || parsedData['Confidence'] || 50,
+      reasoning: parsedData.reasoning || parsedData['Reasoning'] || 'Extracted from image analysis',
       
       // Contextual clues for disambiguation
-      language_indicators: parsedData.language_indicators || [],
-      country_indicators: parsedData.country_indicators || [],
-      product_style: parsedData.product_style || 'Unknown',
-      packaging_characteristics: parsedData.packaging_characteristics || [],
-      regional_clues: parsedData.regional_clues || [],
-      certification_marks: parsedData.certification_marks || [],
-      store_brand_indicators: parsedData.store_brand_indicators || false,
-      premium_indicators: parsedData.premium_indicators || false,
-      dietary_indicators: parsedData.dietary_indicators || [],
-      size_format: parsedData.size_format || 'Unknown',
+      language_indicators: parsedData.language_indicators || parsedData['Language Indicators'] || [],
+      country_indicators: parsedData.country_indicators || parsedData['Country Indicators'] || [],
+      product_style: parsedData.product_style || parsedData['Product Style'] || 'Unknown',
+      packaging_characteristics: parsedData.packaging_characteristics || parsedData['Packaging Characteristics'] || [],
+      regional_clues: parsedData.regional_clues || parsedData['Regional Clues'] || [],
+      certification_marks: parsedData.certification_marks || parsedData['Certification Marks'] || [],
+      store_brand_indicators: parsedData.store_brand_indicators || parsedData['Store Brand Indicators'] || false,
+      premium_indicators: parsedData.premium_indicators || parsedData['Premium Indicators'] || false,
+      dietary_indicators: parsedData.dietary_indicators || parsedData['Dietary Indicators'] || [],
+      size_format: parsedData.size_format || parsedData['Size/Format'] || 'Unknown',
       
       // Raw extraction for debugging
       raw_extraction: content,

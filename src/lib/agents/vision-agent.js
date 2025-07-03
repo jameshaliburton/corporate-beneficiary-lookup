@@ -22,7 +22,7 @@ class VisionAgent {
       const prompt = this.buildPrompt(productContext);
       
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
@@ -236,9 +236,10 @@ Return only valid JSON.`;
     // Check if we have at least a brand or company name
     const hasBrand = data.brand && data.brand.trim().length > 0;
     const hasCompany = data.company && data.company.trim().length > 0;
-    const hasProductName = data.product_name && data.product_name.trim().length > 0;
-
-    return (hasBrand || hasCompany) && hasProductName;
+    
+    // For ownership research, a meaningful brand/company alone is sufficient
+    // Product name is helpful but not required
+    return hasBrand || hasCompany;
   }
 }
 
