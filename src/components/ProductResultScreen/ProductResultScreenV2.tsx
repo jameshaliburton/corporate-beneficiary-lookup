@@ -21,6 +21,7 @@ interface TraceStep {
   status: 'started' | 'success' | 'error' | 'completed';
   error?: string;
   data?: any;
+  stage?: string;
 }
 
 interface ProductResult {
@@ -101,7 +102,8 @@ export default function ProductResultScreenV2({
       duration: stage.duration_ms,
       status: stage.status || 'completed',
       error: stage.error,
-      data: stage.data
+      data: stage.data,
+      stage: stage.stage
     }));
   };
 
@@ -113,10 +115,6 @@ export default function ProductResultScreenV2({
         
         {/* Header */}
         <div className="text-center">
-          <div className="flex justify-center items-center mb-2">
-            <img src="/logo.png" alt="OwnedBy Logo" className="h-12 mr-2" />
-            <span className="inline-block bg-yellow-200 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full align-middle shadow-sm">Beta</span>
-          </div>
           <h1 className="text-2xl font-bold text-gray-800">Ownership Analysis Complete</h1>
         </div>
 
@@ -167,31 +165,29 @@ export default function ProductResultScreenV2({
             </h3>
             
             <div className="space-y-3">
-              {ownershipFlow.map((company, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{company.flag || '🏳️'}</span>
-                      <span className="font-medium">{company.name}</span>
-                    </div>
-                    {company.type && (
-                      <Badge variant="outline" className="text-xs">
-                        {company.type}
-                      </Badge>
-                    )}
-                  </div>
-                  {company.ultimate && (
-                    <Badge className="bg-green-100 text-green-800">
-                      Ultimate Owner
-                    </Badge>
-                  )}
-                </div>
-              ))}
-              
-              {ownershipFlow.length === 0 && (
-                <p className="text-gray-500 text-center py-4">
-                  No ownership structure found
-                </p>
+              {Array.isArray(ownershipFlow) && ownershipFlow.length > 0 ? (
+                ownershipFlow.map((entry, i) => {
+                  if (typeof entry === 'string') {
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-2 border-b last:border-b-0">
+                        <span className="text-2xl">🏢</span>
+                        <span className="font-semibold text-gray-700">{entry}</span>
+                      </div>
+                    );
+                  } else if (typeof entry === 'object' && entry !== null) {
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-2 border-b last:border-b-0">
+                        <span className="text-2xl">{entry.flag || '🏢'}</span>
+                        <span className="font-semibold text-gray-700">{entry.name}</span>
+                        {entry.type && <span className="text-xs text-gray-500">({entry.type})</span>}
+                        {entry.country && <span className="text-xs text-gray-400 ml-2">{entry.country}</span>}
+                      </div>
+                    );
+                  }
+                  return null;
+                })
+              ) : (
+                <div className="text-gray-400 italic">No ownership structure found</div>
               )}
             </div>
           </CardContent>
@@ -251,10 +247,16 @@ export default function ProductResultScreenV2({
               {showTrace && traceSteps.length > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 border text-sm">
                   {traceSteps.map((step, i) => (
-                    <div key={i} className="flex items-center justify-between py-1 px-2 border-b last:border-b-0">
-                      <span>{step.name || `Step ${i + 1}`}</span>
-                      <span className={`text-xs ml-2 ${step.status === 'error' ? 'text-red-500' : 'text-green-600'}`}>{step.status}</span>
-                      <span className="text-xs text-gray-400 ml-2">{step.duration ? `${step.duration}ms` : ''}</span>
+                    <div key={i} className="flex items-center gap-4 py-1 border-b last:border-b-0">
+                      <span className="font-semibold text-gray-700">
+                        {step.name || step.stage || `Step ${i + 1}`}
+                      </span>
+                      <span className={step.status === 'success' ? 'text-green-600' : step.status === 'error' ? 'text-red-600' : 'text-gray-500'}>
+                        {step.status}
+                      </span>
+                      {step.duration !== undefined && (
+                        <span className="text-xs text-gray-400 ml-auto">{step.duration}ms</span>
+                      )}
                     </div>
                   ))}
                 </div>

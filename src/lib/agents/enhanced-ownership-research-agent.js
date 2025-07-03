@@ -11,7 +11,7 @@ import { supabase } from '../supabase.ts'
 import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-mappings.js'
 import { getProductByBarcode, upsertProduct, ownershipResultToProductData } from '../database/products.js'
 import { emitProgress } from '../utils.ts'
-import { adaptedEvaluationFramework } from '../services/adapted-evaluation-framework.js'
+import { evaluationFramework } from '../services/evaluation-framework.js'
 import { getPromptBuilder, getCurrentPromptVersion } from './prompt-registry.js'
 import { calculateEnhancedConfidence, getConfidenceLabel, getConfidenceColor } from './confidence-estimation.js'
 import { 
@@ -118,7 +118,73 @@ export async function EnhancedAgentOwnershipResearch({
     cacheStage.success({ result: 'miss' }, ['No cached result available'])
     await emitProgress(queryId, 'cache_check', 'completed', { result: 'miss' })
     
-    // Step 1: Static Mapping Check
+    // Step 1: Google Sheets Ownership Mapping Check
+    const sheetsMappingStage = new EnhancedStageTracker(traceLogger, 'sheets_mapping', 'Checking Google Sheets ownership mappings')
+    await emitProgress(queryId, 'sheets_mapping', 'started', { brand })
+    
+    sheetsMappingStage.reason(`Checking Google Sheets ownership mappings for brand: ${brand}`, REASONING_TYPES.INFO)
+    
+    try {
+      const sheetsMapping = await evaluationFramework.checkOwnershipMapping(brand)
+      
+      if (sheetsMapping) {
+        sheetsMappingStage.reason(`Found Google Sheets mapping: ${sheetsMapping.ultimate_owner_name}`, REASONING_TYPES.EVIDENCE)
+        sheetsMappingStage.decide('Use Google Sheets mapping', ['Perform web research'], 'Google Sheets mapping provides reliable ownership data')
+        
+        const result = {
+          financial_beneficiary: sheetsMapping.ultimate_owner_name,
+          beneficiary_country: sheetsMapping.ultimate_owner_country,
+          beneficiary_flag: sheetsMapping.ultimate_owner_flag || getCountryFlag(sheetsMapping.ultimate_owner_country),
+          ownership_structure_type: sheetsMapping.intermediate_entity ? 'Subsidiary' : 'Direct',
+          confidence_score: 95,
+          ownership_flow: [
+            { name: brand, type: 'Brand', country: sheetsMapping.ultimate_owner_country, flag: sheetsMapping.ultimate_owner_flag || '🏳️', ultimate: false },
+            ...(sheetsMapping.intermediate_entity ? [{ name: sheetsMapping.intermediate_entity, type: 'Subsidiary', country: sheetsMapping.ultimate_owner_country, flag: sheetsMapping.ultimate_owner_flag || '🏳️', ultimate: false }] : []),
+            { name: sheetsMapping.ultimate_owner_name, type: 'Ultimate Owner', country: sheetsMapping.ultimate_owner_country, flag: sheetsMapping.ultimate_owner_flag || '🏳️', ultimate: true }
+          ],
+          sources: ['Google Sheets ownership mapping'],
+          reasoning: `Found in Google Sheets ownership mappings: ${sheetsMapping.notes || 'Direct ownership'}`,
+          web_research_used: false,
+          web_sources_count: 0,
+          query_analysis_used: false,
+          static_mapping_used: false,
+          result_type: 'sheets_mapping',
+          cached: false,
+          agent_execution_trace: traceLogger.toDatabaseFormat(),
+          initial_llm_confidence: 95,
+          agent_results: {
+            sheets_mapping: {
+              success: true,
+              data: sheetsMapping,
+              reasoning: 'Found in Google Sheets ownership mappings'
+            }
+          }
+        }
+        
+        sheetsMappingStage.success({
+          financial_beneficiary: result.financial_beneficiary,
+          confidence_score: result.confidence_score
+        }, ['Google Sheets mapping found and applied'])
+        
+        await emitProgress(queryId, 'sheets_mapping', 'success', sheetsMappingStage.stage.data)
+        
+        // Save to database
+        const productData = ownershipResultToProductData(barcode, product_name, brand, result)
+        await upsertProduct(productData)
+        
+        traceLogger.setFinalResult('sheets_mapping')
+        return result
+      }
+    } catch (sheetsError) {
+      sheetsMappingStage.reason(`Google Sheets mapping check failed: ${sheetsError.message}`, REASONING_TYPES.WARNING)
+      console.warn('[EnhancedAgentOwnershipResearch] Google Sheets mapping check failed:', sheetsError.message)
+    }
+    
+    sheetsMappingStage.reason('No Google Sheets mapping found, proceeding with static mapping check', REASONING_TYPES.INFO)
+    sheetsMappingStage.success({ result: 'miss' }, ['No Google Sheets mapping available'])
+    await emitProgress(queryId, 'sheets_mapping', 'completed', { result: 'miss' })
+    
+    // Step 2: Static Mapping Check
     const staticStage = new EnhancedStageTracker(traceLogger, 'static_mapping', 'Checking static ownership mappings')
     await emitProgress(queryId, 'static_mapping', 'started', { brand })
     
@@ -165,7 +231,7 @@ export async function EnhancedAgentOwnershipResearch({
     staticStage.success({ result: 'miss' }, ['No static mapping available'])
     await emitProgress(queryId, 'static_mapping', 'completed', { result: 'miss' })
     
-    // Step 2: RAG Knowledge Base Retrieval
+    // Step 3: RAG Knowledge Base Retrieval
     const ragStage = new EnhancedStageTracker(traceLogger, 'rag_retrieval', 'Searching knowledge base for similar ownership patterns')
     await emitProgress(queryId, 'rag_retrieval', 'started', { brand, product_name })
     
@@ -242,7 +308,7 @@ export async function EnhancedAgentOwnershipResearch({
       await emitProgress(queryId, 'rag_retrieval', 'failed', { error: ragError.message })
     }
     
-    // Step 3: LLM-First Analysis (now with RAG context)
+    // Step 4: LLM-First Analysis (now with RAG context)
     const llmFirstStage = new EnhancedStageTracker(traceLogger, 'llm_first_analysis', 'Attempting initial LLM analysis of brand ownership')
     await emitProgress(queryId, 'llm_first_analysis', 'started', { brand, product_name })
     
@@ -399,7 +465,7 @@ Respond in valid JSON format:
       await emitProgress(queryId, 'llm_first_analysis', 'completed', { method: 'llm_first_error' })
     }
     
-    // Step 4: Query Builder Analysis
+    // Step 5: Query Builder Analysis
     const queryStage = new EnhancedStageTracker(traceLogger, 'query_builder', 'Analyzing brand for optimal search queries')
     await emitProgress(queryId, 'query_builder', 'started', { brand })
     
@@ -437,7 +503,7 @@ Respond in valid JSON format:
       await emitProgress(queryId, 'query_builder', 'completed', { result: 'not_available' })
     }
     
-    // Step 5: Web Research
+    // Step 6: Web Research
     const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web research for ownership information')
     await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
     
@@ -495,7 +561,7 @@ Respond in valid JSON format:
       await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
     }
     
-    // Step 6: Ownership Analysis
+    // Step 7: Ownership Analysis
     const analysisStage = new EnhancedStageTracker(traceLogger, 'ownership_analysis', 'Performing LLM-based ownership analysis')
     await emitProgress(queryId, 'ownership_analysis', 'started', { 
       hasWebResearch: !!webResearchData?.success,
@@ -527,7 +593,7 @@ Respond in valid JSON format:
     
     await emitProgress(queryId, 'ownership_analysis', 'success', analysisStage.stage.data)
     
-    // Step 7: Enhanced Confidence Calculation
+    // Step 8: Enhanced Confidence Calculation
     const confidenceStage = new EnhancedStageTracker(traceLogger, 'confidence_calculation', 'Calculating enhanced confidence score')
     await emitProgress(queryId, 'confidence_calculation', 'started', { initial_confidence: ownership.confidence_score })
     
@@ -562,7 +628,7 @@ Respond in valid JSON format:
     
     await emitProgress(queryId, 'confidence_calculation', 'success', confidenceStage.stage.data)
     
-    // Step 8: Validation and Sanitization
+    // Step 9: Validation and Sanitization
     const validationStage = new EnhancedStageTracker(traceLogger, 'validation', 'Validating and sanitizing results')
     await emitProgress(queryId, 'validation', 'started', { confidence: ownership.confidence_score })
     
@@ -619,7 +685,7 @@ Respond in valid JSON format:
       }
     }
     
-    // Step 9: Database Save
+    // Step 10: Database Save
     const saveStage = new EnhancedStageTracker(traceLogger, 'database_save', 'Saving result to database')
     await emitProgress(queryId, 'database_save', 'started', { 
       financial_beneficiary: ownership.financial_beneficiary,
@@ -690,6 +756,46 @@ Respond in valid JSON format:
     
     // Set final result
     traceLogger.setFinalResult(validated.financial_beneficiary !== 'Unknown' ? 'success' : 'failure')
+    
+    // Evaluation logging if enabled
+    if (enableEvaluation && hints.test_id) {
+      try {
+        const evaluationData = {
+          test_id: hints.test_id,
+          trace_id: queryId,
+          agent_version: 'enhanced-v1.0',
+          actual_owner: validated.financial_beneficiary,
+          actual_country: validated.beneficiary_country,
+          actual_structure_type: validated.ownership_structure_type,
+          confidence_score: validated.confidence_score,
+          match_result: 'TBD', // Will be calculated by evaluation framework
+          latency: Date.now() - startTime,
+          token_cost_estimate: 0, // TODO: Calculate from API response
+          tool_errors: '',
+          explainability_score: 0, // Will be calculated by evaluation framework
+          source_used: validated.sources?.join(', ') || '',
+          prompt_snapshot: JSON.stringify(validated.agent_results || {}),
+          response_snippet: validated.reasoning || ''
+        }
+        
+        const steps = traceLogger.getStages().map(stage => ({
+          step_name: stage.name,
+          agent_or_tool: stage.agent || 'enhanced_ownership_agent',
+          input: stage.input || '',
+          output_snippet: stage.output || '',
+          outcome: stage.status,
+          latency_seconds: stage.duration ? stage.duration / 1000 : 0,
+          tool_used: stage.tool_used || '',
+          fallback_used: stage.fallback_used || 'No',
+          notes: stage.notes || ''
+        }))
+        
+        await evaluationFramework.logEvaluation(evaluationData, steps)
+        console.log(`[EnhancedAgentOwnershipResearch] Evaluation logged for test_id: ${hints.test_id}`)
+      } catch (evalError) {
+        console.warn('[EnhancedAgentOwnershipResearch] Failed to log evaluation:', evalError.message)
+      }
+    }
     
     console.log(`[EnhancedAgentOwnershipResearch] Research complete:`, validated)
     
@@ -833,6 +939,16 @@ function validateAndSanitizeResults(ownershipData, brand, webResearchData) {
   if (!validated.beneficiary_country) validated.beneficiary_country = 'Unknown'
   if (!validated.ownership_structure_type) validated.ownership_structure_type = 'Unknown'
   if (!validated.confidence_score) validated.confidence_score = 30
+  
+  // After fetching or constructing ownership_flow:
+  if (Array.isArray(validated.ownership_flow)) {
+    validated.ownership_flow = validated.ownership_flow.map(entry => {
+      if (typeof entry === 'string') {
+        return { name: entry };
+      }
+      return entry;
+    });
+  }
   
   return validated
 } 

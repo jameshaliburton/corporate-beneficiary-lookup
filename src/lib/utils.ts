@@ -10,13 +10,14 @@ export function cn(...inputs: ClassValue[]) {
  */
 export async function emitProgress(queryId: string, stage: string, status: 'started' | 'success' | 'error' | 'completed', data?: any, error?: string) {
   try {
-    // Use absolute URL for Node.js environment
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'
+    // Use dynamic port detection for development
+    const port = process.env.PORT || '3000'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${port}`
     const url = `${baseUrl}/api/progress`
     
     // Add timeout to prevent hanging
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 1000) // 1 second timeout
     
     await fetch(url, {
       method: 'POST',

@@ -1,7 +1,7 @@
 // Evaluation Framework Service
 
 import dotenv from 'dotenv'
-import { google } from 'googleapis'
+import { googleSheetsEvaluation } from './google-sheets-evaluation.js'
 
 // Load environment variables
 dotenv.config({ path: '.env.local' })
@@ -9,41 +9,31 @@ dotenv.config({ path: '.env.local' })
 /**
  * Evaluation Framework Service
  * Connects agent workflows with structured Google Sheets for human-in-the-loop feedback
+ * Updated to use new Google Sheets structure
  */
 
 class EvaluationFrameworkService {
   constructor() {
-    this.auth = null
-    this.sheets = null
-    this.spreadsheetId = process.env.GOOGLE_SHEETS_EVALUATION_ID
     this.isInitialized = false
     
-    // Sheet tab names
+    // Sheet tab names (new structure)
     this.tabs = {
-      EVALUATION_CASES: 'Evaluation Cases',
-      HUMAN_RATINGS: 'Human Ratings', 
-      AI_RESULTS: 'AI Results',
-      OWNERSHIP_MAPPINGS: 'Ownership Mappings',
-      FEEDBACK_SUGGESTIONS: 'Feedback & Suggestions'
+      EVALUATION_CASES: 'evaluation_cases',
+      EVALUATION_RESULTS: 'evaluation_results',
+      EVALUATION_STEPS: 'evaluation_steps',
+      OWNERSHIP_MAPPINGS: 'ownership_mappings'
     }
   }
 
   /**
-   * Initialize Google Sheets API
+   * Initialize the evaluation framework
    */
   async initialize() {
     if (this.isInitialized) return
 
     try {
-      const auth = new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
-      })
-
-      this.auth = await auth.getClient()
-      this.sheets = google.sheets({ version: 'v4', auth: this.auth })
+      await googleSheetsEvaluation.initialize()
       this.isInitialized = true
-
       console.log('[EvaluationFramework] Initialized successfully')
     } catch (error) {
       console.error('[EvaluationFramework] Initialization failed:', error)
@@ -52,58 +42,14 @@ class EvaluationFrameworkService {
   }
 
   /**
-   * Create evaluation spreadsheet with the defined architecture
+   * Create evaluation spreadsheet with the new structure
    */
   async createEvaluationSpreadsheet(title = 'Agent Evaluation Framework') {
     await this.initialize()
 
     try {
-      const createResponse = await this.sheets.spreadsheets.create({
-        requestBody: {
-          properties: {
-            title: title
-          },
-          sheets: [
-            {
-              properties: {
-                title: this.tabs.EVALUATION_CASES,
-                sheetId: 0
-              }
-            },
-            {
-              properties: {
-                title: this.tabs.HUMAN_RATINGS,
-                sheetId: 1
-              }
-            },
-            {
-              properties: {
-                title: this.tabs.AI_RESULTS,
-                sheetId: 2
-              }
-            },
-            {
-              properties: {
-                title: this.tabs.OWNERSHIP_MAPPINGS,
-                sheetId: 3
-              }
-            },
-            {
-              properties: {
-                title: this.tabs.FEEDBACK_SUGGESTIONS,
-                sheetId: 4
-              }
-            }
-          ]
-        }
-      })
-
-      const spreadsheetId = createResponse.data.spreadsheetId
+      const spreadsheetId = await googleSheetsEvaluation.createEvaluationTemplate(title)
       console.log('[EvaluationFramework] Created spreadsheet:', spreadsheetId)
-
-      // Set up headers for all tabs
-      await this.setupSheetHeaders(spreadsheetId)
-
       return spreadsheetId
     } catch (error) {
       console.error('[EvaluationFramework] Failed to create spreadsheet:', error)
@@ -112,135 +58,46 @@ class EvaluationFrameworkService {
   }
 
   /**
-   * Set up headers for all evaluation sheets
+   * Add evaluation case to evaluation_cases sheet
    */
-  async setupSheetHeaders(spreadsheetId) {
-    const headers = {
-      [this.tabs.EVALUATION_CASES]: [
-        'case_id', 'task_type', 'input_context', 'expected_behavior', 
-        'notes', 'status', 'created_date', 'updated_date'
-      ],
-      [this.tabs.HUMAN_RATINGS]: [
-        'case_id', 'evaluator', 'score', 'reasoning', 'timestamp',
-        'confidence_accuracy', 'reasoning_quality', 'hallucination_detected',
-        'improvement_suggestions'
-      ],
-      [this.tabs.AI_RESULTS]: [
-        'case_id', 'agent_version', 'output', 'evaluation_score', 
-        'logs', 'timestamp', 'execution_trace', 'confidence_score',
-        'sources_used', 'fallback_reason', 'total_duration_ms'
-      ],
-      [this.tabs.OWNERSHIP_MAPPINGS]: [
-        'brand_name', 'parent_company', 'source_url', 'confidence',
-        'last_updated', 'verified_by'
-      ],
-      [this.tabs.FEEDBACK_SUGGESTIONS]: [
-        'case_id', 'submitted_by', 'suggestion', 'urgency', 'date',
-        'category', 'status', 'assigned_to'
-      ]
-    }
-
-    for (const [sheetName, headerRow] of Object.entries(headers)) {
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetName}!A1:${String.fromCharCode(65 + headerRow.length - 1)}1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [headerRow]
-        }
-      })
-
-      // Format headers
-      await this.formatHeaders(spreadsheetId, sheetName, headerRow.length)
-    }
-
-    console.log('[EvaluationFramework] Headers set up successfully')
-  }
-
-  /**
-   * Format headers with styling
-   */
-  async formatHeaders(spreadsheetId, sheetName, columnCount) {
-    const sheetId = await this.getSheetIdByName(spreadsheetId, sheetName)
-    
-    await this.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            repeatCell: {
-              range: {
-                sheetId,
-                startRowIndex: 0,
-                endRowIndex: 1,
-                startColumnIndex: 0,
-                endColumnIndex: columnCount
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: { red: 0.2, green: 0.6, blue: 0.9 },
-                  textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }
-                }
-              },
-              fields: 'userEnteredFormat(backgroundColor,textFormat)'
-            }
-          }
-        ]
-      }
-    })
-  }
-
-  /**
-   * Get sheet ID by name
-   */
-  async getSheetIdByName(spreadsheetId, sheetName) {
-    const response = await this.sheets.spreadsheets.get({ spreadsheetId })
-    const sheet = response.data.sheets.find(s => s.properties.title === sheetName)
-    return sheet ? sheet.properties.sheetId : null
-  }
-
-  /**
-   * Add AI result to the AI Results tab
-   */
-  async addAIResult(aiResult) {
+  async addEvaluationCase(caseData) {
     await this.initialize()
-
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
 
     try {
       const {
-        case_id,
-        agent_version = 'v1.0',
-        output,
-        evaluation_score,
-        logs,
-        execution_trace,
-        confidence_score,
-        sources_used,
-        fallback_reason,
-        total_duration_ms
-      } = aiResult
+        test_id,
+        barcode,
+        product_name,
+        expected_owner,
+        expected_country,
+        expected_structure_type,
+        expected_confidence,
+        human_query,
+        evaluation_strategy,
+        evidence_expectation,
+        source_hints,
+        notes
+      } = caseData
 
       const rowData = [
-        case_id,
-        agent_version,
-        JSON.stringify(output),
-        evaluation_score || '',
-        JSON.stringify(logs),
-        new Date().toISOString(),
-        JSON.stringify(execution_trace),
-        confidence_score || '',
-        sources_used?.join(', ') || '',
-        fallback_reason || '',
-        total_duration_ms || ''
+        test_id,
+        barcode,
+        product_name,
+        expected_owner,
+        expected_country,
+        expected_structure_type,
+        expected_confidence,
+        human_query,
+        evaluation_strategy,
+        evidence_expectation,
+        source_hints,
+        notes
       ]
 
-      // Append row to AI Results sheet
-      await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.tabs.AI_RESULTS}!A:A`,
+      // Use the Google Sheets service to add the case
+      await googleSheetsEvaluation.sheets.spreadsheets.values.append({
+        spreadsheetId: googleSheetsEvaluation.spreadsheetId,
+        range: 'evaluation_cases!A:A',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: {
@@ -248,44 +105,39 @@ class EvaluationFrameworkService {
         }
       })
 
-      console.log(`[EvaluationFramework] Added AI result for case: ${case_id}`)
+      console.log(`[EvaluationFramework] Added evaluation case: ${test_id}`)
       return true
     } catch (error) {
-      console.error('[EvaluationFramework] Failed to add AI result:', error)
+      console.error('[EvaluationFramework] Failed to add evaluation case:', error)
       throw error
     }
   }
 
   /**
-   * Get evaluation cases
+   * Log complete evaluation data (result + steps)
    */
-  async getEvaluationCases(status = null) {
+  async logEvaluation(evaluationData, steps = []) {
     await this.initialize()
 
     try {
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.tabs.EVALUATION_CASES}!A:H`,
-        majorDimension: 'ROWS'
-      })
+      await googleSheetsEvaluation.logCompleteEvaluation(evaluationData, steps)
+      console.log(`[EvaluationFramework] Evaluation logged for test_id: ${evaluationData.test_id}`)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to log evaluation:', error)
+      throw error
+    }
+  }
 
-      const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
+  /**
+   * Get evaluation cases from evaluation_cases sheet
+   */
+  async getEvaluationCases(limit = 100) {
+    await this.initialize()
 
-      const headers = rows[0]
-      const cases = rows.slice(1).map(row => {
-        const obj = {}
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || ''
-        })
-        return obj
-      })
-
-      // Filter by status if provided
-      if (status) {
-        return cases.filter(c => c.status === status)
-      }
-
+    try {
+      const cases = await googleSheetsEvaluation.getEvaluationCases(limit)
+      console.log(`[EvaluationFramework] Retrieved ${cases.length} evaluation cases`)
       return cases
     } catch (error) {
       console.error('[EvaluationFramework] Failed to get evaluation cases:', error)
@@ -294,164 +146,252 @@ class EvaluationFrameworkService {
   }
 
   /**
-   * Get human ratings for a specific case
+   * Get evaluation results from evaluation_results sheet
    */
-  async getHumanRatings(caseId) {
+  async getEvaluationResults(limit = 100) {
     await this.initialize()
 
     try {
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.tabs.HUMAN_RATINGS}!A:I`,
-        majorDimension: 'ROWS'
-      })
-
-      const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
-
-      const headers = rows[0]
-      const ratings = rows.slice(1)
-        .map(row => {
-          const obj = {}
-          headers.forEach((header, index) => {
-            obj[header] = row[index] || ''
-          })
-          return obj
-        })
-        .filter(rating => rating.case_id === caseId)
-
-      return ratings
-    } catch (error) {
-      console.error('[EvaluationFramework] Failed to get human ratings:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get AI results for a specific case
-   */
-  async getAIResults(caseId, agentVersion = null) {
-    await this.initialize()
-
-    try {
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: `${this.tabs.AI_RESULTS}!A:K`,
-        majorDimension: 'ROWS'
-      })
-
-      const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
-
-      const headers = rows[0]
-      let results = rows.slice(1)
-        .map(row => {
-          const obj = {}
-          headers.forEach((header, index) => {
-            obj[header] = row[index] || ''
-          })
-          return obj
-        })
-        .filter(result => result.case_id === caseId)
-
-      // Filter by agent version if provided
-      if (agentVersion) {
-        results = results.filter(result => result.agent_version === agentVersion)
-      }
-
+      const results = await googleSheetsEvaluation.getEvaluationResults(limit)
+      console.log(`[EvaluationFramework] Retrieved ${results.length} evaluation results`)
       return results
     } catch (error) {
-      console.error('[EvaluationFramework] Failed to get AI results:', error)
+      console.error('[EvaluationFramework] Failed to get evaluation results:', error)
       throw error
     }
   }
 
   /**
-   * Compare human ratings vs AI results for a case
+   * Get evaluation steps for a specific trace_id
    */
-  async compareEvaluations(caseId) {
-    const [humanRatings, aiResults] = await Promise.all([
-      this.getHumanRatings(caseId),
-      this.getAIResults(caseId)
-    ])
+  async getEvaluationSteps(trace_id) {
+    await this.initialize()
 
-    const comparison = {
-      case_id: caseId,
-      human_ratings: humanRatings,
-      ai_results: aiResults,
-      mismatches: [],
-      average_human_score: 0,
-      average_ai_score: 0
+    try {
+      const steps = await googleSheetsEvaluation.getEvaluationSteps(trace_id)
+      console.log(`[EvaluationFramework] Retrieved ${steps.length} steps for trace_id: ${trace_id}`)
+      return steps
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to get evaluation steps:', error)
+      throw error
     }
-
-    // Calculate averages
-    if (humanRatings.length > 0) {
-      const scores = humanRatings.map(r => parseFloat(r.score)).filter(s => !isNaN(s))
-      comparison.average_human_score = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
-    }
-
-    if (aiResults.length > 0) {
-      const scores = aiResults.map(r => parseFloat(r.evaluation_score)).filter(s => !isNaN(s))
-      comparison.average_ai_score = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
-    }
-
-    // Find mismatches (score difference > 2 points)
-    const scoreDiff = Math.abs(comparison.average_human_score - comparison.average_ai_score)
-    if (scoreDiff > 2) {
-      comparison.mismatches.push({
-        type: 'score_discrepancy',
-        human_score: comparison.average_human_score,
-        ai_score: comparison.average_ai_score,
-        difference: scoreDiff
-      })
-    }
-
-    return comparison
   }
 
   /**
-   * Generate evaluation URL for a specific case
+   * Get ownership mappings from ownership_mappings sheet
    */
-  generateCaseUrl(caseId) {
-    if (!this.spreadsheetId) return null
+  async getOwnershipMappings(limit = 1000) {
+    await this.initialize()
+
+    try {
+      const mappings = await googleSheetsEvaluation.getOwnershipMappings(limit)
+      console.log(`[EvaluationFramework] Retrieved ${mappings.length} ownership mappings`)
+      return mappings
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to get ownership mappings:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Check if a brand exists in ownership_mappings
+   */
+  async checkOwnershipMapping(brand_name) {
+    await this.initialize()
+
+    try {
+      const mapping = await googleSheetsEvaluation.checkOwnershipMapping(brand_name)
+      return mapping
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to check ownership mapping:', error)
+      return null
+    }
+  }
+
+  /**
+   * Add ownership mapping to ownership_mappings sheet
+   */
+  async addOwnershipMapping(mappingData) {
+    await this.initialize()
+
+    try {
+      await googleSheetsEvaluation.addOwnershipMapping(mappingData)
+      console.log(`[EvaluationFramework] Added ownership mapping for brand: ${mappingData.brand_name}`)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to add ownership mapping:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Compare evaluation result with expected case
+   */
+  async compareEvaluation(test_id, actual_result) {
+    await this.initialize()
+
+    try {
+      // Get the evaluation case
+      const cases = await this.getEvaluationCases()
+      const testCase = cases.find(c => c.test_id === test_id)
+      
+      if (!testCase) {
+        throw new Error(`Test case not found: ${test_id}`)
+      }
+
+      // Compare actual vs expected
+      const comparison = {
+        test_id,
+        actual_owner: actual_result.financial_beneficiary,
+        expected_owner: testCase.expected_owner,
+        actual_country: actual_result.beneficiary_country,
+        expected_country: testCase.expected_country,
+        actual_structure_type: actual_result.ownership_structure_type,
+        expected_structure_type: testCase.expected_structure_type,
+        confidence_score: actual_result.confidence_score,
+        expected_confidence: testCase.expected_confidence,
+        match_result: this.calculateMatchResult(testCase, actual_result),
+        explainability_score: this.calculateExplainabilityScore(actual_result),
+        source_used: actual_result.sources?.join(', ') || '',
+        prompt_snapshot: actual_result.agent_results ? JSON.stringify(actual_result.agent_results) : '',
+        response_snippet: actual_result.reasoning || ''
+      }
+
+      return comparison
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to compare evaluation:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Calculate match result between expected and actual
+   */
+  calculateMatchResult(testCase, actual_result) {
+    const ownerMatch = this.fuzzyMatch(testCase.expected_owner, actual_result.financial_beneficiary)
+    const countryMatch = this.fuzzyMatch(testCase.expected_country, actual_result.beneficiary_country)
+    const structureMatch = this.fuzzyMatch(testCase.expected_structure_type, actual_result.ownership_structure_type)
     
-    return `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/edit#gid=0`
+    const confidenceThreshold = parseInt(testCase.expected_confidence) || 70
+    const confidenceMatch = actual_result.confidence_score >= confidenceThreshold
+
+    if (ownerMatch && countryMatch && structureMatch && confidenceMatch) {
+      return 'PASS'
+    } else if (ownerMatch && countryMatch) {
+      return 'PARTIAL'
+    } else {
+      return 'FAIL'
+    }
   }
 
   /**
-   * Validate case_id exists in Evaluation Cases
+   * Calculate explainability score based on reasoning quality
    */
-  async validateCaseId(caseId) {
-    const cases = await this.getEvaluationCases()
-    return cases.some(c => c.case_id === caseId)
+  calculateExplainabilityScore(actual_result) {
+    let score = 0
+    
+    // Base score for having reasoning
+    if (actual_result.reasoning && actual_result.reasoning.length > 50) {
+      score += 30
+    }
+    
+    // Score for having sources
+    if (actual_result.sources && actual_result.sources.length > 0) {
+      score += 20
+    }
+    
+    // Score for having ownership flow
+    if (actual_result.ownership_flow && actual_result.ownership_flow.length > 0) {
+      score += 25
+    }
+    
+    // Score for having agent execution trace
+    if (actual_result.agent_execution_trace) {
+      score += 25
+    }
+    
+    return Math.min(score, 100)
+  }
+
+  /**
+   * Fuzzy string matching for comparison
+   */
+  fuzzyMatch(expected, actual) {
+    if (!expected || !actual) return false
+    
+    const expectedClean = expected.toLowerCase().trim()
+    const actualClean = actual.toLowerCase().trim()
+    
+    // Exact match
+    if (expectedClean === actualClean) return true
+    
+    // Contains match
+    if (expectedClean.includes(actualClean) || actualClean.includes(expectedClean)) return true
+    
+    // Common variations
+    const variations = {
+      'unknown': ['unknown', 'not found', 'n/a', ''],
+      'ferrero group': ['ferrero', 'ferrero group', 'ferrero spa'],
+      'nestle': ['nestle', 'nestle sa', 'nestle group'],
+      'unilever': ['unilever', 'unilever plc', 'unilever group']
+    }
+    
+    for (const [key, values] of Object.entries(variations)) {
+      if (values.includes(expectedClean) && values.includes(actualClean)) {
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * Generate evaluation URL for a specific test_id
+   */
+  generateEvaluationUrl(test_id) {
+    return googleSheetsEvaluation.generateEvaluationUrl(test_id)
   }
 
   /**
    * Get evaluation statistics
    */
   async getEvaluationStats() {
-    const [cases, ratings, results] = await Promise.all([
-      this.getEvaluationCases(),
-      this.getHumanRatings(),
-      this.getAIResults()
-    ])
+    await this.initialize()
 
-    return {
-      total_cases: cases.length,
-      active_cases: cases.filter(c => c.status === 'active').length,
-      total_human_ratings: ratings.length,
-      total_ai_results: results.length,
-      average_human_score: this.calculateAverageScore(ratings, 'score'),
-      average_ai_score: this.calculateAverageScore(results, 'evaluation_score')
+    try {
+      const results = await this.getEvaluationResults(1000)
+      
+      const stats = {
+        total_evaluations: results.length,
+        pass_count: results.filter(r => r.match_result === 'PASS').length,
+        partial_count: results.filter(r => r.match_result === 'PARTIAL').length,
+        fail_count: results.filter(r => r.match_result === 'FAIL').length,
+        average_confidence: results.reduce((sum, r) => sum + (parseFloat(r.confidence_score) || 0), 0) / results.length,
+        average_latency: results.reduce((sum, r) => sum + (parseFloat(r.latency) || 0), 0) / results.length
+      }
+      
+      stats.success_rate = (stats.pass_count / stats.total_evaluations) * 100
+      
+      return stats
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to get evaluation stats:', error)
+      throw error
     }
   }
 
   /**
-   * Calculate average score from array of objects
+   * Validate test_id exists in evaluation_cases
    */
-  calculateAverageScore(items, scoreField) {
-    const scores = items.map(item => parseFloat(item[scoreField])).filter(s => !isNaN(s))
-    return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
+  async validateTestId(test_id) {
+    await this.initialize()
+
+    try {
+      const cases = await this.getEvaluationCases()
+      return cases.some(c => c.test_id === test_id)
+    } catch (error) {
+      console.error('[EvaluationFramework] Failed to validate test_id:', error)
+      return false
+    }
   }
 }
 

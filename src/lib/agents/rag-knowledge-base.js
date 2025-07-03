@@ -36,11 +36,14 @@ export class RAGKnowledgeBase {
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error storing knowledge base entry:', error);
+        return null; // Return null instead of throwing
+      }
       return data.id;
     } catch (error) {
       console.error('Error storing knowledge base entry:', error);
-      throw error;
+      return null; // Return null instead of throwing
     }
   }
 
@@ -57,7 +60,10 @@ export class RAGKnowledgeBase {
         .order('confidence_score', { ascending: false })
         .limit(limit);
 
-      if (exactError) throw exactError;
+      if (exactError) {
+        console.error('Error searching knowledge base:', exactError);
+        return []; // Return empty array instead of throwing
+      }
 
       // If we have exact matches, return them
       if (exactMatches && exactMatches.length > 0) {
@@ -75,7 +81,10 @@ export class RAGKnowledgeBase {
         .order('confidence_score', { ascending: false })
         .limit(limit);
 
-      if (patternError) throw patternError;
+      if (patternError) {
+        console.error('Error searching knowledge base patterns:', patternError);
+        return []; // Return empty array instead of throwing
+      }
 
       // Calculate similarity scores based on ownership structure type and country
       const scoredResults = similarPatterns?.map(entry => ({
@@ -90,7 +99,7 @@ export class RAGKnowledgeBase {
 
     } catch (error) {
       console.error('Error searching knowledge base:', error);
-      return [];
+      return []; // Always return empty array instead of throwing
     }
   }
 
