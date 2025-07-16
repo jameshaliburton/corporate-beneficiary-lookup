@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ProductHeader from './ProductHeader';
 import OwnershipTrail from './OwnershipTrail';
 import EnhancedConfidenceAttribution from './EnhancedConfidenceAttribution';
@@ -332,6 +332,36 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     return trace && trace.trace_id && trace.start_time && trace.brand && trace.product_name && trace.barcode;
   };
 
+  const [manualResult, setManualResult] = useState(null);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState('');
+
+  const handleManualSubmit = async (data: any) => {
+    setManualLoading(true);
+    setManualError('');
+    try {
+      const res = await fetch('/api/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brand: data.brandName || data.companyName,
+          product_name: data.productName,
+          manual: true,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setManualResult(result);
+      } else {
+        setManualError(result.error || 'No result returned');
+      }
+    } catch (err) {
+      setManualError('Error: ' + (err?.message || err));
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
       <ProductHeader product={productData} />
@@ -363,7 +393,14 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       {result?.error && (
         <ErrorFallback scenario="AI Research Error" message={result.error} />
       )}
-      <ManualEntryForm productName={productData.name} brandName={productData.brand} />
+      <ManualEntryForm 
+        productName={productData.name} 
+        brandName={productData.brand} 
+        onSubmit={handleManualSubmit}
+      />
+      {manualLoading && <div className="text-center text-blue-600 mt-2">Looking up ownership...</div>}
+      {manualError && <div className="text-center text-red-600 mt-2">{manualError}</div>}
+      {manualResult && <div className="text-center text-green-600 mt-2">Ownership found: {JSON.stringify(manualResult)}</div>}
       <StickyActionBar onScanAnother={onScanAnother} />
       
       {/* Build info for version tracking */}

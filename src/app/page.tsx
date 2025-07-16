@@ -235,7 +235,7 @@ export default function Home() {
 
   const handleUserContributionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (userContribution.product_name.trim() && userContribution.brand.trim()) {
+    if (userContribution.brand.trim()) {
       handleBarcode(currentBarcode, userContribution);
       setShowUserContribution(false);
       setUserContribution({ product_name: '', brand: '' });
@@ -651,7 +651,7 @@ export default function Home() {
                 <form onSubmit={handleUserContributionSubmit} className="w-full space-y-4">
                   <div>
                     <label htmlFor="product_name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Name *
+                      Product Name (Optional)
                     </label>
                     <Input
                       type="text"
@@ -659,13 +659,12 @@ export default function Home() {
                       value={userContribution.product_name || result.product_name || ''}
                       onChange={(e) => setUserContribution(prev => ({ ...prev, product_name: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                      placeholder="e.g., Kit Kat Matcha Green Tea"
-                      autoFocus
+                      placeholder="e.g., Kit Kat Matcha Green Tea (optional)"
                     />
                   </div>
                   <div>
                     <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
-                      Brand Name *
+                      Brand/Company Name *
                     </label>
                     <Input
                       type="text"
@@ -673,14 +672,15 @@ export default function Home() {
                       value={userContribution.brand || result.brand || ''}
                       onChange={(e) => setUserContribution(prev => ({ ...prev, brand: e.target.value }))}
                       className="w-full text-lg bg-white border-gray-300 focus:border-blue-500"
-                      placeholder="e.g., Kit Kat, Nestlé"
+                      placeholder="e.g., Nestlé, Coca-Cola, Nike"
+                      autoFocus
                     />
                   </div>
                   <div className="flex gap-3 pt-2">
                     <Button
                       type="submit"
                       className="flex-1 text-base py-3 font-semibold shadow-lg bg-blue-600 hover:bg-blue-700"
-                      disabled={!(userContribution.product_name || result.product_name) || !(userContribution.brand || result.brand)}
+                      disabled={!(userContribution.brand || result.brand)}
                     >
                       🔍 Research Ownership
                     </Button>
