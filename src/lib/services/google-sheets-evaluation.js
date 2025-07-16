@@ -165,7 +165,7 @@ class GoogleSheetsEvaluationService {
   async getSheetIdByName(spreadsheetId, sheetName) {
     const response = await this.sheets.spreadsheets.get({ spreadsheetId })
     const sheet = response.data.sheets.find(s => s.properties.title === sheetName)
-    return sheet ? sheet.properties.sheetId : null
+    return sheet ? Number(sheet.properties.sheetId) : null
   }
 
   /**

@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     const caseId = searchParams.get('case_id')
-    const sheetName = searchParams.get('sheet')
 
     switch (action) {
       case 'stats':
@@ -14,37 +13,32 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, stats })
 
       case 'cases':
-        const status = searchParams.get('status')
-        const cases = await evaluationFramework.getEvaluationCases(status)
+        const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 100
+        const cases = await evaluationFramework.getEvaluationCases(limit)
         return NextResponse.json({ success: true, cases })
 
-      case 'human_ratings':
-        if (!caseId) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
-        }
-        const ratings = await evaluationFramework.getHumanRatings(caseId)
-        return NextResponse.json({ success: true, ratings })
-
-      case 'ai_results':
-        if (!caseId) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
-        }
-        const agentVersion = searchParams.get('agent_version')
-        const results = await evaluationFramework.getAIResults(caseId, agentVersion)
+      case 'results':
+        const resultsLimit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 100
+        const results = await evaluationFramework.getEvaluationResults(resultsLimit)
         return NextResponse.json({ success: true, results })
 
-      case 'comparison':
+      case 'steps':
         if (!caseId) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
+          return NextResponse.json({ success: false, error: 'trace_id required' }, { status: 400 })
         }
-        const comparison = await evaluationFramework.compareEvaluations(caseId)
-        return NextResponse.json({ success: true, comparison })
+        const steps = await evaluationFramework.getEvaluationSteps(caseId)
+        return NextResponse.json({ success: true, steps })
+
+      case 'mappings':
+        const mappingsLimit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 1000
+        const mappings = await evaluationFramework.getOwnershipMappings(mappingsLimit)
+        return NextResponse.json({ success: true, mappings })
 
       case 'validate_case':
         if (!caseId) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
+          return NextResponse.json({ success: false, error: 'test_id required' }, { status: 400 })
         }
-        const isValid = await evaluationFramework.validateCaseId(caseId)
+        const isValid = await evaluationFramework.validateTestId(caseId)
         return NextResponse.json({ success: true, valid: isValid })
 
       default:
@@ -70,19 +64,27 @@ export async function POST(request: NextRequest) {
         const spreadsheetId = await evaluationFramework.createEvaluationSpreadsheet(title)
         return NextResponse.json({ success: true, spreadsheetId })
 
-      case 'add_ai_result':
-        if (!data?.case_id) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
+      case 'add_case':
+        if (!data?.test_id) {
+          return NextResponse.json({ success: false, error: 'test_id required' }, { status: 400 })
         }
-        const result = await evaluationFramework.addAIResult(data)
+        const result = await evaluationFramework.addEvaluationCase(data)
         return NextResponse.json({ success: true, result })
 
-      case 'generate_url':
-        if (!data?.case_id) {
-          return NextResponse.json({ success: false, error: 'case_id required' }, { status: 400 })
+      case 'log_evaluation':
+        if (!data?.test_id) {
+          return NextResponse.json({ success: false, error: 'test_id required' }, { status: 400 })
         }
-        const url = evaluationFramework.generateCaseUrl(data.case_id)
-        return NextResponse.json({ success: true, url })
+        const steps = data.steps || []
+        const logged = await evaluationFramework.logEvaluation(data, steps)
+        return NextResponse.json({ success: true, logged })
+
+      case 'add_mapping':
+        if (!data?.brand_name) {
+          return NextResponse.json({ success: false, error: 'brand_name required' }, { status: 400 })
+        }
+        const mapping = await evaluationFramework.addOwnershipMapping(data)
+        return NextResponse.json({ success: true, mapping })
 
       default:
         return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
