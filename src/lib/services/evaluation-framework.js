@@ -1,7 +1,7 @@
 // Evaluation Framework Service
 
 import dotenv from 'dotenv'
-import { GoogleSheetsEvaluationService } from './google-sheets-evaluation.js'
+import GoogleSheetsEvaluationService from './google-sheets-evaluation.js'
 
 // Load environment variables
 dotenv.config({ path: '.env.local' })

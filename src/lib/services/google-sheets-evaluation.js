@@ -404,4 +404,7 @@ class GoogleSheetsEvaluationService {
 
 // Export the class as a named export and a singleton instance
 export { GoogleSheetsEvaluationService }
-export const googleSheetsEvaluation = new GoogleSheetsEvaluationService() 
+export const googleSheetsEvaluation = new GoogleSheetsEvaluationService()
+
+// Default export for compatibility
+export default GoogleSheetsEvaluationService 
