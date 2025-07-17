@@ -174,6 +174,62 @@ class EvaluationFrameworkService {
       throw error
     }
   }
+
+  /**
+   * Log evaluation result
+   */
+  async logEvaluation(evaluationData) {
+    if (!this.isAvailable) {
+      console.warn('[EvaluationFramework] Cannot log evaluation - Google Sheets not configured')
+      return false
+    }
+
+    try {
+      await this.googleSheets.addEvaluationResult(evaluationData)
+      console.log(`[EvaluationFramework] Evaluation logged for test_id: ${evaluationData.test_id}`)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Error logging evaluation:', error)
+      return false
+    }
+  }
+
+  /**
+   * Add evaluation case
+   */
+  async addEvaluationCase(caseData) {
+    if (!this.isAvailable) {
+      console.warn('[EvaluationFramework] Cannot add evaluation case - Google Sheets not configured')
+      return false
+    }
+
+    try {
+      // For now, we'll just log this as an evaluation result
+      // In the future, we could add a separate method for cases
+      await this.googleSheets.addEvaluationResult({
+        ...caseData,
+        trace_id: caseData.test_id,
+        agent_version: 'manual',
+        actual_owner: caseData.expected_owner,
+        actual_country: caseData.expected_country,
+        actual_structure_type: caseData.expected_structure_type,
+        confidence_score: caseData.expected_confidence,
+        match_result: 'manual_case',
+        latency: 0,
+        token_cost_estimate: 0,
+        tool_errors: '',
+        explainability_score: 1.0,
+        source_used: 'manual_test_case',
+        prompt_snapshot: caseData.human_query || '',
+        response_snippet: caseData.notes || ''
+      })
+      console.log(`[EvaluationFramework] Evaluation case added for test_id: ${caseData.test_id}`)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Error adding evaluation case:', error)
+      return false
+    }
+  }
 }
 
 // Export singleton instance
