@@ -104,10 +104,10 @@ async function testDashboardEvaluation() {
     // Test 6: Test Google Sheets integration
     console.log('\n📊 Test 6: Testing Google Sheets integration...')
     try {
-      const cases = await evaluationFramework.getEvaluationCases(5)
+      const cases = await evaluationFramework.getEvaluationCases()
       console.log(`✅ Retrieved ${cases.length} evaluation cases from Google Sheets`)
       
-      const results = await evaluationFramework.getEvaluationResults(5)
+      const results = await evaluationFramework.getEvaluationResults()
       console.log(`✅ Retrieved ${results.length} evaluation results from Google Sheets`)
       
     } catch (error) {

@@ -328,6 +328,64 @@ class EvaluationFrameworkService {
       return { error: error.message }
     }
   }
+
+  /**
+   * Calculate match result between expected and actual evaluation
+   */
+  calculateMatchResult(expected, actual) {
+    const ownerMatch = expected.expected_owner === actual.financial_beneficiary
+    const countryMatch = expected.expected_country === actual.beneficiary_country
+    const structureMatch = expected.expected_structure_type === actual.ownership_structure_type
+    const confidenceMatch = Math.abs(expected.expected_confidence - actual.confidence_score) <= 10
+
+    const totalMatches = [ownerMatch, countryMatch, structureMatch, confidenceMatch].filter(Boolean).length
+    const matchPercentage = (totalMatches / 4) * 100
+
+    return {
+      owner_match: ownerMatch,
+      country_match: countryMatch,
+      structure_match: structureMatch,
+      confidence_match: confidenceMatch,
+      total_matches: totalMatches,
+      match_percentage: matchPercentage,
+      overall_result: matchPercentage >= 75 ? 'PASS' : 'FAIL'
+    }
+  }
+
+  /**
+   * Calculate explainability score based on reasoning and sources
+   */
+  calculateExplainabilityScore(evaluationData) {
+    let score = 0
+    const maxScore = 100
+
+    // Reasoning quality (40 points)
+    if (evaluationData.reasoning && evaluationData.reasoning.length > 100) {
+      score += 20
+      if (evaluationData.reasoning.includes('because') || evaluationData.reasoning.includes('due to')) {
+        score += 10
+      }
+      if (evaluationData.reasoning.includes('evidence') || evaluationData.reasoning.includes('source')) {
+        score += 10
+      }
+    }
+
+    // Source diversity (30 points)
+    if (evaluationData.sources && Array.isArray(evaluationData.sources)) {
+      score += Math.min(evaluationData.sources.length * 10, 30)
+    }
+
+    // Agent execution trace quality (30 points)
+    if (evaluationData.agent_execution_trace && evaluationData.agent_execution_trace.stages) {
+      const stages = evaluationData.agent_execution_trace.stages
+      score += Math.min(stages.length * 5, 15)
+      
+      const successfulStages = stages.filter(stage => stage.result === 'success').length
+      score += Math.min(successfulStages * 5, 15)
+    }
+
+    return Math.min(score, maxScore) / maxScore // Normalize to 0-1
+  }
 }
 
 // Export singleton instance
