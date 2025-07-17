@@ -57,9 +57,17 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'create_spreadsheet':
-        const title = data?.title || 'Agent Evaluation Framework'
-        const spreadsheetId = await evaluationFramework.createEvaluationSpreadsheet(title)
-        return NextResponse.json({ success: true, spreadsheetId })
+        // Multi-sheet setup is pre-configured, no need to create spreadsheets
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Multi-sheet setup is pre-configured',
+          sheetIds: {
+            evaluation_cases: '1m5P9LxLg_g_tek2m1DQZJf2WnrRlp4N-Y00UksUdCA0',
+            evaluation_results: '1goFKiB9Khp4R0ASvVqn3TbGX2YW1gFVVToPYK9foBKo',
+            evaluation_steps: '1BSq_d9dZzI1N-NOuT_uJff5eZUO5BN7cEh3bwrbQvmg',
+            ownership_mappings: '1Pa844D_sTypLVNxRphJPCCEfOP03sHWIYLmiXCNT9vs'
+          }
+        })
 
       case 'add_case':
         if (!data?.test_id) {
