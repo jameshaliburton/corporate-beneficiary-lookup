@@ -23,8 +23,11 @@ class EvaluationFrameworkService {
    */
   async initialize() {
     try {
+      console.log('[EvaluationFramework] Starting initialization...')
+      
       // Validate that all sheets are accessible
       this.sheetValidation = await this.googleSheets.validateSheets()
+      console.log('[EvaluationFramework] Sheet validation results:', this.sheetValidation)
       
       // Check if at least the main evaluation sheets are accessible
       const accessibleSheets = Object.values(this.sheetValidation).filter(sheet => sheet.accessible)
@@ -35,6 +38,7 @@ class EvaluationFrameworkService {
       } else {
         this.isAvailable = false
         console.warn('[EvaluationFramework] Limited functionality - only', accessibleSheets.length, 'sheets accessible')
+        console.warn('[EvaluationFramework] Sheet validation details:', this.sheetValidation)
       }
     } catch (error) {
       console.error('[EvaluationFramework] Initialization failed:', error)

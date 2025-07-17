@@ -27,6 +27,8 @@ class GoogleSheetsEvaluationService {
     if (this.isInitialized) return
 
     try {
+      console.log('[GoogleSheets] Starting initialization...')
+      
       // Parse service account key from environment variable
       const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_JSON
       
@@ -34,7 +36,10 @@ class GoogleSheetsEvaluationService {
         throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_JSON environment variable not set')
       }
 
+      console.log('[GoogleSheets] Service account key found, length:', serviceAccountKey.length)
+      
       const credentials = JSON.parse(serviceAccountKey)
+      console.log('[GoogleSheets] Credentials parsed successfully, client_email:', credentials.client_email)
       
       const auth = new google.auth.JWT(
         credentials.client_email,
