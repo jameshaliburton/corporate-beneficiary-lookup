@@ -954,9 +954,10 @@ export default function DashboardPage() {
                         <li>Enable Google Sheets API</li>
                         <li>Create a service account and download the JSON key</li>
                         <li>Add the key file to your project</li>
-                        <li>Set the <code className="bg-yellow-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE</code> environment variable</li>
+                        <li>Set the <code className="bg-yellow-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_JSON</code> environment variable</li>
                       </ol>
                       <p className="mt-3 text-xs">For now, you can still use the "Refine" buttons on product results to provide feedback.</p>
+                      <p className="mt-2 text-xs text-blue-600">💡 <strong>Note:</strong> This message is expected in local development. The evaluation framework will work properly on Vercel where the environment variable is configured.</p>
                     </div>
                   </div>
                 ) : evaluationStats ? (
