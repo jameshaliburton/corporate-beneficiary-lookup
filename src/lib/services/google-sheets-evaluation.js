@@ -20,10 +20,9 @@ class GoogleSheetsEvaluationService {
     if (this.isInitialized) return
 
     try {
-      // For now, we'll use API key authentication
-      // In production, you'd want to use service account or OAuth2
+      // Use API key authentication instead of service account
       const auth = new google.auth.GoogleAuth({
-        keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE,
+        key: process.env.GOOGLE_API_KEY,
         scopes: ['https://www.googleapis.com/auth/spreadsheets']
       })
 
@@ -31,10 +30,14 @@ class GoogleSheetsEvaluationService {
       this.sheets = google.sheets({ version: 'v4', auth: this.auth })
       this.isInitialized = true
 
-      console.log('[GoogleSheets] Initialized successfully')
+      console.log('[GoogleSheets] Initialized successfully with API key')
     } catch (error) {
       console.error('[GoogleSheets] Initialization failed:', error)
-      throw error
+      // Fallback to API key only (limited functionality)
+      this.auth = process.env.GOOGLE_API_KEY
+      this.sheets = google.sheets({ version: 'v4', auth: this.auth })
+      this.isInitialized = true
+      console.log('[GoogleSheets] Using API key fallback (limited functionality)')
     }
   }
 

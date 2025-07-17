@@ -102,6 +102,7 @@ interface EvaluationStats {
   total_ai_results: number
   average_human_score: number
   average_ai_score: number
+  error?: string
 }
 
 interface EvaluationCase {
@@ -937,7 +938,28 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-6">
                 {/* Evaluation Stats */}
-                {evaluationStats && (
+                {evaluationStats && evaluationStats.error ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="text-yellow-600 text-xl mr-3">⚠️</div>
+                      <div>
+                        <h3 className="font-medium text-yellow-900">Google Sheets Not Configured</h3>
+                        <p className="text-yellow-700 text-sm">The evaluation system requires Google Sheets API access.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm text-yellow-800">
+                      <p><strong>To enable evaluation features:</strong></p>
+                      <ol className="list-decimal list-inside space-y-1 ml-4">
+                        <li>Set up a Google Cloud Project</li>
+                        <li>Enable Google Sheets API</li>
+                        <li>Create a service account and download the JSON key</li>
+                        <li>Add the key file to your project</li>
+                        <li>Set the <code className="bg-yellow-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE</code> environment variable</li>
+                      </ol>
+                      <p className="mt-3 text-xs">For now, you can still use the "Refine" buttons on product results to provide feedback.</p>
+                    </div>
+                  </div>
+                ) : evaluationStats ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h3 className="font-medium text-blue-900">Cases</h3>
@@ -955,12 +977,14 @@ export default function DashboardPage() {
                       <p className="text-sm text-purple-700">Avg: {evaluationStats.average_ai_score.toFixed(1)}</p>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Case Management */}
                 <div>
                   <h3 className="font-medium mb-3">Evaluation Cases</h3>
-                  {evaluationCases.length > 0 ? (
+                  {evaluationStats && evaluationStats.error ? (
+                    <p className="text-gray-500">Evaluation cases will appear here once Google Sheets is configured.</p>
+                  ) : evaluationCases.length > 0 ? (
                     <div className="space-y-2">
                       {evaluationCases.slice(0, 5).map((case_) => (
                         <div key={case_.case_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
