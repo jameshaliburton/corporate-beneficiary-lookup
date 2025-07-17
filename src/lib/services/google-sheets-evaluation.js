@@ -2,173 +2,88 @@ import { google } from 'googleapis'
 
 /**
  * Google Sheets Evaluation Service
- * Handles evaluation data sync with Google Sheets using the new structure
+ * Handles evaluation data sync with Google Sheets using the multi-sheet setup
  */
 
 class GoogleSheetsEvaluationService {
   constructor() {
     this.auth = null
     this.sheets = null
-    this.spreadsheetId = process.env.GOOGLE_SHEETS_EVALUATION_ID
     this.isInitialized = false
+    
+    // Multi-sheet configuration
+    this.sheetIds = {
+      evaluation_cases: '1m5P9LxLg_g_tek2m1DQZJf2WnrRlp4N-Y00UksUdCA0',
+      evaluation_results: '1goFKiB9Khp4R0ASvVqn3TbGX2YW1gFVVToPYK9foBKo',
+      evaluation_steps: '1BSq_d9dZzI1N-NOuT_uJff5eZUO5BN7cEh3bwrbQvmg',
+      ownership_mappings: '1Pa844D_sTypLVNxRphJPCCEfOP03sHWIYLmiXCNT9vs'
+    }
   }
 
   /**
-   * Initialize Google Sheets API
+   * Initialize Google Sheets API with service account
    */
   async initialize() {
     if (this.isInitialized) return
 
     try {
-      // Use API key authentication instead of service account
-      const auth = new google.auth.GoogleAuth({
-        key: process.env.GOOGLE_API_KEY,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
-      })
+      // Parse service account key from environment variable
+      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_JSON
+      
+      if (!serviceAccountKey) {
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_JSON environment variable not set')
+      }
 
-      this.auth = await auth.getClient()
+      const credentials = JSON.parse(serviceAccountKey)
+      
+      const auth = new google.auth.JWT(
+        credentials.client_email,
+        null,
+        credentials.private_key,
+        ['https://www.googleapis.com/auth/spreadsheets']
+      )
+
+      this.auth = auth
       this.sheets = google.sheets({ version: 'v4', auth: this.auth })
       this.isInitialized = true
 
-      console.log('[GoogleSheets] Initialized successfully with API key')
+      console.log('[GoogleSheets] Initialized successfully with service account')
     } catch (error) {
       console.error('[GoogleSheets] Initialization failed:', error)
-      // Fallback to API key only (limited functionality)
-      this.auth = process.env.GOOGLE_API_KEY
-      this.sheets = google.sheets({ version: 'v4', auth: this.auth })
-      this.isInitialized = true
-      console.log('[GoogleSheets] Using API key fallback (limited functionality)')
-    }
-  }
-
-  /**
-   * Create evaluation spreadsheet template with new structure
-   */
-  async createEvaluationTemplate(title = 'Agent Evaluation Framework') {
-    await this.initialize()
-
-    try {
-      // Create new spreadsheet
-      const createResponse = await this.sheets.spreadsheets.create({
-        requestBody: {
-          properties: {
-            title: title
-          },
-          sheets: [
-            {
-              properties: {
-                title: 'evaluation_cases',
-                sheetId: 0
-              }
-            },
-            {
-              properties: {
-                title: 'evaluation_results',
-                sheetId: 1
-              }
-            },
-            {
-              properties: {
-                title: 'evaluation_steps',
-                sheetId: 2
-              }
-            },
-            {
-              properties: {
-                title: 'ownership_mappings',
-                sheetId: 3
-              }
-            }
-          ]
-        }
-      })
-
-      const spreadsheetId = createResponse.data.spreadsheetId
-      console.log('[GoogleSheets] Created evaluation template:', spreadsheetId)
-
-      // Set up headers for each sheet
-      await this.setupSheetHeaders(spreadsheetId)
-
-      return spreadsheetId
-    } catch (error) {
-      console.error('[GoogleSheets] Failed to create template:', error)
+      this.isInitialized = false
       throw error
     }
   }
 
   /**
-   * Set up headers for evaluation sheets with new structure
+   * Validate that all sheets are accessible
    */
-  async setupSheetHeaders(spreadsheetId) {
-    const headers = {
-      'evaluation_cases': [
-        'test_id', 'barcode', 'product_name', 'expected_owner', 'expected_country', 
-        'expected_structure_type', 'expected_confidence', 'human_query', 
-        'evaluation_strategy', 'evidence_expectation', 'source_hints', 'notes'
-      ],
-      'evaluation_results': [
-        'test_id', 'trace_id', 'run_timestamp', 'agent_version', 'actual_owner', 
-        'actual_country', 'actual_structure_type', 'confidence_score', 'match_result', 
-        'latency', 'token_cost_estimate', 'tool_errors', 'explainability_score', 
-        'source_used', 'prompt_snapshot', 'response_snippet'
-      ],
-      'evaluation_steps': [
-        'trace_id', 'step_order', 'step_name', 'agent_or_tool', 'input', 
-        'output_snippet', 'outcome', 'latency_seconds', 'tool_used', 
-        'fallback_used', 'notes'
-      ],
-      'ownership_mappings': [
-        'brand_name', 'regional_entity', 'intermediate_entity', 'ultimate_owner_name', 
-        'ultimate_owner_country', 'ultimate_owner_flag', 'notes', 'source'
-      ]
-    }
-
-    for (const [sheetName, headerRow] of Object.entries(headers)) {
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetName}!A1:${String.fromCharCode(65 + headerRow.length - 1)}1`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [headerRow]
+  async validateSheets() {
+    await this.initialize()
+    
+    const validationResults = {}
+    
+    for (const [sheetName, sheetId] of Object.entries(this.sheetIds)) {
+      try {
+        const response = await this.sheets.spreadsheets.get({ 
+          spreadsheetId: sheetId,
+          ranges: ['A1:Z1'] // Just get headers to validate access
+        })
+        validationResults[sheetName] = { 
+          accessible: true, 
+          title: response.data.properties?.title || sheetName 
         }
-      })
-
-      // Format headers
-      await this.sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [
-            {
-              repeatCell: {
-                range: {
-                  sheetId: await this.getSheetIdByName(spreadsheetId, sheetName),
-                  startRowIndex: 0,
-                  endRowIndex: 1
-                },
-                cell: {
-                  userEnteredFormat: {
-                    backgroundColor: { red: 0.2, green: 0.6, blue: 0.9 },
-                    textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }
-                  }
-                },
-                fields: 'userEnteredFormat(backgroundColor,textFormat)'
-              }
-            }
-          ]
+        console.log(`[GoogleSheets] ✅ ${sheetName} accessible`)
+      } catch (error) {
+        validationResults[sheetName] = { 
+          accessible: false, 
+          error: error.message 
         }
-      })
+        console.error(`[GoogleSheets] ❌ ${sheetName} not accessible:`, error.message)
+      }
     }
-
-    console.log('[GoogleSheets] Headers set up successfully')
-  }
-
-  /**
-   * Get sheet ID by name
-   */
-  async getSheetIdByName(spreadsheetId, sheetName) {
-    const response = await this.sheets.spreadsheets.get({ spreadsheetId })
-    const sheet = response.data.sheets.find(s => s.properties.title === sheetName)
-    return sheet ? Number(sheet.properties.sheetId) : null
+    
+    return validationResults
   }
 
   /**
@@ -176,10 +91,6 @@ class GoogleSheetsEvaluationService {
    */
   async addEvaluationResult(evaluationData) {
     await this.initialize()
-
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
 
     try {
       const {
@@ -198,49 +109,41 @@ class GoogleSheetsEvaluationService {
         source_used,
         prompt_snapshot,
         response_snippet,
-        correction_data
+        run_timestamp = new Date().toISOString()
       } = evaluationData
 
-      const run_timestamp = new Date().toISOString()
-
-      // Handle correction data if present
-      const correction_info = correction_data ? JSON.stringify(correction_data) : ''
-
-      const rowData = [
+      const values = [
         test_id,
-        trace_id,
+        trace_id || '',
         run_timestamp,
-        agent_version,
-        actual_owner,
-        actual_country,
-        actual_structure_type,
-        confidence_score,
-        match_result,
-        latency,
-        token_cost_estimate,
-        tool_errors,
-        explainability_score,
-        source_used,
-        prompt_snapshot,
-        response_snippet,
-        correction_info
+        agent_version || 'unknown',
+        actual_owner || '',
+        actual_country || '',
+        actual_structure_type || '',
+        confidence_score || 0,
+        match_result || 'unknown',
+        latency || 0,
+        token_cost_estimate || 0,
+        tool_errors || '',
+        explainability_score || 0,
+        source_used || '',
+        prompt_snapshot || '',
+        response_snippet || ''
       ]
 
-      // Append row to evaluation_results sheet
       await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
-        range: 'evaluation_results!A:A',
+        spreadsheetId: this.sheetIds.evaluation_results,
+        range: 'A:A',
         valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: {
-          values: [rowData]
+          values: [values]
         }
       })
 
       console.log(`[GoogleSheets] Added evaluation result for test_id: ${test_id}`)
       return true
     } catch (error) {
-      console.error('[GoogleSheets] Failed to add evaluation result:', error)
+      console.error('[GoogleSheets] Error adding evaluation result:', error)
       throw error
     }
   }
@@ -251,40 +154,39 @@ class GoogleSheetsEvaluationService {
   async addEvaluationSteps(trace_id, steps) {
     await this.initialize()
 
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
+    if (!Array.isArray(steps)) {
+      console.warn('[GoogleSheets] Steps must be an array')
+      return false
     }
 
     try {
-      const rows = steps.map((step, index) => [
+      const values = steps.map((step, index) => [
         trace_id,
-        index + 1, // step_order
-        step.step_name || step.name || `Step ${index + 1}`,
-        step.agent_or_tool || step.agent || 'Unknown',
+        index + 1,
+        step.name || 'unknown',
+        step.agent || step.tool || 'unknown',
         step.input || '',
-        step.output_snippet || step.output || '',
-        step.outcome || step.status || 'completed',
-        step.latency_seconds || (step.duration ? step.duration / 1000 : ''),
+        step.output ? JSON.stringify(step.output).substring(0, 500) : '',
+        step.outcome || 'unknown',
+        step.latency || 0,
         step.tool_used || '',
-        step.fallback_used || 'No',
+        step.fallback_used || false,
         step.notes || ''
       ])
 
-      // Append rows to evaluation_steps sheet
       await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
-        range: 'evaluation_steps!A:A',
+        spreadsheetId: this.sheetIds.evaluation_steps,
+        range: 'A:A',
         valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: {
-          values: rows
+          values: values
         }
       })
 
-      console.log(`[GoogleSheets] Added ${rows.length} evaluation steps for trace_id: ${trace_id}`)
+      console.log(`[GoogleSheets] Added ${steps.length} evaluation steps for trace_id: ${trace_id}`)
       return true
     } catch (error) {
-      console.error('[GoogleSheets] Failed to add evaluation steps:', error)
+      console.error('[GoogleSheets] Error adding evaluation steps:', error)
       throw error
     }
   }
@@ -294,10 +196,6 @@ class GoogleSheetsEvaluationService {
    */
   async addOwnershipMapping(mappingData) {
     await this.initialize()
-
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
 
     try {
       const {
@@ -311,32 +209,30 @@ class GoogleSheetsEvaluationService {
         source
       } = mappingData
 
-      const rowData = [
+      const values = [
         brand_name,
-        regional_entity,
-        intermediate_entity,
+        regional_entity || '',
+        intermediate_entity || '',
         ultimate_owner_name,
         ultimate_owner_country,
-        ultimate_owner_flag,
-        notes,
-        source
+        ultimate_owner_flag || '',
+        notes || '',
+        source || ''
       ]
 
-      // Append row to ownership_mappings sheet
       await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
-        range: 'ownership_mappings!A:A',
+        spreadsheetId: this.sheetIds.ownership_mappings,
+        range: 'A:A',
         valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: {
-          values: [rowData]
+          values: [values]
         }
       })
 
       console.log(`[GoogleSheets] Added ownership mapping for brand: ${brand_name}`)
       return true
     } catch (error) {
-      console.error('[GoogleSheets] Failed to add ownership mapping:', error)
+      console.error('[GoogleSheets] Error adding ownership mapping:', error)
       throw error
     }
   }
@@ -347,33 +243,28 @@ class GoogleSheetsEvaluationService {
   async getEvaluationCases(limit = 100) {
     await this.initialize()
 
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
-
     try {
       const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'evaluation_cases!A:L',
-        majorDimension: 'ROWS'
+        spreadsheetId: this.sheetIds.evaluation_cases,
+        range: 'A:L'
       })
 
       const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
+      if (rows.length <= 1) return [] // Only headers or empty
 
       const headers = rows[0]
-      const data = rows.slice(1, limit + 1).map(row => {
-        const obj = {}
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || ''
-        })
-        return obj
-      })
+      const dataRows = rows.slice(1, limit + 1)
 
-      return data
+      return dataRows.map(row => {
+        const caseData = {}
+        headers.forEach((header, index) => {
+          caseData[header] = row[index] || ''
+        })
+        return caseData
+      })
     } catch (error) {
-      console.error('[GoogleSheets] Failed to get evaluation cases:', error)
-      throw error
+      console.error('[GoogleSheets] Error getting evaluation cases:', error)
+      return []
     }
   }
 
@@ -383,33 +274,28 @@ class GoogleSheetsEvaluationService {
   async getOwnershipMappings(limit = 1000) {
     await this.initialize()
 
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
-
     try {
       const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'ownership_mappings!A:H',
-        majorDimension: 'ROWS'
+        spreadsheetId: this.sheetIds.ownership_mappings,
+        range: 'A:H'
       })
 
       const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
+      if (rows.length <= 1) return [] // Only headers or empty
 
       const headers = rows[0]
-      const data = rows.slice(1, limit + 1).map(row => {
-        const obj = {}
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || ''
-        })
-        return obj
-      })
+      const dataRows = rows.slice(1, limit + 1)
 
-      return data
+      return dataRows.map(row => {
+        const mappingData = {}
+        headers.forEach((header, index) => {
+          mappingData[header] = row[index] || ''
+        })
+        return mappingData
+      })
     } catch (error) {
-      console.error('[GoogleSheets] Failed to get ownership mappings:', error)
-      throw error
+      console.error('[GoogleSheets] Error getting ownership mappings:', error)
+      return []
     }
   }
 
@@ -419,33 +305,28 @@ class GoogleSheetsEvaluationService {
   async getEvaluationResults(limit = 100) {
     await this.initialize()
 
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
-
     try {
       const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'evaluation_results!A:P',
-        majorDimension: 'ROWS'
+        spreadsheetId: this.sheetIds.evaluation_results,
+        range: 'A:P'
       })
 
       const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
+      if (rows.length <= 1) return [] // Only headers or empty
 
       const headers = rows[0]
-      const data = rows.slice(1, limit + 1).map(row => {
-        const obj = {}
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || ''
-        })
-        return obj
-      })
+      const dataRows = rows.slice(1, limit + 1)
 
-      return data
+      return dataRows.map(row => {
+        const resultData = {}
+        headers.forEach((header, index) => {
+          resultData[header] = row[index] || ''
+        })
+        return resultData
+      })
     } catch (error) {
-      console.error('[GoogleSheets] Failed to get evaluation results:', error)
-      throw error
+      console.error('[GoogleSheets] Error getting evaluation results:', error)
+      return []
     }
   }
 
@@ -455,39 +336,39 @@ class GoogleSheetsEvaluationService {
   async getEvaluationSteps(trace_id) {
     await this.initialize()
 
-    if (!this.spreadsheetId) {
-      throw new Error('No evaluation spreadsheet ID configured')
-    }
-
     try {
       const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'evaluation_steps!A:K',
-        majorDimension: 'ROWS'
+        spreadsheetId: this.sheetIds.evaluation_steps,
+        range: 'A:K'
       })
 
       const rows = response.data.values || []
-      if (rows.length <= 1) return [] // Only headers
+      if (rows.length <= 1) return [] // Only headers or empty
 
       const headers = rows[0]
-      const data = rows.slice(1).map(row => {
-        const obj = {}
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || ''
-        })
-        return obj
-      })
+      const dataRows = rows.slice(1)
 
       // Filter by trace_id
-      return data.filter(row => row.trace_id === trace_id)
+      const filteredRows = dataRows.filter(row => {
+        const traceIdIndex = headers.indexOf('trace_id')
+        return traceIdIndex >= 0 && row[traceIdIndex] === trace_id
+      })
+
+      return filteredRows.map(row => {
+        const stepData = {}
+        headers.forEach((header, index) => {
+          stepData[header] = row[index] || ''
+        })
+        return stepData
+      })
     } catch (error) {
-      console.error('[GoogleSheets] Failed to get evaluation steps:', error)
-      throw error
+      console.error('[GoogleSheets] Error getting evaluation steps:', error)
+      return []
     }
   }
 
   /**
-   * Check if a brand exists in ownership_mappings
+   * Check if a brand has an ownership mapping
    */
   async checkOwnershipMapping(brand_name) {
     const mappings = await this.getOwnershipMappings()
@@ -498,31 +379,24 @@ class GoogleSheetsEvaluationService {
   }
 
   /**
-   * Generate evaluation URL for a specific test_id
+   * Generate evaluation URL for a test
    */
   generateEvaluationUrl(test_id) {
-    if (!this.spreadsheetId) return null
-    
-    return `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/edit#gid=0`
+    return `https://docs.google.com/spreadsheets/d/${this.sheetIds.evaluation_results}/edit#gid=0&range=A:A&filter=test_id:${test_id}`
   }
 
   /**
-   * Log complete evaluation data (result + steps)
+   * Log complete evaluation with results and steps
    */
   async logCompleteEvaluation(evaluationData, steps) {
     try {
-      // Add evaluation result
       await this.addEvaluationResult(evaluationData)
-      
-      // Add evaluation steps if provided
       if (steps && steps.length > 0) {
         await this.addEvaluationSteps(evaluationData.trace_id, steps)
       }
-      
-      console.log(`[GoogleSheets] Complete evaluation logged for test_id: ${evaluationData.test_id}`)
       return true
     } catch (error) {
-      console.error('[GoogleSheets] Failed to log complete evaluation:', error)
+      console.error('[GoogleSheets] Error logging complete evaluation:', error)
       throw error
     }
   }

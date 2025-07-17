@@ -15,6 +15,7 @@ class EvaluationFrameworkService {
   constructor() {
     this.googleSheets = new GoogleSheetsEvaluationService()
     this.isAvailable = false
+    this.sheetValidation = null
   }
 
   /**
@@ -22,13 +23,23 @@ class EvaluationFrameworkService {
    */
   async initialize() {
     try {
-      await this.googleSheets.initialize()
-      this.isAvailable = true
-      console.log('[EvaluationFramework] Initialized successfully')
+      // Validate that all sheets are accessible
+      this.sheetValidation = await this.googleSheets.validateSheets()
+      
+      // Check if at least the main evaluation sheets are accessible
+      const accessibleSheets = Object.values(this.sheetValidation).filter(sheet => sheet.accessible)
+      
+      if (accessibleSheets.length >= 2) {
+        this.isAvailable = true
+        console.log('[EvaluationFramework] Initialized successfully with', accessibleSheets.length, 'accessible sheets')
+      } else {
+        this.isAvailable = false
+        console.warn('[EvaluationFramework] Limited functionality - only', accessibleSheets.length, 'sheets accessible')
+      }
     } catch (error) {
       console.error('[EvaluationFramework] Initialization failed:', error)
       this.isAvailable = false
-      // Don't throw - allow the app to continue without evaluation features
+      // Don't throw - allow the app to continue without evaluation
     }
   }
 
@@ -44,25 +55,27 @@ class EvaluationFrameworkService {
         total_ai_results: 0,
         average_human_score: 0,
         average_ai_score: 0,
-        error: 'Google Sheets not configured'
+        error: 'Google Sheets not configured or not accessible'
       }
     }
 
     try {
-      const cases = await this.googleSheets.getEvaluationCases(1000)
-      const results = await this.googleSheets.getEvaluationResults(1000)
+      const cases = await this.googleSheets.getEvaluationCases()
+      const results = await this.googleSheets.getEvaluationResults()
       
+      // Calculate statistics
       const total_cases = cases.length
-      const active_cases = cases.filter(c => c.status === 'active').length
-      const total_human_ratings = results.filter(r => r.evaluator && r.evaluator !== 'ai').length
+      const active_cases = cases.filter(c => !c.completed).length
+      const total_human_ratings = results.filter(r => r.match_result && r.match_result !== 'unknown').length
       const total_ai_results = results.length
       
       const human_scores = results
-        .filter(r => r.evaluator && r.evaluator !== 'ai')
-        .map(r => parseFloat(r.evaluation_score) || 0)
+        .filter(r => r.confidence_score && r.confidence_score !== '')
+        .map(r => parseFloat(r.confidence_score))
       
       const ai_scores = results
-        .map(r => parseFloat(r.evaluation_score) || 0)
+        .filter(r => r.confidence_score && r.confidence_score !== '')
+        .map(r => parseFloat(r.confidence_score))
       
       const average_human_score = human_scores.length > 0 
         ? human_scores.reduce((a, b) => a + b, 0) / human_scores.length 
@@ -89,7 +102,7 @@ class EvaluationFrameworkService {
         total_ai_results: 0,
         average_human_score: 0,
         average_ai_score: 0,
-        error: error.message
+        error: 'Failed to retrieve evaluation statistics'
       }
     }
   }
@@ -143,86 +156,34 @@ class EvaluationFrameworkService {
   }
 
   /**
-   * Get case comparison data
+   * Get ownership mappings
    */
-  async getCaseComparison(caseId) {
+  async getOwnershipMappings() {
+    if (!this.isAvailable) {
+      return []
+    }
+
+    try {
+      return await this.googleSheets.getOwnershipMappings(1000)
+    } catch (error) {
+      console.error('[EvaluationFramework] Error getting mappings:', error)
+      return []
+    }
+  }
+
+  /**
+   * Check ownership mapping for a brand
+   */
+  async checkOwnershipMapping(brand_name) {
     if (!this.isAvailable) {
       return null
     }
 
     try {
-      const results = await this.googleSheets.getEvaluationResults(1000)
-      const caseResults = results.filter(r => r.test_id === caseId)
-      
-      const human_ratings = caseResults.filter(r => r.evaluator && r.evaluator !== 'ai')
-      const ai_results = caseResults.filter(r => !r.evaluator || r.evaluator === 'ai')
-      
-      const human_scores = human_ratings.map(r => parseFloat(r.evaluation_score) || 0)
-      const ai_scores = ai_results.map(r => parseFloat(r.evaluation_score) || 0)
-      
-      const average_human_score = human_scores.length > 0 
-        ? human_scores.reduce((a, b) => a + b, 0) / human_scores.length 
-        : 0
-      
-      const average_ai_score = ai_scores.length > 0 
-        ? ai_scores.reduce((a, b) => a + b, 0) / ai_scores.length 
-        : 0
-
-      // Calculate mismatches
-      const mismatches = []
-      if (Math.abs(average_human_score - average_ai_score) > 1) {
-        mismatches.push({
-          type: 'Score Difference',
-          difference: Math.abs(average_human_score - average_ai_score)
-        })
-      }
-
-      return {
-        human_ratings,
-        ai_results,
-        average_human_score,
-        average_ai_score,
-        mismatches
-      }
+      return await this.googleSheets.checkOwnershipMapping(brand_name)
     } catch (error) {
-      console.error('[EvaluationFramework] Error getting case comparison:', error)
+      console.error('[EvaluationFramework] Error checking mapping:', error)
       return null
-    }
-  }
-
-  /**
-   * Create evaluation spreadsheet
-   */
-  async createEvaluationSpreadsheet(title) {
-    if (!this.isAvailable) {
-      throw new Error('Google Sheets not configured. Please set up Google API access.')
-    }
-
-    try {
-      const spreadsheetId = await this.googleSheets.createEvaluationTemplate(title)
-      return spreadsheetId
-    } catch (error) {
-      console.error('[EvaluationFramework] Error creating spreadsheet:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Log evaluation result
-   */
-  async logEvaluation(evaluationData) {
-    if (!this.isAvailable) {
-      console.warn('[EvaluationFramework] Cannot log evaluation - Google Sheets not configured')
-      return false
-    }
-
-    try {
-      await this.googleSheets.addEvaluationResult(evaluationData)
-      console.log(`[EvaluationFramework] Evaluation logged for test_id: ${evaluationData.test_id}`)
-      return true
-    } catch (error) {
-      console.error('[EvaluationFramework] Error logging evaluation:', error)
-      return false
     }
   }
 
@@ -251,14 +212,31 @@ class EvaluationFrameworkService {
         token_cost_estimate: 0,
         tool_errors: '',
         explainability_score: 1.0,
-        source_used: 'manual_test_case',
-        prompt_snapshot: caseData.human_query || '',
-        response_snippet: caseData.notes || ''
+        source_used: 'manual_entry',
+        prompt_snapshot: '',
+        response_snippet: ''
       })
-      console.log(`[EvaluationFramework] Evaluation case added for test_id: ${caseData.test_id}`)
       return true
     } catch (error) {
       console.error('[EvaluationFramework] Error adding evaluation case:', error)
+      return false
+    }
+  }
+
+  /**
+   * Log evaluation results
+   */
+  async logEvaluation(evaluationData, steps) {
+    if (!this.isAvailable) {
+      console.warn('[EvaluationFramework] Cannot log evaluation - Google Sheets not configured')
+      return false
+    }
+
+    try {
+      await this.googleSheets.logCompleteEvaluation(evaluationData, steps)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Error logging evaluation:', error)
       return false
     }
   }
@@ -274,7 +252,6 @@ class EvaluationFrameworkService {
 
     try {
       await this.googleSheets.addOwnershipMapping(mappingData)
-      console.log(`[EvaluationFramework] Ownership mapping added for brand: ${mappingData.brand_name}`)
       return true
     } catch (error) {
       console.error('[EvaluationFramework] Error adding ownership mapping:', error)
@@ -309,82 +286,79 @@ class EvaluationFrameworkService {
           confidence: expectedResult.confidence_score
         },
         actual: {
-          owner: actual_result.financial_beneficiary,
-          country: actual_result.beneficiary_country,
-          structure_type: actual_result.ownership_structure_type,
-          confidence: actual_result.confidence_score
-        },
-        matches: {
-          owner: expectedResult.actual_owner === actual_result.financial_beneficiary,
-          country: expectedResult.actual_country === actual_result.beneficiary_country,
-          structure_type: expectedResult.actual_structure_type === actual_result.ownership_structure_type,
-          confidence: Math.abs(expectedResult.confidence_score - actual_result.confidence_score) <= 10
+          owner: actual_result.owner,
+          country: actual_result.country,
+          structure_type: actual_result.structure_type,
+          confidence: actual_result.confidence
         }
       }
+
+      // Calculate match result
+      comparison.match_result = this.calculateMatchResult(comparison.expected, comparison.actual)
+      comparison.explainability_score = this.calculateExplainabilityScore(actual_result)
 
       return comparison
     } catch (error) {
       console.error('[EvaluationFramework] Error comparing evaluation:', error)
-      return { error: error.message }
+      return { error: 'Failed to compare evaluation results' }
     }
   }
 
   /**
-   * Calculate match result between expected and actual evaluation
+   * Calculate match result between expected and actual
    */
   calculateMatchResult(expected, actual) {
-    const ownerMatch = expected.expected_owner === actual.financial_beneficiary
-    const countryMatch = expected.expected_country === actual.beneficiary_country
-    const structureMatch = expected.expected_structure_type === actual.ownership_structure_type
-    const confidenceMatch = Math.abs(expected.expected_confidence - actual.confidence_score) <= 10
-
-    const totalMatches = [ownerMatch, countryMatch, structureMatch, confidenceMatch].filter(Boolean).length
-    const matchPercentage = (totalMatches / 4) * 100
-
-    return {
-      owner_match: ownerMatch,
-      country_match: countryMatch,
-      structure_match: structureMatch,
-      confidence_match: confidenceMatch,
-      total_matches: totalMatches,
-      match_percentage: matchPercentage,
-      overall_result: matchPercentage >= 75 ? 'PASS' : 'FAIL'
+    const ownerMatch = expected.owner?.toLowerCase() === actual.owner?.toLowerCase()
+    const countryMatch = expected.country?.toLowerCase() === actual.country?.toLowerCase()
+    const structureMatch = expected.structure_type?.toLowerCase() === actual.structure_type?.toLowerCase()
+    
+    if (ownerMatch && countryMatch && structureMatch) {
+      return 'exact_match'
+    } else if (ownerMatch && countryMatch) {
+      return 'partial_match'
+    } else if (ownerMatch) {
+      return 'owner_match_only'
+    } else {
+      return 'no_match'
     }
   }
 
   /**
-   * Calculate explainability score based on reasoning and sources
+   * Calculate explainability score
    */
-  calculateExplainabilityScore(evaluationData) {
+  calculateExplainabilityScore(result) {
     let score = 0
-    const maxScore = 100
-
-    // Reasoning quality (40 points)
-    if (evaluationData.reasoning && evaluationData.reasoning.length > 100) {
-      score += 20
-      if (evaluationData.reasoning.includes('because') || evaluationData.reasoning.includes('due to')) {
-        score += 10
-      }
-      if (evaluationData.reasoning.includes('evidence') || evaluationData.reasoning.includes('source')) {
-        score += 10
-      }
+    
+    // Base score for having reasoning
+    if (result.reasoning && result.reasoning.length > 50) {
+      score += 0.3
     }
-
-    // Source diversity (30 points)
-    if (evaluationData.sources && Array.isArray(evaluationData.sources)) {
-      score += Math.min(evaluationData.sources.length * 10, 30)
+    
+    // Score for having sources
+    if (result.sources && result.sources.length > 0) {
+      score += 0.3
     }
-
-    // Agent execution trace quality (30 points)
-    if (evaluationData.agent_execution_trace && evaluationData.agent_execution_trace.stages) {
-      const stages = evaluationData.agent_execution_trace.stages
-      score += Math.min(stages.length * 5, 15)
-      
-      const successfulStages = stages.filter(stage => stage.result === 'success').length
-      score += Math.min(successfulStages * 5, 15)
+    
+    // Score for having trace steps
+    if (result.trace_steps && result.trace_steps.length > 0) {
+      score += 0.4
     }
+    
+    return Math.min(score, 1.0)
+  }
 
-    return Math.min(score, maxScore) / maxScore // Normalize to 0-1
+  /**
+   * Get sheet validation status
+   */
+  getSheetValidation() {
+    return this.sheetValidation
+  }
+
+  /**
+   * Check if evaluation framework is available
+   */
+  isEvaluationAvailable() {
+    return this.isAvailable
   }
 }
 
