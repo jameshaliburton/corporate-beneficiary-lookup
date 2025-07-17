@@ -111,6 +111,38 @@ class EvaluationFrameworkService {
   }
 
   /**
+   * Get evaluation results
+   */
+  async getEvaluationResults() {
+    if (!this.isAvailable) {
+      return []
+    }
+
+    try {
+      return await this.googleSheets.getEvaluationResults(100)
+    } catch (error) {
+      console.error('[EvaluationFramework] Error getting results:', error)
+      return []
+    }
+  }
+
+  /**
+   * Get evaluation steps for a specific trace_id
+   */
+  async getEvaluationSteps(trace_id) {
+    if (!this.isAvailable) {
+      return []
+    }
+
+    try {
+      return await this.googleSheets.getEvaluationSteps(trace_id)
+    } catch (error) {
+      console.error('[EvaluationFramework] Error getting steps:', error)
+      return []
+    }
+  }
+
+  /**
    * Get case comparison data
    */
   async getCaseComparison(caseId) {
@@ -228,6 +260,72 @@ class EvaluationFrameworkService {
     } catch (error) {
       console.error('[EvaluationFramework] Error adding evaluation case:', error)
       return false
+    }
+  }
+
+  /**
+   * Add ownership mapping
+   */
+  async addOwnershipMapping(mappingData) {
+    if (!this.isAvailable) {
+      console.warn('[EvaluationFramework] Cannot add ownership mapping - Google Sheets not configured')
+      return false
+    }
+
+    try {
+      await this.googleSheets.addOwnershipMapping(mappingData)
+      console.log(`[EvaluationFramework] Ownership mapping added for brand: ${mappingData.brand_name}`)
+      return true
+    } catch (error) {
+      console.error('[EvaluationFramework] Error adding ownership mapping:', error)
+      return false
+    }
+  }
+
+  /**
+   * Compare evaluation results
+   */
+  async compareEvaluation(test_id, actual_result) {
+    if (!this.isAvailable) {
+      console.warn('[EvaluationFramework] Cannot compare evaluation - Google Sheets not configured')
+      return null
+    }
+
+    try {
+      const results = await this.googleSheets.getEvaluationResults(1000)
+      const testResults = results.filter(r => r.test_id === test_id)
+      
+      if (testResults.length === 0) {
+        return { error: 'No evaluation results found for this test_id' }
+      }
+
+      const expectedResult = testResults[0]
+      const comparison = {
+        test_id,
+        expected: {
+          owner: expectedResult.actual_owner,
+          country: expectedResult.actual_country,
+          structure_type: expectedResult.actual_structure_type,
+          confidence: expectedResult.confidence_score
+        },
+        actual: {
+          owner: actual_result.financial_beneficiary,
+          country: actual_result.beneficiary_country,
+          structure_type: actual_result.ownership_structure_type,
+          confidence: actual_result.confidence_score
+        },
+        matches: {
+          owner: expectedResult.actual_owner === actual_result.financial_beneficiary,
+          country: expectedResult.actual_country === actual_result.beneficiary_country,
+          structure_type: expectedResult.actual_structure_type === actual_result.ownership_structure_type,
+          confidence: Math.abs(expectedResult.confidence_score - actual_result.confidence_score) <= 10
+        }
+      }
+
+      return comparison
+    } catch (error) {
+      console.error('[EvaluationFramework] Error comparing evaluation:', error)
+      return { error: error.message }
     }
   }
 }
