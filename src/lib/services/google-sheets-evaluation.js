@@ -528,5 +528,6 @@ class GoogleSheetsEvaluationService {
   }
 }
 
-// Export singleton instance
+// Export both the class and a singleton instance
+export default GoogleSheetsEvaluationService
 export const googleSheetsEvaluation = new GoogleSheetsEvaluationService() 
