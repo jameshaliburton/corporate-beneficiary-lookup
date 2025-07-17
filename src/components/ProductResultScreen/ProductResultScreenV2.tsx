@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Camera, Barcode, Edit, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Camera, Barcode, Edit, RefreshCw, Settings } from 'lucide-react';
+import { RefineModal } from '../RefineModal';
 
 interface OwnershipFlowCompany {
   name: string;
@@ -69,6 +70,8 @@ export default function ProductResultScreenV2({
 }: ProductResultScreenV2Props) {
   const [showReasoning, setShowReasoning] = useState(false);
   const [showTrace, setShowTrace] = useState(false);
+  const [showRefineModal, setShowRefineModal] = useState(false);
+  const [refinementLoading, setRefinementLoading] = useState(false);
 
   // Extract data with fallbacks
   const brandName = result.brand || 'Unknown Brand';
@@ -108,6 +111,36 @@ export default function ProductResultScreenV2({
   };
 
   const traceSteps = getTraceSteps();
+
+  const handleRefine = async (refinementData: any) => {
+    setRefinementLoading(true);
+    try {
+      const response = await fetch('/api/evaluation-rerun', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trace_id: result.agent_execution_trace?.trace_id || `manual_${Date.now()}`,
+          corrected_query: refinementData.corrected_query,
+          original_result: result,
+          refinement_data: refinementData
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the result with the refined data
+        // For now, we'll just show a success message
+        alert('Refinement completed successfully! Check the evaluation logs for details.');
+      } else {
+        alert('Refinement failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Refinement error:', error);
+      alert('Refinement failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setRefinementLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 px-4 py-8">
@@ -314,6 +347,16 @@ export default function ProductResultScreenV2({
           )}
           
           <Button
+            onClick={() => setShowRefineModal(true)}
+            disabled={refinementLoading}
+            variant="outline"
+            className="w-full py-3 font-semibold border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            {refinementLoading ? '🔄 Refining...' : '🛠️ Refine Result'}
+          </Button>
+          
+          <Button
             onClick={onScanAnother}
             variant="ghost"
             className="w-full py-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
@@ -333,6 +376,20 @@ export default function ProductResultScreenV2({
           </div>
         </details>
       </div>
+
+      {/* Refine Modal */}
+      <RefineModal
+        originalResult={result}
+        trace={{
+          trace_id: result.agent_execution_trace?.trace_id || `manual_${Date.now()}`,
+          stages: result.agent_execution_trace?.stages || [],
+          reasoning_chain: result.agent_execution_trace?.reasoning_chain || [],
+          performance_metrics: result.agent_execution_trace?.performance_metrics || {}
+        }}
+        onRefine={handleRefine}
+        onClose={() => setShowRefineModal(false)}
+        isOpen={showRefineModal}
+      />
     </div>
   );
 } 

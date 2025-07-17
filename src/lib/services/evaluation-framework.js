@@ -120,7 +120,13 @@ class EvaluationFrameworkService {
     await this.initialize()
 
     try {
-      await googleSheetsEvaluation.logCompleteEvaluation(evaluationData, steps)
+      // Add correction data if present
+      const enhancedData = {
+        ...evaluationData,
+        correction_data: evaluationData.correction_data || null
+      }
+      
+      await googleSheetsEvaluation.logCompleteEvaluation(enhancedData, steps)
       console.log(`[EvaluationFramework] Evaluation logged for test_id: ${evaluationData.test_id}`)
       return true
     } catch (error) {

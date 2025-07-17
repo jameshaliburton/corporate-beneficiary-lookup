@@ -194,10 +194,14 @@ class GoogleSheetsEvaluationService {
         explainability_score,
         source_used,
         prompt_snapshot,
-        response_snippet
+        response_snippet,
+        correction_data
       } = evaluationData
 
       const run_timestamp = new Date().toISOString()
+
+      // Handle correction data if present
+      const correction_info = correction_data ? JSON.stringify(correction_data) : ''
 
       const rowData = [
         test_id,
@@ -215,7 +219,8 @@ class GoogleSheetsEvaluationService {
         explainability_score,
         source_used,
         prompt_snapshot,
-        response_snippet
+        response_snippet,
+        correction_info
       ]
 
       // Append row to evaluation_results sheet
