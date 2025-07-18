@@ -309,8 +309,8 @@ export default function DashboardPage() {
     setEvaluationLoading(true)
     try {
       const [statsResponse, casesResponse] = await Promise.all([
-        fetch('/api/evaluation-framework?action=stats'),
-        fetch('/api/evaluation-framework?action=cases')
+        fetch('/api/evaluation?action=stats'),
+        fetch('/api/evaluation?action=cases')
       ])
 
       if (statsResponse.ok && casesResponse.ok) {
@@ -332,9 +332,9 @@ export default function DashboardPage() {
   const loadCaseData = async (caseId: string) => {
     try {
       const [ratingsResponse, resultsResponse, comparisonResponse] = await Promise.all([
-        fetch(`/api/evaluation-framework?action=human_ratings&case_id=${caseId}`),
-        fetch(`/api/evaluation-framework?action=ai_results&case_id=${caseId}`),
-        fetch(`/api/evaluation-framework?action=comparison&case_id=${caseId}`)
+        fetch(`/api/evaluation?action=human_ratings&case_id=${caseId}`),
+        fetch(`/api/evaluation?action=ai_results&case_id=${caseId}`),
+        fetch(`/api/evaluation?action=comparison&case_id=${caseId}`)
       ])
 
       if (ratingsResponse.ok && resultsResponse.ok && comparisonResponse.ok) {
@@ -353,7 +353,7 @@ export default function DashboardPage() {
 
   const createEvaluationSpreadsheet = async () => {
     try {
-      const response = await fetch('/api/evaluation-framework', {
+      const response = await fetch('/api/evaluation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

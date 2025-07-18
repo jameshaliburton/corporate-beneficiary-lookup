@@ -32,12 +32,13 @@ class EvaluationFrameworkService {
       // Check if at least the main evaluation sheets are accessible
       const accessibleSheets = Object.values(this.sheetValidation).filter(sheet => sheet.accessible)
       
-      if (accessibleSheets.length >= 2) {
-        this.isAvailable = true
-        console.log('[EvaluationFramework] Initialized successfully with', accessibleSheets.length, 'accessible sheets')
-      } else {
-        this.isAvailable = false
-        console.warn('[EvaluationFramework] Limited functionality - only', accessibleSheets.length, 'sheets accessible')
+      // For now, allow evaluation to work even with limited sheet access
+      // The core functionality works with local storage
+      this.isAvailable = true
+      console.log('[EvaluationFramework] Initialized with', accessibleSheets.length, 'accessible sheets (using local fallback)')
+      
+      if (accessibleSheets.length < 2) {
+        console.warn('[EvaluationFramework] Limited Google Sheets access - using local storage fallback')
         console.warn('[EvaluationFramework] Sheet validation details:', this.sheetValidation)
       }
     } catch (error) {
@@ -59,7 +60,7 @@ class EvaluationFrameworkService {
         total_ai_results: 0,
         average_human_score: 0,
         average_ai_score: 0,
-        error: 'Google Sheets not configured or not accessible'
+        error: 'Evaluation framework not available'
       }
     }
 
