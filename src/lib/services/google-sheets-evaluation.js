@@ -11,12 +11,12 @@ class GoogleSheetsEvaluationService {
     this.sheets = null
     this.isInitialized = false
     
-    // Multi-sheet configuration
+    // Multi-sheet configuration - can be overridden by environment variables
     this.sheetIds = {
-      evaluation_cases: '1m5P9LxLg_g_tek2m1DQZJf2WnrRlp4N-Y00UksUdCA0',
-      evaluation_results: '1goFKiB9Khp4R0ASvVqn3TbGX2YW1gFVVToPYK9foBKo',
-      evaluation_steps: '1BSq_d9dZzI1N-NOuT_uJff5eZUO5BN7cEh3bwrbQvmg',
-      ownership_mappings: '1Pa844D_sTypLVNxRphJPCCEfOP03sHWIYLmiXCNT9vs'
+      evaluation_cases: process.env.GOOGLE_SHEET_EVALUATION_CASES || '1m5P9LxLg_g_tek2m1DQZJf2WnrRlp4N-Y00UksUdCA0',
+      evaluation_results: process.env.GOOGLE_SHEET_EVALUATION_RESULTS || '1goFKiB9Khp4R0ASvVqn3TbGX2YW1gFVVToPYK9foBKo',
+      evaluation_steps: process.env.GOOGLE_SHEET_EVALUATION_STEPS || '1BSq_d9dZzI1N-NOuT_uJff5eZUO5BN7cEh3bwrbQvmg',
+      ownership_mappings: process.env.GOOGLE_SHEET_OWNERSHIP_MAPPINGS || '1Pa844D_sTypLVNxRphJPCCEfOP03sHWIYLmiXCNT9vs'
     }
   }
 
@@ -53,6 +53,7 @@ class GoogleSheetsEvaluationService {
       this.isInitialized = true
 
       console.log('[GoogleSheets] Initialized successfully with service account')
+      console.log('[GoogleSheets] Using sheet IDs:', this.sheetIds)
     } catch (error) {
       console.error('[GoogleSheets] Initialization failed:', error)
       this.isInitialized = false
