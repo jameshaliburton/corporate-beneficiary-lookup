@@ -12,6 +12,9 @@ function parseDate(dateStr) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Initialize evaluation framework
+    await evaluationFramework.initialize()
+    
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     
@@ -47,6 +50,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialize evaluation framework
+    await evaluationFramework.initialize()
+    
     const body = await request.json()
     const { action, data } = body
     
