@@ -165,12 +165,13 @@ export default function EvaluationDashboardV3({}: EvaluationDashboardV3Props) {
         </Tabs>
       </div>
 
-      <FeedbackModal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        onSubmit={handleFeedbackSubmit}
-        result={flaggedResult}
-      />
+      {showFeedbackModal && flaggedResult && (
+        <FeedbackModal
+          result={flaggedResult}
+          onClose={() => setShowFeedbackModal(false)}
+          onSubmit={handleFeedbackSubmit}
+        />
+      )}
     </div>
   )
 } 
