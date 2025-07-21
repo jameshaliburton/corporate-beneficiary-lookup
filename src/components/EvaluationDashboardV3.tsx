@@ -71,6 +71,56 @@ export default function EvaluationDashboardV3({}: EvaluationDashboardV3Props) {
     }
   }
 
+  const handleStepRerun = async (stageName: string, stageData: any) => {
+    try {
+      console.log(`Rerunning step: ${stageName}`, stageData)
+      
+      // TODO: Implement step-level rerun API
+      const response = await fetch('/api/evaluation/v3/step-rerun', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          result_id: selectedResult.id,
+          trace_id: selectedResult.trace_id,
+          stage_name: stageName,
+          stage_data: stageData
+        })
+      })
+      
+      if (response.ok) {
+        // Refresh the selected result to show updated trace
+        // This would typically trigger a refetch of the result data
+        console.log('Step rerun completed successfully')
+      }
+    } catch (error) {
+      console.error('Failed to rerun step:', error)
+    }
+  }
+
+  const handleStepFeedback = async (stageName: string, feedback: any) => {
+    try {
+      console.log(`Submitting feedback for step: ${stageName}`, feedback)
+      
+      // TODO: Implement step-level feedback API
+      const response = await fetch('/api/evaluation/v3/step-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          result_id: selectedResult.id,
+          trace_id: selectedResult.trace_id,
+          stage_name: stageName,
+          feedback: feedback
+        })
+      })
+      
+      if (response.ok) {
+        console.log('Step feedback submitted successfully')
+      }
+    } catch (error) {
+      console.error('Failed to submit step feedback:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -147,7 +197,9 @@ export default function EvaluationDashboardV3({}: EvaluationDashboardV3Props) {
 
           <TabsContent value="trace" className="space-y-6">
             <TraceInspectorV3
-              selectedResult={selectedResult}
+              traceData={selectedResult?.agent_execution_trace || null}
+              onStepRerun={handleStepRerun}
+              onStepFeedback={handleStepFeedback}
             />
           </TabsContent>
 

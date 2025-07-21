@@ -57,6 +57,7 @@ export default function UnifiedResultsTableV3({
   }, [selectedDataSource])
 
   useEffect(() => {
+    // Apply filters
     let filtered = results
 
     if (filters.search) {
@@ -73,6 +74,7 @@ export default function UnifiedResultsTableV3({
     }
 
     if (filters.confidence !== 'all') {
+      const confidenceThreshold = parseInt(filters.confidence)
       filtered = filtered.filter(result => {
         const confidence = result.confidence_score || 0
         switch (filters.confidence) {
@@ -116,6 +118,7 @@ export default function UnifiedResultsTableV3({
       })
       
       if (response.ok) {
+        // Refresh results
         fetchResults()
       }
     } catch (error) {
@@ -154,6 +157,7 @@ export default function UnifiedResultsTableV3({
         <CardTitle>Unified Results ({filteredResults.length})</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Input
             placeholder="Search..."
@@ -204,6 +208,7 @@ export default function UnifiedResultsTableV3({
           />
         </div>
 
+        {/* Results Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

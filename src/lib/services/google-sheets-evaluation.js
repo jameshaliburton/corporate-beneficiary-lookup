@@ -1,4 +1,6 @@
 import { google } from 'googleapis'
+import fs from 'fs'
+import path from 'path'
 
 /**
  * Google Sheets Evaluation Service
@@ -29,17 +31,38 @@ class GoogleSheetsEvaluationService {
     try {
       console.log('[GoogleSheets] Starting initialization...')
       
-      // Parse service account key from environment variable
-      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_JSON
+      // Try file-based authentication first
+      const serviceAccountKeyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './gcp-service-account.json'
+      let credentials = null
       
-      if (!serviceAccountKey) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_JSON environment variable not set')
+      try {
+        // Try to read from file
+        const keyFilePath = path.resolve(process.cwd(), serviceAccountKeyFile)
+        console.log('[GoogleSheets] Trying to read service account key from file:', keyFilePath)
+        
+        if (fs.existsSync(keyFilePath)) {
+          const keyFileContent = fs.readFileSync(keyFilePath, 'utf8')
+          credentials = JSON.parse(keyFileContent)
+          console.log('[GoogleSheets] Service account key loaded from file, client_email:', credentials.client_email)
+        } else {
+          console.log('[GoogleSheets] Service account key file not found, trying environment variable')
+        }
+      } catch (fileError) {
+        console.log('[GoogleSheets] File-based authentication failed, trying environment variable')
       }
-
-      console.log('[GoogleSheets] Service account key found, length:', serviceAccountKey.length)
       
-      const credentials = JSON.parse(serviceAccountKey)
-      console.log('[GoogleSheets] Credentials parsed successfully, client_email:', credentials.client_email)
+      // Fallback to environment variable if file doesn't exist
+      if (!credentials) {
+        const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_JSON
+        
+        if (!serviceAccountKey) {
+          throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_JSON environment variable not set and service account key file not found')
+        }
+
+        console.log('[GoogleSheets] Service account key found in environment, length:', serviceAccountKey.length)
+        credentials = JSON.parse(serviceAccountKey)
+        console.log('[GoogleSheets] Credentials parsed from environment, client_email:', credentials.client_email)
+      }
       
       const auth = new google.auth.JWT(
         credentials.client_email,

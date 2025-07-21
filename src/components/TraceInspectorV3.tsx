@@ -1,245 +1,351 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDown, ChevronRight, Play, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-interface TraceInspectorV3Props {
-  selectedResult: any
+interface TraceStage {
+  stage_id: string
+  stage: string
+  description: string
+  start_time: string
+  end_time?: string
+  status: 'started' | 'success' | 'error' | 'partial'
+  reasoning: Array<{
+    timestamp: string
+    type: string
+    content: string
+  }>
+  decisions: Array<{
+    timestamp: string
+    decision: string
+    alternatives: string[]
+    reasoning: string
+  }>
+  data: any
+  error: any
+  duration_ms: number
 }
 
-export default function TraceInspectorV3({ selectedResult }: TraceInspectorV3Props) {
-  const [traceSteps, setTraceSteps] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
-
-  const fetchTraceSteps = async () => {
-    if (!selectedResult?.trace_id) return
-
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/evaluation/v3/trace?trace_id=${selectedResult.trace_id}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setTraceSteps(data.steps || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch trace steps:', error)
-    } finally {
-      setLoading(false)
-    }
+interface TraceData {
+  trace_id: string
+  start_time: string
+  brand: string
+  product_name: string
+  barcode: string
+  stages: TraceStage[]
+  decisions: any[]
+  reasoning_chain: any[]
+  performance_metrics: {
+    total_duration_ms: number
+    stage_durations: Record<string, number>
+    memory_usage: any
+    api_calls: number
+    token_usage: number
   }
+  final_result: any
+  error_details: any
+  confidence_evolution: any[]
+}
 
-  useEffect(() => {
-    if (selectedResult) {
-      fetchTraceSteps()
-    }
-  }, [selectedResult])
+interface TraceInspectorV3Props {
+  traceData: TraceData | null
+  onStepRerun?: (stageName: string, stageData: any) => void
+  onStepFeedback?: (stageName: string, feedback: any) => void
+}
 
-  const toggleStepExpansion = (stepId: string) => {
-    const newExpanded = new Set(expandedSteps)
-    if (newExpanded.has(stepId)) {
-      newExpanded.delete(stepId)
-    } else {
-      newExpanded.add(stepId)
-    }
-    setExpandedSteps(newExpanded)
-  }
+export default function TraceInspectorV3({ 
+  traceData, 
+  onStepRerun, 
+  onStepFeedback 
+}: TraceInspectorV3Props) {
+  const [selectedStage, setSelectedStage] = useState<string | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<{
+    stage: string
+    isOpen: boolean
+  }>({ stage: '', isOpen: false })
 
-  const handleRerunStep = async (step: any) => {
-    try {
-      const response = await fetch('/api/evaluation/v3/rerun-step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          trace_id: selectedResult.trace_id,
-          step_id: step.id,
-          step_type: step.type
-        })
-      })
-      
-      if (response.ok) {
-        // Refresh trace steps
-        fetchTraceSteps()
-      }
-    } catch (error) {
-      console.error('Failed to rerun step:', error)
-    }
-  }
-
-  const getStepStatusIcon = (step: any) => {
-    if (step.error) return <AlertCircle className="h-4 w-4 text-red-500" />
-    if (step.completed) return <CheckCircle className="h-4 w-4 text-green-500" />
-    return <Clock className="h-4 w-4 text-yellow-500" />
-  }
-
-  const getStepStatusColor = (step: any) => {
-    if (step.error) return 'text-red-600'
-    if (step.completed) return 'text-green-600'
-    return 'text-yellow-600'
-  }
-
-  if (!selectedResult) {
+  if (!traceData) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="text-center text-gray-500">
-            Select a result to inspect its trace
-          </div>
+        <CardHeader>
+          <CardTitle>Trace Inspector</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No trace data available for this result.</p>
         </CardContent>
       </Card>
     )
   }
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">Loading trace steps...</div>
-        </CardContent>
-      </Card>
-    )
+  const getStageStatusColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'bg-green-100 text-green-800'
+      case 'error': return 'bg-red-100 text-red-800'
+      case 'partial': return 'bg-yellow-100 text-yellow-800'
+      default: return 'bg-blue-100 text-blue-800'
+    }
+  }
+
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`
+    return `${(ms / 1000).toFixed(2)}s`
+  }
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString()
+  }
+
+  const handleStepRerun = (stage: TraceStage) => {
+    if (onStepRerun) {
+      onStepRerun(stage.stage, stage.data)
+    }
+  }
+
+  const handleStepFeedback = (stage: TraceStage) => {
+    setFeedbackModal({ stage: stage.stage, isOpen: true })
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          Trace Inspector - {selectedResult.brand} ({selectedResult.product_name})
+        <CardTitle className="flex items-center justify-between">
+          <span>Trace Inspector</span>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">
+              {traceData.stages.length} stages
+            </Badge>
+            <Badge variant="outline">
+              {formatDuration(traceData.performance_metrics.total_duration_ms)}
+            </Badge>
+          </div>
         </CardTitle>
-        <div className="text-sm text-gray-600">
-          Trace ID: {selectedResult.trace_id}
-        </div>
       </CardHeader>
       <CardContent>
-        {traceSteps.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No trace steps available for this result.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {traceSteps.map((step, index) => (
-              <Collapsible
-                key={step.id || index}
-                open={expandedSteps.has(step.id || index.toString())}
-                onOpenChange={() => toggleStepExpansion(step.id || index.toString())}
-              >
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          {expandedSteps.has(step.id || index.toString()) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
+        <Tabs defaultValue="stages" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="stages">Execution Stages</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="reasoning">Reasoning Chain</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="stages" className="space-y-4">
+            <div className="space-y-3">
+              {traceData.stages.map((stage) => (
+                <Card key={stage.stage_id} className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold capitalize">{stage.stage.replace('_', ' ')}</h4>
+                        <Badge className={getStageStatusColor(stage.status)}>
+                          {stage.status}
+                        </Badge>
+                        <Badge variant="outline">
+                          {formatDuration(stage.duration_ms)}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStepRerun(stage)}
+                          disabled={!onStepRerun}
+                        >
+                          Rerun Step
                         </Button>
-                      </CollapsibleTrigger>
-                      
-                      {getStepStatusIcon(step)}
-                      
-                      <div>
-                        <div className={`font-medium ${getStepStatusColor(step)}`}>
-                          {step.agent_name || step.type || `Step ${index + 1}`}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {step.duration ? `${step.duration}ms` : 'Duration unknown'}
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStepFeedback(stage)}
+                          disabled={!onStepFeedback}
+                        >
+                          Flag Step
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      {step.confidence_score && (
-                        <Badge variant="outline">
-                          {step.confidence_score.toFixed(1)}%
-                        </Badge>
-                      )}
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRerunStep(step)}
-                      >
-                        <Play className="h-3 w-3 mr-1" />
-                        Rerun
-                      </Button>
+                    <p className="text-sm text-muted-foreground">{stage.description}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Stage Data */}
+                    {Object.keys(stage.data).length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2">Stage Data:</h5>
+                        <pre className="text-xs bg-muted p-2 rounded">
+                          {JSON.stringify(stage.data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Reasoning */}
+                    {stage.reasoning.length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2">Reasoning:</h5>
+                        <div className="space-y-1">
+                          {stage.reasoning.map((reason, index) => (
+                            <div key={index} className="text-xs bg-muted p-2 rounded">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {reason.type}
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                  {formatTimestamp(reason.timestamp)}
+                                </span>
+                              </div>
+                              <p>{reason.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Decisions */}
+                    {stage.decisions.length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2">Decisions:</h5>
+                        <div className="space-y-2">
+                          {stage.decisions.map((decision, index) => (
+                            <div key={index} className="border-l-2 border-l-green-500 pl-3">
+                              <p className="font-medium text-sm">{decision.decision}</p>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                {decision.reasoning}
+                              </p>
+                              {decision.alternatives.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Alternatives:</p>
+                                  <ul className="text-xs text-muted-foreground list-disc list-inside">
+                                    {decision.alternatives.map((alt, altIndex) => (
+                                      <li key={altIndex}>{alt}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {stage.error && (
+                      <div>
+                        <h5 className="font-medium text-sm mb-2 text-red-600">Error:</h5>
+                        <pre className="text-xs bg-red-50 p-2 rounded text-red-700">
+                          {JSON.stringify(stage.error, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h5 className="font-medium text-sm mb-2">Overall Performance:</h5>
+                    <div className="space-y-1 text-sm">
+                      <div>Total Duration: {formatDuration(traceData.performance_metrics.total_duration_ms)}</div>
+                      <div>API Calls: {traceData.performance_metrics.api_calls}</div>
+                      <div>Token Usage: {traceData.performance_metrics.token_usage}</div>
                     </div>
                   </div>
-                  
-                  <CollapsibleContent className="mt-4">
-                    <div className="space-y-4">
-                      {/* Input */}
-                      {step.input && (
-                        <div>
-                          <h4 className="font-medium text-sm mb-2">Input</h4>
-                          <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
-                            {typeof step.input === 'string' 
-                              ? step.input 
-                              : JSON.stringify(step.input, null, 2)
-                            }
-                          </pre>
+                  <div>
+                    <h5 className="font-medium text-sm mb-2">Stage Durations:</h5>
+                    <div className="space-y-1 text-sm">
+                      {Object.entries(traceData.performance_metrics.stage_durations).map(([stage, duration]) => (
+                        <div key={stage} className="flex justify-between">
+                          <span className="capitalize">{stage.replace('_', ' ')}:</span>
+                          <span>{formatDuration(duration)}</span>
                         </div>
-                      )}
-                      
-                      {/* Output */}
-                      {step.output && (
-                        <div>
-                          <h4 className="font-medium text-sm mb-2">Output</h4>
-                          <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
-                            {typeof step.output === 'string' 
-                              ? step.output 
-                              : JSON.stringify(step.output, null, 2)
-                            }
-                          </pre>
-                        </div>
-                      )}
-                      
-                      {/* Error */}
-                      {step.error && (
-                        <div>
-                          <h4 className="font-medium text-sm mb-2 text-red-600">Error</h4>
-                          <pre className="bg-red-50 p-3 rounded text-xs overflow-x-auto text-red-700">
-                            {step.error}
-                          </pre>
-                        </div>
-                      )}
-                      
-                      {/* Metadata */}
-                      {step.metadata && (
-                        <div>
-                          <h4 className="font-medium text-sm mb-2">Metadata</h4>
-                          <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
-                            {JSON.stringify(step.metadata, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                      
-                      {/* Prompt used */}
-                      {step.prompt && (
-                        <div>
-                          <h4 className="font-medium text-sm mb-2">Prompt Used</h4>
-                          <div className="bg-blue-50 p-3 rounded text-xs">
-                            <div className="font-medium mb-1">System Prompt:</div>
-                            <div className="whitespace-pre-wrap">{step.prompt.system_prompt}</div>
-                            {step.prompt.user_prompt && (
-                              <>
-                                <div className="font-medium mb-1 mt-2">User Prompt:</div>
-                                <div className="whitespace-pre-wrap">{step.prompt.user_prompt}</div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  </CollapsibleContent>
+                  </div>
                 </div>
-              </Collapsible>
-            ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reasoning" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reasoning Chain</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {traceData.reasoning_chain.map((reason, index) => (
+                    <div key={index} className="border-l-2 border-l-blue-500 pl-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {reason.type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {reason.stage?.replace('_', ' ')}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimestamp(reason.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-sm">{reason.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Feedback Modal */}
+        {feedbackModal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-96">
+              <CardHeader>
+                <CardTitle>Flag Step: {feedbackModal.stage}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Issue:</label>
+                    <textarea 
+                      className="w-full mt-1 p-2 border rounded"
+                      rows={3}
+                      placeholder="Describe the issue with this step..."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Suggested Fix:</label>
+                    <textarea 
+                      className="w-full mt-1 p-2 border rounded"
+                      rows={3}
+                      placeholder="Suggest how to improve this step..."
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => setFeedbackModal({ stage: '', isOpen: false })}
+                      variant="outline"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        // Handle feedback submission
+                        setFeedbackModal({ stage: '', isOpen: false })
+                      }}
+                    >
+                      Submit Feedback
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </CardContent>
