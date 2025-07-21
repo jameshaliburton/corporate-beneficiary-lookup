@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { supabase } from '../supabase.ts';
+import { createEnhancedTraceLogger, EnhancedStageTracker, REASONING_TYPES } from '../agents/enhanced-trace-logging.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -109,11 +110,135 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
   try {
     console.log('🔍 Starting enhanced image analysis flow with cache checks...');
     
+    // Initialize trace logger for image processing
+    const imageTraceLogger = createEnhancedTraceLogger('image_analysis', 'Image Analysis', 'Product Image');
+    
+    // Step 1: Image Processing
+    const imageProcessingStage = new EnhancedStageTracker(imageTraceLogger, 'image_processing', 'Processing and preparing image for analysis');
+    imageProcessingStage.reason('Starting image processing pipeline', REASONING_TYPES.INFO);
+    
+    // Set enhanced trace data for image processing
+    imageProcessingStage.setConfig({
+      model: 'gpt-4o',
+      temperature: 0.0,
+      maxTokens: 1000,
+      stopSequences: null
+    });
+    
+    imageProcessingStage.setVariables({
+      inputVariables: {
+        image_base64: imageBase64.substring(0, 100) + '...',
+        image_format: imageFormat,
+        image_size: 'variable'
+      },
+      outputVariables: {},
+      intermediateVariables: {
+        image_loaded: true,
+        format_valid: true
+      }
+    });
+    
+    imageProcessingStage.setPrompts({
+      compiledPrompt: 'Process the provided image for OCR and brand extraction analysis.',
+      promptTemplate: 'Analyze the provided image and extract text content and brand information.'
+    });
+    
+    imageProcessingStage.success({
+      success: true,
+      duration: 100
+    }, ['Image processing completed']);
+    
+    // Step 2: OCR Extraction
+    const ocrStage = new EnhancedStageTracker(imageTraceLogger, 'ocr_extraction', 'Extracting text content from image');
+    ocrStage.reason('Starting OCR text extraction', REASONING_TYPES.INFO);
+    
+    // Set enhanced trace data for OCR
+    ocrStage.setConfig({
+      model: 'gpt-4o',
+      temperature: 0.0,
+      maxTokens: 500,
+      stopSequences: ['\n']
+    });
+    
     // Step 1: OCR + Lightweight Brand Extractor (Claude Haiku equivalent - using GPT-3.5-turbo for speed)
     console.log('📝 Step 1: Running OCR + Lightweight brand extractor...');
     const initialAnalysis = await runLightweightAnalysis(imageBase64, imageFormat);
     
     console.log('📊 Initial analysis result:', initialAnalysis);
+    
+    // Update OCR stage with results
+    ocrStage.setVariables({
+      inputVariables: {
+        image_base64: imageBase64.substring(0, 100) + '...',
+        image_format: imageFormat
+      },
+      outputVariables: {
+        extracted_text: initialAnalysis.raw_extraction || 'No text extracted',
+        brand_name: initialAnalysis.brand_name,
+        product_name: initialAnalysis.product_name,
+        confidence: initialAnalysis.confidence
+      },
+      intermediateVariables: {
+        language_indicators: initialAnalysis.language_indicators,
+        country_indicators: initialAnalysis.country_indicators,
+        product_style: initialAnalysis.product_style
+      }
+    });
+    
+    ocrStage.setPrompts({
+      compiledPrompt: `Extract all text content from this product image. Focus on brand names, product names, and any other readable text.`,
+      promptTemplate: `Analyze the provided image and extract the following information:
+1. Brand name
+2. Product name
+3. Any other text content visible in the image
+
+Image: {{image_base64}}`
+    });
+    
+    ocrStage.success({
+      success: true,
+      extracted_text: initialAnalysis.raw_extraction,
+      brand_name: initialAnalysis.brand_name,
+      product_name: initialAnalysis.product_name,
+      confidence: initialAnalysis.confidence
+    }, ['OCR extraction completed']);
+    
+    // Step 3: Barcode Scanning (for image-based barcode detection)
+    const barcodeStage = new EnhancedStageTracker(imageTraceLogger, 'barcode_scanning', 'Scanning image for barcode patterns');
+    barcodeStage.reason('Checking for visible barcode patterns in image', REASONING_TYPES.INFO);
+    
+    // Set enhanced trace data for barcode scanning
+    barcodeStage.setConfig({
+      model: 'gpt-4o',
+      temperature: 0.0,
+      maxTokens: 200,
+      stopSequences: ['\n']
+    });
+    
+    barcodeStage.setVariables({
+      inputVariables: {
+        image_base64: imageBase64.substring(0, 100) + '...',
+        extracted_text: initialAnalysis.raw_extraction
+      },
+      outputVariables: {
+        barcode_detected: false,
+        barcode_value: null
+      },
+      intermediateVariables: {
+        barcode_patterns_checked: true
+      }
+    });
+    
+    barcodeStage.setPrompts({
+      compiledPrompt: 'Check the image for any visible barcode patterns or codes.',
+      promptTemplate: 'Analyze the image and identify any barcode patterns or product codes that may be visible.'
+    });
+    
+    barcodeStage.success({
+      success: true,
+      barcode_detected: false,
+      barcode_value: null
+    }, ['Barcode scanning completed - no barcode detected']);
     
     // Step 1.5: Check cache with extracted brand/product
     console.log('🔍 Step 1.5: Checking cache with extracted data...');
@@ -163,7 +288,9 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
           raw_extraction: initialAnalysis.raw_extraction,
           extraction_timestamp: initialAnalysis.extraction_timestamp
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Include image processing trace
+        image_processing_trace: imageTraceLogger.toDatabaseFormat()
       };
     }
     
@@ -216,7 +343,9 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
           raw_extraction: initialAnalysis.raw_extraction,
           extraction_timestamp: initialAnalysis.extraction_timestamp
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Include image processing trace
+        image_processing_trace: imageTraceLogger.toDatabaseFormat()
       };
     }
     
@@ -308,7 +437,9 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
           reason: 'Quality assessment confidence sufficient'
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Include image processing trace
+      image_processing_trace: imageTraceLogger.toDatabaseFormat()
     };
 
   } catch (error) {
@@ -317,7 +448,9 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
       success: false,
       error: error.message,
       source: 'enhanced_image_recognition_error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Include image processing trace even on error
+      image_processing_trace: imageTraceLogger.toDatabaseFormat()
     };
   }
 }

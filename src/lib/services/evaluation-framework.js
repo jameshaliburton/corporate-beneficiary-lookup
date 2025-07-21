@@ -180,30 +180,165 @@ class EvaluationFrameworkService {
         agent_execution_trace: {
           stages: [
             {
+              stage: 'image_processing',
+              reasoning: `Processing product image for ${brand.name}`,
+              confidence: 85 + Math.random() * 10,
+              timestamp: timestamp,
+              status: 'success',
+              duration: 800 + Math.random() * 300,
+              input: `Product image for ${brand.name}`,
+              output: `Extracted visual elements and brand indicators`,
+              variables: {
+                inputVariables: {
+                  image_url: `https://example.com/images/${brand.name.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+                  image_format: 'JPEG',
+                  image_size: '1024x768'
+                },
+                outputVariables: {
+                  detected_brand: brand.name,
+                  confidence_score: 85 + Math.random() * 10,
+                  visual_elements: ['logo', 'text', 'colors']
+                },
+                intermediateVariables: {
+                  ocr_text: `${brand.name} Product`,
+                  color_scheme: ['red', 'white'],
+                  logo_detected: true
+                }
+              },
+              config: {
+                model: 'gpt-4-vision-preview',
+                temperature: 0.1,
+                maxTokens: 1000,
+                stopSequences: ['\n\n']
+              },
+              compiled_prompt: `Analyze this product image and extract brand information, visual elements, and any text content. Focus on identifying the brand name and key visual indicators.`,
+              prompt_template: `Analyze the provided image and extract the following information:
+1. Brand name
+2. Product name
+3. Visual elements (logo, colors, design)
+4. Any text content visible in the image
+
+Image: {{image_url}}`
+            },
+            {
+              stage: 'ocr_extraction',
+              reasoning: `Extracting text from product image for ${brand.name}`,
+              confidence: 90 + Math.random() * 8,
+              timestamp: timestamp,
+              status: 'success',
+              duration: 600 + Math.random() * 200,
+              input: `Processed image data`,
+              output: `Extracted text: ${brand.name} Product`,
+              variables: {
+                inputVariables: {
+                  processed_image: `base64_encoded_image_data`,
+                  image_confidence: 85 + Math.random() * 10
+                },
+                outputVariables: {
+                  extracted_text: `${brand.name} Product`,
+                  text_confidence: 90 + Math.random() * 8,
+                  text_regions: [
+                    { text: brand.name, confidence: 95, bbox: [100, 50, 300, 80] },
+                    { text: 'Product', confidence: 88, bbox: [100, 90, 200, 110] }
+                  ]
+                },
+                intermediateVariables: {
+                  raw_ocr: `${brand.name} Product`,
+                  language: 'en',
+                  text_orientation: 'horizontal'
+                }
+              },
+              config: {
+                model: 'gpt-4-vision-preview',
+                temperature: 0.0,
+                maxTokens: 500,
+                stopSequences: ['\n']
+              },
+              compiled_prompt: `Extract all text content from this product image. Focus on brand names, product names, and any other readable text.`,
+              prompt_template: `Extract text from the provided image:
+
+{{processed_image}}
+
+Return all visible text in a structured format.`
+            },
+            {
+              stage: 'barcode_scanning',
+              reasoning: `Scanning for barcodes on ${brand.name} product`,
+              confidence: 75 + Math.random() * 15,
+              timestamp: timestamp,
+              status: 'success',
+              duration: 400 + Math.random() * 150,
+              input: `Product image with potential barcodes`,
+              output: `Barcode detected: 1234567890123`,
+              variables: {
+                inputVariables: {
+                  image_data: `base64_encoded_image_data`,
+                  scan_region: 'product_package'
+                },
+                outputVariables: {
+                  barcode_found: true,
+                  barcode_value: '1234567890123',
+                  barcode_type: 'EAN-13',
+                  scan_confidence: 75 + Math.random() * 15
+                },
+                intermediateVariables: {
+                  detected_lines: ['1234567890123'],
+                  barcode_format: 'EAN-13',
+                  scan_quality: 'good'
+                }
+              },
+              config: {
+                model: 'gpt-4-vision-preview',
+                temperature: 0.0,
+                maxTokens: 200,
+                stopSequences: ['\n']
+              },
+              compiled_prompt: `Scan this product image for any visible barcodes. Extract the barcode value and identify the barcode type.`,
+              prompt_template: `Scan for barcodes in the provided image:
+
+{{image_data}}
+
+Return the barcode value and type if found.`
+            },
+            {
               stage: 'ownership-analysis',
               reasoning: `Analyzing brand ownership structure for ${brand.name}`,
               confidence: brand.confidence,
               timestamp: timestamp,
-              promptVersion: '1.0',
-              agentName: 'Ownership Research Agent',
               status: 'success',
               duration: 1200 + Math.random() * 500,
               input: `Brand: ${brand.name}`,
               output: `Owner: ${brand.owner}`,
-              prompt: {
-                system: 'You are an ownership research specialist',
-                user: `Determine the owner of brand: ${brand.name}`,
-                version: '1.0'
+              variables: {
+                inputVariables: {
+                  brand_name: brand.name,
+                  extracted_text: `${brand.name} Product`,
+                  barcode_data: '1234567890123'
+                },
+                outputVariables: {
+                  owner: brand.owner,
+                  confidence_score: brand.confidence,
+                  research_sources: ['corporate_database', 'public_records']
+                },
+                intermediateVariables: {
+                  research_notes: `Researched ${brand.name} ownership structure`,
+                  verification_steps: ['database_lookup', 'record_verification']
+                }
               },
-              metadata: {
-                alternatives: [],
-                disambiguation: null,
-                ocrText: null,
-                imageAnalysis: null,
-                entityValidation: null,
-                fallbackTriggers: [],
-                lookupResults: []
-              }
+              config: {
+                model: 'gpt-4',
+                temperature: 0.1,
+                maxTokens: 1000,
+                stopSequences: ['\n\n']
+              },
+              compiled_prompt: `Research the ownership structure for brand: ${brand.name}. Use the extracted text and barcode data to identify the current owner.`,
+              prompt_template: `Research the ownership of this brand:
+
+Brand: {{brand_name}}
+Extracted Text: {{extracted_text}}
+Barcode: {{barcode_data}}
+
+Determine the current owner and provide confidence score.`
             }
           ]
         },

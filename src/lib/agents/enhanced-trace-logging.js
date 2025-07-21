@@ -29,7 +29,7 @@ export class EnhancedExecutionTrace {
   }
 
   /**
-   * Add a stage to the trace
+   * Add a stage to the trace with enhanced fields
    */
   addStage(stageName, description, options = {}) {
     const stage = {
@@ -43,6 +43,20 @@ export class EnhancedExecutionTrace {
       data: {},
       error: null,
       duration_ms: 0,
+      // Enhanced fields for detailed trace
+      variables: {
+        inputVariables: {},
+        outputVariables: {},
+        intermediateVariables: {}
+      },
+      config: {
+        model: null,
+        temperature: null,
+        maxTokens: null,
+        stopSequences: null
+      },
+      compiled_prompt: null,
+      prompt_template: null,
       ...options
     }
     
@@ -96,6 +110,55 @@ export class EnhancedExecutionTrace {
       type,
       content: reasoning
     })
+  }
+
+  /**
+   * Set variables for a stage
+   */
+  setStageVariables(stageName, variables) {
+    const stage = this.stages.find(s => s.stage === stageName)
+    if (!stage) {
+      console.warn(`[EnhancedTrace] Stage ${stageName} not found`)
+      return
+    }
+
+    stage.variables = {
+      inputVariables: variables.inputVariables || {},
+      outputVariables: variables.outputVariables || {},
+      intermediateVariables: variables.intermediateVariables || {}
+    }
+  }
+
+  /**
+   * Set config for a stage
+   */
+  setStageConfig(stageName, config) {
+    const stage = this.stages.find(s => s.stage === stageName)
+    if (!stage) {
+      console.warn(`[EnhancedTrace] Stage ${stageName} not found`)
+      return
+    }
+
+    stage.config = {
+      model: config.model || null,
+      temperature: config.temperature || null,
+      maxTokens: config.maxTokens || null,
+      stopSequences: config.stopSequences || null
+    }
+  }
+
+  /**
+   * Set prompts for a stage
+   */
+  setStagePrompts(stageName, compiledPrompt, promptTemplate) {
+    const stage = this.stages.find(s => s.stage === stageName)
+    if (!stage) {
+      console.warn(`[EnhancedTrace] Stage ${stageName} not found`)
+      return
+    }
+
+    stage.compiled_prompt = compiledPrompt
+    stage.prompt_template = promptTemplate
   }
 
   /**
@@ -244,6 +307,27 @@ export class EnhancedStageTracker {
    */
   trackConfidence(confidence, factors = {}) {
     this.traceLogger.trackConfidence(this.stageName, confidence, factors)
+  }
+
+  /**
+   * Set variables for current stage
+   */
+  setVariables(variables) {
+    this.traceLogger.setStageVariables(this.stageName, variables)
+  }
+
+  /**
+   * Set config for current stage
+   */
+  setConfig(config) {
+    this.traceLogger.setStageConfig(this.stageName, config)
+  }
+
+  /**
+   * Set prompts for current stage
+   */
+  setPrompts(compiledPrompt, promptTemplate) {
+    this.traceLogger.setStagePrompts(this.stageName, compiledPrompt, promptTemplate)
   }
 
   /**

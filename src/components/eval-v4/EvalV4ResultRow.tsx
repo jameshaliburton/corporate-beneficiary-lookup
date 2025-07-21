@@ -1,4 +1,5 @@
 'use client'
+// @ts-nocheck
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -21,16 +22,16 @@ interface TraceStage {
   reasoning: string
   confidence: number
   timestamp: string
-  promptVersion: string
+  promptVersion?: string
   agentName: string
-  status: 'success' | 'error' | 'pending' | 'warning'
+  status: 'success' | 'error' | 'pending' | 'warning' | 'missing_data' | 'skipped' | 'not_run'
   duration: number
   input: string
   output: string
   prompt: {
     system: string
     user: string
-    version: string
+    version?: string
   }
   metadata?: {
     alternatives?: string[]
@@ -57,6 +58,20 @@ interface TraceStage {
       confidence: number
     }>
   }
+  // Enhanced fields for variables and prompts
+  variables?: {
+    inputVariables?: { [key: string]: any }
+    outputVariables?: { [key: string]: any }
+    intermediateVariables?: { [key: string]: any }
+  }
+  config?: {
+    model?: string
+    temperature?: number
+    maxTokens?: number
+    stopSequences?: string[]
+  }
+  compiledPrompt?: string
+  promptTemplate?: string
 }
 
 interface ScanResult {
@@ -164,6 +179,8 @@ export default function EvalV4ResultRow({
   onRerun,
   onFlag
 }: EvalV4ResultRowProps) {
+  console.log('📋 EvalV4ResultRow: Rendering result', result.id, 'with', result.trace?.length || 0, 'stages')
+  console.log('📋 EvalV4ResultRow: Sample stages:', result.trace?.slice(0, 2).map(s => ({ stage: s.stage, status: s.status })))
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleRerun = async () => {

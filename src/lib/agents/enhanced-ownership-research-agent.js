@@ -53,7 +53,8 @@ export async function EnhancedAgentOwnershipResearch({
   product_name,
   brand,
   hints = {},
-  enableEvaluation = false
+  enableEvaluation = false,
+  imageProcessingTrace = null
 }) {
   const startTime = Date.now()
   const queryId = generateQueryId()
@@ -96,7 +97,7 @@ export async function EnhancedAgentOwnershipResearch({
         inferred: existingProduct.inferred,
         cached: true,
         product_id: existingProduct.id,
-        agent_execution_trace: traceLogger.toDatabaseFormat(),
+        agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
         initial_llm_confidence: existingProduct.initial_llm_confidence,
         agent_results: existingProduct.agent_results,
         fallback_reason: existingProduct.fallback_reason
@@ -150,7 +151,7 @@ export async function EnhancedAgentOwnershipResearch({
           static_mapping_used: false,
           result_type: 'sheets_mapping',
           cached: false,
-          agent_execution_trace: traceLogger.toDatabaseFormat(),
+          agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
           initial_llm_confidence: 95,
           agent_results: {
             sheets_mapping: {
@@ -202,7 +203,7 @@ export async function EnhancedAgentOwnershipResearch({
       result.query_analysis_used = false
       result.static_mapping_used = true
       result.cached = false
-      result.agent_execution_trace = traceLogger.toDatabaseFormat()
+      result.agent_execution_trace = combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat())
       result.initial_llm_confidence = result.confidence_score
       result.agent_results = {
         static_mapping: {
@@ -358,6 +359,64 @@ Respond in valid JSON format:
   "reasoning": "Detailed explanation of analysis..."
 }`
 
+      // Set enhanced trace data for LLM stage
+      llmFirstStage.setConfig({
+        model: 'claude-3-5-sonnet-20241022',
+        temperature: 0.1,
+        maxTokens: 1000,
+        stopSequences: null
+      })
+      
+      llmFirstStage.setVariables({
+        inputVariables: {
+          brand,
+          product_name: product_name || 'Unknown product',
+          barcode,
+          hints: JSON.stringify(hints),
+          rag_context: ragContextText
+        },
+        outputVariables: {},
+        intermediateVariables: {
+          rag_context_count: ragContext.length
+        }
+      })
+      
+      llmFirstStage.setPrompts(llmFirstPrompt, `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner), and provide a detailed ownership chain if possible.
+
+Brand: {{brand}}
+Product: {{product_name}}
+Barcode: {{barcode}}
+Additional hints: {{hints}}
+{{rag_context}}
+
+Based on your knowledge of corporate structures and brand ownership, provide a detailed analysis:
+
+1. **Financial Beneficiary**: The ultimate parent company or owner
+2. **Ownership Structure Type**: The type of ownership structure (e.g., "Public Company", "Private Company", "Subsidiary", "Joint Venture", "Franchise", "Licensed Brand", etc.)
+3. **Ownership Flow**: A detailed chain showing the ownership structure from brand to ultimate owner, including intermediate companies if known
+4. **Confidence Score**: Your confidence in this analysis (0-100)
+5. **Reasoning**: Detailed explanation of your analysis and reasoning
+6. **Country**: The country of the ultimate financial beneficiary
+
+For the ownership flow, provide an array of objects with:
+- name: Company name
+- type: Role in ownership chain (e.g., "Brand", "Subsidiary", "Parent Company", "Ultimate Owner")
+- country: Country of incorporation/operation
+- source: How you know this information
+
+Respond in valid JSON format:
+{
+  "financial_beneficiary": "Company Name",
+  "beneficiary_country": "Country",
+  "ownership_structure_type": "Structure Type",
+  "ownership_flow": [
+    {"name": "Brand Name", "type": "Brand", "country": "Country", "source": "knowledge"},
+    {"name": "Parent Company", "type": "Parent Company", "country": "Country", "source": "knowledge"}
+  ],
+  "confidence_score": 85,
+  "reasoning": "Detailed explanation of analysis..."
+}`)
+
       const llmFirstResponse = await anthropic.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
@@ -375,6 +434,30 @@ Respond in valid JSON format:
       
       if (llmFirstMatch) {
         const llmFirstResult = JSON.parse(llmFirstMatch[0])
+        
+        // Update output variables with LLM response
+        llmFirstStage.setVariables({
+          inputVariables: {
+            brand,
+            product_name: product_name || 'Unknown product',
+            barcode,
+            hints: JSON.stringify(hints),
+            rag_context: ragContextText
+          },
+          outputVariables: {
+            financial_beneficiary: llmFirstResult.financial_beneficiary,
+            beneficiary_country: llmFirstResult.beneficiary_country,
+            ownership_structure_type: llmFirstResult.ownership_structure_type,
+            confidence_score: llmFirstResult.confidence_score,
+            reasoning: llmFirstResult.reasoning,
+            ownership_flow: llmFirstResult.ownership_flow
+          },
+          intermediateVariables: {
+            rag_context_count: ragContext.length,
+            llm_response_length: llmFirstContent.length,
+            json_parse_success: true
+          }
+        })
         
         llmFirstStage.reason(`LLM analysis complete: ${llmFirstResult.financial_beneficiary} (confidence: ${llmFirstResult.confidence_score}%)`, REASONING_TYPES.ANALYSIS)
         
@@ -412,7 +495,7 @@ Respond in valid JSON format:
             static_mapping_used: false,
             result_type: 'llm_first_analysis',
             cached: false,
-            agent_execution_trace: traceLogger.toDatabaseFormat(),
+            agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
             initial_llm_confidence: llmFirstResult.confidence_score,
             agent_results: {
               llm_first_analysis: {
@@ -507,6 +590,32 @@ Respond in valid JSON format:
     const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web research for ownership information')
     await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
     
+    // Set enhanced trace data for web research stage
+    webStage.setConfig({
+      model: 'serpapi_web_search',
+      temperature: null,
+      maxTokens: null,
+      stopSequences: null
+    })
+    
+    webStage.setVariables({
+      inputVariables: {
+        brand,
+        product_name: product_name || 'Unknown product',
+        hints: JSON.stringify(hints),
+        query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null
+      },
+      outputVariables: {},
+      intermediateVariables: {
+        web_research_available: isWebResearchAvailable()
+      }
+    })
+    
+    webStage.setPrompts(
+      'Web research using SERP API with optimized queries',
+      'Perform web research for {{brand}} using {{query_analysis}} to find ownership information'
+    )
+    
     let webResearchData = null
     if (isWebResearchAvailable()) {
       try {
@@ -529,6 +638,28 @@ Respond in valid JSON format:
               }
             }
           }
+          
+          // Update output variables with web research results
+          webStage.setVariables({
+            inputVariables: {
+              brand,
+              product_name: product_name || 'Unknown product',
+              hints: JSON.stringify(hints),
+              query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null
+            },
+            outputVariables: {
+              success: webResearchData.success,
+              total_sources: webResearchData.total_sources,
+              search_results_count: webResearchData.search_results_count,
+              scraped_sites_count: webResearchData.scraped_sites_count,
+              findings_count: webResearchData.findings?.length || 0,
+              findings: webResearchData.findings || []
+            },
+            intermediateVariables: {
+              web_research_available: isWebResearchAvailable(),
+              evidence_tracked: webResearchData.findings?.length || 0
+            }
+          })
           
           webStage.success({
             success: webResearchData.success,
@@ -573,10 +704,78 @@ Respond in valid JSON format:
     const promptBuilder = getPromptBuilder('OWNERSHIP_RESEARCH', promptVersion)
     const researchPrompt = promptBuilder(product_name, brand, hints, webResearchData, queryAnalysis)
     
+    // Set enhanced trace data for ownership analysis stage
+    analysisStage.setConfig({
+      model: 'claude-3-5-sonnet-20241022',
+      temperature: 0.1,
+      maxTokens: 1500,
+      stopSequences: null
+    })
+    
+    analysisStage.setVariables({
+      inputVariables: {
+        brand,
+        product_name: product_name || 'Unknown product',
+        hints: JSON.stringify(hints),
+        web_research_data: webResearchData ? JSON.stringify(webResearchData) : null,
+        query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null,
+        prompt_version: promptVersion
+      },
+      outputVariables: {},
+      intermediateVariables: {
+        web_research_success: webResearchData?.success || false,
+        sources_count: webResearchData?.total_sources || 0
+      }
+    })
+    
+    analysisStage.setPrompts(researchPrompt, `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner).
+
+Brand: {{brand}}
+Product: {{product_name}}
+Additional hints: {{hints}}
+Web research data: {{web_research_data}}
+Query analysis: {{query_analysis}}
+
+Based on the provided information, determine:
+1. **Financial Beneficiary**: The ultimate parent company or owner
+2. **Ownership Structure Type**: The type of ownership structure
+3. **Ownership Flow**: A detailed chain showing the ownership structure
+4. **Confidence Score**: Your confidence in this analysis (0-100)
+5. **Reasoning**: Detailed explanation of your analysis
+6. **Country**: The country of the ultimate financial beneficiary
+
+Respond in valid JSON format.`)
+    
     analysisStage.reason(`Using prompt version: ${promptVersion}`, REASONING_TYPES.INFO)
     analysisStage.reason(`Analyzing ownership with ${webResearchData?.total_sources || 0} sources`, REASONING_TYPES.ANALYSIS)
     
     const ownership = await performOwnershipAnalysis(researchPrompt, product_name, brand, webResearchData)
+    
+    // Update output variables with ownership analysis results
+    analysisStage.setVariables({
+      inputVariables: {
+        brand,
+        product_name: product_name || 'Unknown product',
+        hints: JSON.stringify(hints),
+        web_research_data: webResearchData ? JSON.stringify(webResearchData) : null,
+        query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null,
+        prompt_version: promptVersion
+      },
+      outputVariables: {
+        financial_beneficiary: ownership.financial_beneficiary,
+        beneficiary_country: ownership.beneficiary_country,
+        ownership_structure_type: ownership.ownership_structure_type,
+        confidence_score: ownership.confidence_score,
+        reasoning: ownership.reasoning,
+        ownership_flow: ownership.ownership_flow,
+        sources: ownership.sources
+      },
+      intermediateVariables: {
+        web_research_success: webResearchData?.success || false,
+        sources_count: webResearchData?.total_sources || 0,
+        analysis_duration_ms: Date.now() - analysisStage.startTime
+      }
+    })
     
     analysisStage.reason(`Analysis complete: ${ownership.financial_beneficiary} (confidence: ${ownership.confidence_score}%)`, REASONING_TYPES.INFERENCE)
     analysisStage.trackConfidence(ownership.confidence_score, { 
@@ -658,8 +857,9 @@ Respond in valid JSON format:
     validated.result_type = 'ai_research'
     validated.cached = false
     
-    // Add detailed agent results
-    validated.agent_execution_trace = traceLogger.toDatabaseFormat()
+    // Combine image processing trace with ownership research trace
+    const combinedTrace = combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat())
+    validated.agent_execution_trace = combinedTrace
     validated.initial_llm_confidence = ownership.confidence_score
     validated.agent_results = {
       query_builder: queryAnalysis ? {
@@ -812,7 +1012,7 @@ Respond in valid JSON format:
     
     // Create fallback response
     const fallbackResult = createFallbackResponse(brand, error.message)
-    fallbackResult.agent_execution_trace = traceLogger.toDatabaseFormat()
+    fallbackResult.agent_execution_trace = combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat())
     
     return fallbackResult
   }
@@ -951,4 +1151,32 @@ function validateAndSanitizeResults(ownershipData, brand, webResearchData) {
   }
   
   return validated
+}
+
+/**
+ * Combine image processing trace with ownership research trace
+ */
+function combineTraces(imageProcessingTrace, ownershipResearchTrace) {
+  if (!imageProcessingTrace) {
+    return ownershipResearchTrace
+  }
+  
+  // Extract stages from both traces
+  const imageStages = imageProcessingTrace.stages || []
+  const ownershipStages = ownershipResearchTrace.stages || []
+  
+  // Combine all stages, putting image processing stages first
+  const combinedStages = [...imageStages, ...ownershipStages]
+  
+  // Create combined trace
+  const combinedTrace = {
+    ...ownershipResearchTrace,
+    stages: combinedStages,
+    // Update metadata to reflect combined trace
+    total_stages: combinedStages.length,
+    has_image_processing: imageStages.length > 0,
+    has_ownership_research: ownershipStages.length > 0
+  }
+  
+  return combinedTrace
 } 

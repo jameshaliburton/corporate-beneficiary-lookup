@@ -6,7 +6,10 @@ import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
 import VisionAgent from '@/lib/agents/vision-agent.js';
+import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
+
+const forceFullTrace = true;
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
@@ -164,7 +167,7 @@ export async function POST(request: NextRequest) {
         }
 
         // If we already have ownership data from the enhanced lookup, return it
-        if (barcodeData.financial_beneficiary) {
+        if (!forceFullTrace && barcodeData.financial_beneficiary) {
           console.log('✅ Ownership data found in enhanced lookup, skipping agent research');
           await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'Already found in lookup' });
           await emitProgress(queryId, 'complete', 'completed', { success: true });
@@ -255,7 +258,11 @@ export async function POST(request: NextRequest) {
           issues: qualityAssessment.issues
         });
         
-        if (!qualityAssessment.is_meaningful && image_base64) {
+        // If forceFullTrace is true, always run vision analysis if image is provided
+        if (forceFullTrace && image_base64) {
+          needsVisionAnalysis = true;
+          console.log('🔍 forceFullTrace enabled - will run vision analysis even with good quality data');
+        } else if (!qualityAssessment.is_meaningful && image_base64) {
           needsVisionAnalysis = true;
         } else if (!qualityAssessment.is_meaningful) {
           console.log('❌ Product data insufficient for agentic search and no image available');
@@ -294,37 +301,33 @@ export async function POST(request: NextRequest) {
         });
         
         try {
-          const visionResult = await visionAgent.analyzeImage(image_base64, {
-            identifier,
-            partialData: currentProductData,
-            test_mode: body.test_mode || false,
-            simulateVisionFailure: body.simulateVisionFailure || false,
-            simulateOCRFailure: body.simulateOCRFailure || false
-          }, body.test_mode || false);
+          console.log('🔍 Using enhanced image analysis with trace recording...');
+          const visionResult = await analyzeProductImage(image_base64, 'jpeg');
           
           await emitProgress(queryId, 'vision_analysis', 'completed', visionResult);
           
-          console.log('📊 Vision Analysis Result:', {
+          console.log('📊 Enhanced Image Analysis Result:', {
             success: visionResult.success,
-            confidence: visionResult.confidence,
+            confidence: visionResult.data?.confidence,
             extracted_data: visionResult.data,
-            reasoning: visionResult.reasoning
+            reasoning: visionResult.data?.reasoning
           });
           
-          // Check if vision results are sufficient
-          if (visionResult.success && visionAgent.isVisionResultSufficient(visionResult)) {
+          // Check if enhanced image analysis results are sufficient
+          if (visionResult.success && visionResult.data?.confidence >= 50) {
             console.log('✅ Vision analysis provided sufficient data, proceeding to ownership research');
             
-            // Use vision data to enhance the product data
+            // Use enhanced image analysis data to enhance the product data
             let enhancedData = {
               ...currentProductData,
-              product_name: visionResult.data.product_name || currentProductData?.product_name,
-              brand: visionResult.data.brand || currentProductData?.brand,
-              result_type: 'vision_enhanced',
-              lookup_trace: [...(currentProductData?.lookup_trace || []), 'vision_analysis'],
-              // Add company and country_of_origin if they don't exist in the original data
-              ...(visionResult.data.company && { company: visionResult.data.company }),
-              ...(visionResult.data.country_of_origin && { country_of_origin: visionResult.data.country_of_origin })
+              product_name: visionResult.data?.product_name || currentProductData?.product_name,
+              brand: visionResult.data?.brand_name || currentProductData?.brand,
+              result_type: 'enhanced_image_analysis',
+              lookup_trace: [...(currentProductData?.lookup_trace || []), 'enhanced_image_analysis'],
+              // Include the image processing trace
+              image_processing_trace: visionResult.image_processing_trace,
+              // Add contextual clues if available
+              ...(visionResult.contextual_clues && { contextual_clues: visionResult.contextual_clues })
             };
             
             // Re-run quality assessment with enhanced data
@@ -406,7 +409,8 @@ export async function POST(request: NextRequest) {
           product_name: currentProductData.product_name,
           brand: currentProductData.brand,
           hints,
-          enableEvaluation: evaluation_mode
+          enableEvaluation: evaluation_mode,
+          imageProcessingTrace: (currentProductData as any).image_processing_trace || null
         });
       
       // Reset evaluation logging
@@ -443,8 +447,13 @@ export async function POST(request: NextRequest) {
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,
+        image_processing_trace: (currentProductData as any).image_processing_trace || null,
         query_id: queryId
       };
+
+      if (forceFullTrace) {
+        return NextResponse.json(mergedResult);
+      }
 
       return NextResponse.json(mergedResult);
 

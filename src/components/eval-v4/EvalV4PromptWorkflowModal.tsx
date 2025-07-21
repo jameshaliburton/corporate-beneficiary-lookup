@@ -36,9 +36,10 @@ interface TraceStage {
   confidence: number
   reasoning: string
   duration: number
-  status: 'success' | 'error' | 'warning' | 'pending'
+  status: 'success' | 'error' | 'warning' | 'pending' | 'missing_data' | 'skipped' | 'not_run'
   timestamp: string
   metadata: { [key: string]: any }
+  promptVersion?: string
   tokenUsage?: {
     input: number
     output: number
@@ -50,6 +51,20 @@ interface TraceStage {
     type: string
     details: any
   }
+  // Enhanced fields for variables and prompts
+  variables?: {
+    inputVariables?: { [key: string]: any }
+    outputVariables?: { [key: string]: any }
+    intermediateVariables?: { [key: string]: any }
+  }
+  config?: {
+    model?: string
+    temperature?: number
+    maxTokens?: number
+    stopSequences?: string[]
+  }
+  compiledPrompt?: string
+  promptTemplate?: string
 }
 
 interface ScanResult {
@@ -76,11 +91,21 @@ interface ExtractedVariable {
   source: string
   type: 'string' | 'number' | 'boolean' | 'object'
   confidence: number
+  stage?: string
 }
 
 export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: EvalV4PromptWorkflowModalProps) {
+  console.log('🔧 EvalV4PromptWorkflowModal: Received stage:', stage.stage, 'with variables:', !!stage.variables)
+  console.log('🔧 EvalV4PromptWorkflowModal: Stage variables:', stage.variables)
+  console.log('🔧 EvalV4PromptWorkflowModal: Stage config:', stage.config)
+  console.log('🔧 EvalV4PromptWorkflowModal: Stage compiledPrompt:', !!stage.compiledPrompt)
+  console.log('🔧 EvalV4PromptWorkflowModal: Stage promptTemplate:', !!stage.promptTemplate)
+  
   const [currentStep, setCurrentStep] = useState(0)
-  const [editedPrompts, setEditedPrompts] = useState<{ [key: string]: { system: string; user: string } }>({})
+  const [editedPrompts, setEditedPrompts] = useState<{ system: string; user: string }>({ 
+    system: stage.prompt.system, 
+    user: stage.prompt.user 
+  })
   const [extractedVariables, setExtractedVariables] = useState<ExtractedVariable[]>([])
   const [selectedVariables, setSelectedVariables] = useState<Set<string>>(new Set())
   const [previewMode, setPreviewMode] = useState(false)
@@ -121,14 +146,72 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
     },
   ]
 
-  // Extract variables from previous stage outputs
+  // Extract variables from previous stage outputs and current stage
   useEffect(() => {
     const variables: ExtractedVariable[] = []
+    
+    // Extract from current stage variables if available
+    if (stage.variables) {
+      if (stage.variables.inputVariables) {
+        Object.entries(stage.variables.inputVariables).forEach(([key, value]) => {
+          variables.push({
+            name: key,
+            value: value,
+            source: `${stage.stage} input variables`,
+            type: typeof value as any,
+            confidence: 0.95,
+            stage: stage.stage
+          })
+        })
+      }
+      
+      if (stage.variables.outputVariables) {
+        Object.entries(stage.variables.outputVariables).forEach(([key, value]) => {
+          variables.push({
+            name: key,
+            value: value,
+            source: `${stage.stage} output variables`,
+            type: typeof value as any,
+            confidence: 0.95,
+            stage: stage.stage
+          })
+        })
+      }
+      
+      if (stage.variables.intermediateVariables) {
+        Object.entries(stage.variables.intermediateVariables).forEach(([key, value]) => {
+          variables.push({
+            name: key,
+            value: value,
+            source: `${stage.stage} intermediate variables`,
+            type: typeof value as any,
+            confidence: 0.9,
+            stage: stage.stage
+          })
+        })
+      }
+    }
     
     // Look at previous stages in the trace
     const currentStageIndex = result.trace.findIndex(s => s.stage === stage.stage)
     if (currentStageIndex > 0) {
       const previousStage = result.trace[currentStageIndex - 1]
+      
+      // Extract from previous stage variables
+      if (previousStage.variables) {
+        if (previousStage.variables.outputVariables) {
+          Object.entries(previousStage.variables.outputVariables).forEach(([key, value]) => {
+            variables.push({
+              name: key,
+              value: value,
+              source: `${previousStage.stage} output variables`,
+              type: typeof value as any,
+              confidence: 0.9,
+              stage: previousStage.stage
+            })
+          })
+        }
+      }
       
       // Try to extract JSON from output
       try {
@@ -139,9 +222,10 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
             variables.push({
               name: key,
               value: value,
-              source: `${previousStage.stage} output`,
+              source: `${previousStage.stage} output (JSON)`,
               type: typeof value as any,
-              confidence: 0.9,
+              confidence: 0.8,
+              stage: previousStage.stage
             })
           })
         }
@@ -159,13 +243,28 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
             variables.push({
               name: match[1],
               value: match[2],
-              source: `${previousStage.stage} output`,
+              source: `${previousStage.stage} output (pattern)`,
               type: 'string',
               confidence: 0.7,
+              stage: previousStage.stage
             })
           }
         })
       }
+    }
+    
+    // Extract from result metadata
+    if (result.metadata) {
+      Object.entries(result.metadata).forEach(([key, value]) => {
+        variables.push({
+          name: key,
+          value: value,
+          source: 'result metadata',
+          type: typeof value as any,
+          confidence: 0.85,
+          stage: 'result'
+        })
+      })
     }
     
     setExtractedVariables(variables)
@@ -195,6 +294,14 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
     if (variable) {
       navigator.clipboard.writeText(JSON.stringify(variable.value))
     }
+  }
+
+  const copyAllVariables = () => {
+    const allVariables = extractedVariables.reduce((acc, variable) => {
+      acc[variable.name] = variable.value
+      return acc
+    }, {} as { [key: string]: any })
+    navigator.clipboard.writeText(JSON.stringify(allVariables, null, 2))
   }
 
   const getStepIcon = (icon: any) => {
@@ -264,6 +371,42 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                 {stage.output}
               </div>
             </div>
+
+            {/* Variables Section */}
+            {stage.variables && (
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-2 flex items-center">
+                  <VariableIcon className="w-4 h-4 mr-2" />
+                  Available Variables
+                </h4>
+                <div className="space-y-3">
+                  {stage.variables.inputVariables && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-1">Input Variables</h5>
+                      <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                        {JSON.stringify(stage.variables.inputVariables, null, 2)}
+                      </div>
+                    </div>
+                  )}
+                  {stage.variables.outputVariables && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-1">Output Variables</h5>
+                      <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                        {JSON.stringify(stage.variables.outputVariables, null, 2)}
+                      </div>
+                    </div>
+                  )}
+                  {stage.variables.intermediateVariables && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-1">Intermediate Variables</h5>
+                      <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                        {JSON.stringify(stage.variables.intermediateVariables, null, 2)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )
 
@@ -273,16 +416,25 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-yellow-900 mb-2">Variable Extraction</h3>
               <p className="text-yellow-800">
-                Found {extractedVariables.length} variables from previous stage outputs. 
+                Found {extractedVariables.length} variables from previous stage outputs and current stage. 
                 Select variables to use in prompt modifications.
               </p>
+              {extractedVariables.length > 0 && (
+                <button
+                  onClick={copyAllVariables}
+                  className="mt-2 flex items-center space-x-1 px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200"
+                >
+                  <ClipboardDocumentIcon className="w-4 h-4" />
+                  <span>Copy all variables</span>
+                </button>
+              )}
             </div>
             
             {extractedVariables.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {extractedVariables.map((variable) => (
                   <div
-                    key={variable.name}
+                    key={`${variable.stage}-${variable.name}`}
                     className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                       selectedVariables.has(variable.name)
                         ? 'border-blue-500 bg-blue-50'
@@ -317,6 +469,7 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                     </div>
                     <div className="text-xs text-gray-600 mb-1">
                       Type: {variable.type} • Source: {variable.source}
+                      {variable.stage && ` • Stage: ${variable.stage}`}
                     </div>
                     <div className="text-sm font-mono bg-gray-100 p-2 rounded">
                       {typeof variable.value === 'object' 
@@ -361,11 +514,11 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                 </div>
                 {previewMode ? (
                   <div className="bg-gray-50 p-3 rounded text-sm font-mono min-h-[200px]">
-                    {editedPrompts.system || stage.prompt.system}
+                    {editedPrompts.system}
                   </div>
                 ) : (
                   <textarea
-                    value={editedPrompts.system || stage.prompt.system}
+                    value={editedPrompts.system}
                     onChange={(e) => setEditedPrompts(prev => ({
                       ...prev,
                       system: e.target.value
@@ -389,11 +542,11 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                 </div>
                 {previewMode ? (
                   <div className="bg-gray-50 p-3 rounded text-sm font-mono min-h-[200px]">
-                    {editedPrompts.user || stage.prompt.user}
+                    {editedPrompts.user}
                   </div>
                 ) : (
                   <textarea
-                    value={editedPrompts.user || stage.prompt.user}
+                    value={editedPrompts.user}
                     onChange={(e) => setEditedPrompts(prev => ({
                       ...prev,
                       user: e.target.value
@@ -418,6 +571,44 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Variables Section */}
+            {extractedVariables.length > 0 && (
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-2 flex items-center">
+                  <VariableIcon className="w-4 h-4 mr-2" />
+                  Available Variables for This Stage
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {extractedVariables.slice(0, 6).map((variable) => (
+                    <div key={`${variable.stage}-${variable.name}`} className="p-3 bg-gray-50 rounded">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{variable.name}</span>
+                        <button
+                          onClick={() => copyVariable(variable.name)}
+                          className="p-1 text-gray-500 hover:text-blue-600"
+                          title="Copy value"
+                        >
+                          <ClipboardDocumentIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">{variable.source}</div>
+                      <div className="text-xs font-mono bg-white p-1 rounded">
+                        {typeof variable.value === 'object' 
+                          ? JSON.stringify(variable.value)
+                          : String(variable.value)
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {extractedVariables.length > 6 && (
+                  <div className="mt-2 text-sm text-gray-500">
+                    +{extractedVariables.length - 6} more variables available
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -559,6 +750,10 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
                 <div className="flex justify-between">
                   <span>Variables used:</span>
                   <span className="font-mono">{selectedVariables.size}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Variables available:</span>
+                  <span className="font-mono">{extractedVariables.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Test results:</span>
