@@ -57,6 +57,33 @@ export async function getProductByBarcode(barcode) {
   }
 }
 
+/**
+ * Get product by brand and product name
+ */
+export async function getProductByBrandAndName(brand, productName) {
+  try {
+    if (!brand || !productName) return null
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('brand', brand)
+      .eq('product_name', productName)
+      .limit(1)
+    
+    if (error) {
+      console.error('[Products] Get by brand and name error:', error)
+      return null
+    }
+    
+    return data && data.length > 0 ? data[0] : null
+    
+  } catch (error) {
+    console.error('[Products] Get by brand and name error:', error)
+    return null
+  }
+}
+
 export async function logScan(barcode, resultType) {
   const { data, error } = await supabase
     .from('scan_logs')

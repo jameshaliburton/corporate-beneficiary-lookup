@@ -9,7 +9,7 @@ import { WebResearchAgent, isWebResearchAvailable } from './web-research-agent.j
 import { QueryBuilderAgent, isQueryBuilderAvailable } from './query-builder-agent.js'
 import { supabase } from '../supabase.ts'
 import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-mappings.js'
-import { getProductByBarcode, upsertProduct, ownershipResultToProductData } from '../database/products.js'
+import { getProductByBarcode, getProductByBrandAndName, upsertProduct, ownershipResultToProductData } from '../database/products.js'
 import { emitProgress } from '../utils.ts'
 import { evaluationFramework } from '../services/evaluation-framework.js'
 import { getPromptBuilder, getCurrentPromptVersion } from './prompt-registry.js'
@@ -73,10 +73,26 @@ export async function EnhancedAgentOwnershipResearch({
   try {
     // Step 0: Cache Check
     const cacheStage = new EnhancedStageTracker(traceLogger, 'cache_check', 'Checking for existing cached result')
-    await emitProgress(queryId, 'cache_check', 'started', { barcode })
+    await emitProgress(queryId, 'cache_check', 'started', { barcode, brand, product_name })
     
     cacheStage.reason('Checking database for existing product record', REASONING_TYPES.INFO)
-    const existingProduct = await getProductByBarcode(barcode)
+    
+    // Try to find existing product by barcode first, then by brand and product name
+    let existingProduct = null
+    if (barcode) {
+      existingProduct = await getProductByBarcode(barcode)
+      if (existingProduct) {
+        cacheStage.reason(`Found product by barcode: ${barcode}`, REASONING_TYPES.INFO)
+      }
+    }
+    
+    // If no product found by barcode, try brand and product name
+    if (!existingProduct && brand && product_name) {
+      existingProduct = await getProductByBrandAndName(brand, product_name)
+      if (existingProduct) {
+        cacheStage.reason(`Found product by brand and name: ${brand} - ${product_name}`, REASONING_TYPES.INFO)
+      }
+    }
     
     if (existingProduct && existingProduct.financial_beneficiary && existingProduct.financial_beneficiary !== 'Unknown') {
       cacheStage.reason(`Found cached result for ${brand}: ${existingProduct.financial_beneficiary}`, REASONING_TYPES.INFO)
