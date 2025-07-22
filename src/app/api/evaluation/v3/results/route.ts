@@ -2,6 +2,78 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { evaluationFramework } from '@/lib/services/evaluation-framework'
 
+// Transform legacy trace format to new structured format
+function transformLegacyTraceToStructured(legacyTrace: any) {
+  if (!legacyTrace || !legacyTrace.stages) {
+    return null
+  }
+
+  // Define stage mappings to sections
+  const stageToSection: { [key: string]: string } = {
+    image_processing: 'vision',
+    ocr_extraction: 'vision',
+    barcode_scanning: 'vision',
+    vision_analysis: 'vision',
+    text_extraction: 'vision',
+    product_detection: 'vision',
+    brand_recognition: 'vision',
+    cache_check: 'retrieval',
+    static_mapping: 'retrieval',
+    sheets_mapping: 'retrieval',
+    rag_retrieval: 'retrieval',
+    query_builder: 'retrieval',
+    llm_first_analysis: 'ownership',
+    ownership_analysis: 'ownership',
+    web_research: 'ownership',
+    validation: 'ownership',
+    database_save: 'persistence'
+  }
+
+  const sectionLabels: { [key: string]: string } = {
+    vision: 'Vision',
+    retrieval: 'Retrieval',
+    ownership: 'Ownership',
+    persistence: 'Persistence'
+  }
+
+  // Group stages by section
+  const sections: { [key: string]: any[] } = {}
+  
+  legacyTrace.stages.forEach((stage: any) => {
+    const sectionId = stageToSection[stage.stage] || 'other'
+    if (!sections[sectionId]) {
+      sections[sectionId] = []
+    }
+    
+    sections[sectionId].push({
+      id: stage.stage,
+      label: stage.stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      skipped: stage.status === 'skipped' || stage.status === 'not_run',
+      inputVariables: stage.variables?.inputVariables || {},
+      outputVariables: stage.variables?.outputVariables || {},
+      intermediateVariables: stage.variables?.intermediateVariables || {},
+      durationMs: stage.duration_ms || 0,
+      model: stage.config?.model,
+      promptTemplate: stage.prompt_template,
+      completionSample: stage.compiled_prompt,
+      notes: stage.reasoning ? (Array.isArray(stage.reasoning) ? stage.reasoning.join('; ') : stage.reasoning) : undefined
+    })
+  })
+
+  // Convert to structured format
+  const structuredSections = Object.entries(sections).map(([sectionId, stages]) => ({
+    id: sectionId,
+    label: sectionLabels[sectionId] || 'Other',
+    stages
+  }))
+
+  return {
+    sections: structuredSections,
+    show_skipped_stages: false,
+    mark_skipped_stages: true
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -54,7 +126,7 @@ export async function GET(request: NextRequest) {
         
         // Trace and execution data
         trace_id: scan.trace_id || `trace_${scan.id}`,
-        agent_execution_trace: scan.agent_execution_trace || null,
+        agent_execution_trace: transformLegacyTraceToStructured(scan.agent_execution_trace),
         agent_results: scan.agent_results || null,
         
         // Research metadata
