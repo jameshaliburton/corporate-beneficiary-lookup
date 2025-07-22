@@ -8,8 +8,11 @@ import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js
 import VisionAgent from '@/lib/agents/vision-agent.js';
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
+import { extractVisionContext, validateVisionContext, mergeVisionWithManual } from '@/lib/agents/vision-context-extractor.js';
+import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags.js';
 
-const forceFullTrace = true;
+// Use feature flag for force full trace
+const forceFullTrace = shouldForceFullTrace();
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
@@ -167,6 +170,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null } = body;
     
+    // 🧠 FEATURE FLAG LOGGING
+    logFeatureFlags();
+    
     // 🧠 PIPELINE TRIGGER LOGGING
     logPipelineTrigger({ barcode, product_name, brand, image_base64, evaluation_mode });
     
@@ -206,9 +212,46 @@ export async function POST(request: NextRequest) {
 
     try {
       let currentProductData = null;
+      let visionContext = null;
       
-      // Step 1: If we have a real barcode, try enhanced barcode lookup first
-      if (isRealBarcode) {
+      // 🧠 VISION-FIRST PIPELINE LOGIC
+      // Step 1: Vision Analysis (if image provided)
+      if (image_base64 && shouldUseVisionFirstPipeline()) {
+        console.log('🔍 [Vision-First] Starting vision context extraction');
+        await emitProgress(queryId, 'vision_extraction', 'started', { reason: 'Vision-first pipeline enabled' });
+        
+        try {
+          visionContext = await logAgentExecution('VisionContextExtractor', () => 
+            extractVisionContext(image_base64, 'jpeg')
+          );
+          
+          console.log('[Vision-First] Vision context extracted:', {
+            brand: visionContext.brand,
+            productName: visionContext.productName,
+            confidence: visionContext.confidence,
+            isSuccessful: visionContext.isSuccessful()
+          });
+          
+          await emitProgress(queryId, 'vision_extraction', 'completed', {
+            success: visionContext.isSuccessful(),
+            confidence: visionContext.confidence,
+            brand: visionContext.brand,
+            productName: visionContext.productName
+          });
+          
+        } catch (visionError) {
+          console.error('[Vision-First] Vision extraction error:', visionError);
+          await emitProgress(queryId, 'vision_extraction', 'error', { error: visionError.message });
+          
+          visionContext = null;
+        }
+      }
+      
+      // 🧠 LEGACY BARCODE PIPELINE (FEATURE FLAG CONTROLLED)
+      // TODO: Clean up legacy barcode logic when vision-first pipeline is stable
+      // Step 2: Legacy Barcode Lookup (if enabled and barcode provided)
+      if (isRealBarcode && shouldUseLegacyBarcode()) {
+        console.log('🔍 [Legacy] Using legacy barcode lookup');
         await emitProgress(queryId, 'barcode_lookup', 'started', { barcode: identifier });
         
         // Prepare user data if provided
@@ -227,7 +270,7 @@ export async function POST(request: NextRequest) {
 
         // Check if enhanced lookup requires manual entry (poor quality data)
         if (barcodeData.requires_manual_entry) {
-          console.log('❌ Enhanced lookup requires manual entry due to poor quality data');
+          console.log('❌ [Legacy] Enhanced lookup requires manual entry due to poor quality data');
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
@@ -248,7 +291,7 @@ export async function POST(request: NextRequest) {
 
         // If we already have ownership data from the enhanced lookup, return it
         if (!forceFullTrace && barcodeData.financial_beneficiary) {
-          console.log('✅ Ownership data found in enhanced lookup, skipping agent research');
+          console.log('✅ [Legacy] Ownership data found in enhanced lookup, skipping agent research');
           await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'Already found in lookup' });
           await emitProgress(queryId, 'complete', 'completed', { success: true });
 
@@ -259,10 +302,10 @@ export async function POST(request: NextRequest) {
         }
       } else if (isImageIdentifier) {
         // Image identifier from camera capture - use provided manual data
-        console.log('🔍 Image identifier from camera capture, using provided data for vision analysis');
+        console.log('🔍 [Legacy] Image identifier from camera capture, using provided data for vision analysis');
         
         if (product_name || brand) {
-          console.log('📝 Using image-extracted manual data:', { product_name, brand });
+          console.log('📝 [Legacy] Using image-extracted manual data:', { product_name, brand });
           currentProductData = {
             product_name: product_name || null,
             brand: brand || null,
@@ -290,10 +333,10 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // No barcode provided - start with manual/user provided data
-        console.log('🔍 No barcode provided, starting with manual entry or image analysis');
+        console.log('🔍 [Legacy] No barcode provided, starting with manual entry or image analysis');
         
         if (product_name || brand) {
-          console.log('📝 Using manual entry data:', { product_name, brand });
+          console.log('📝 [Legacy] Using manual entry data:', { product_name, brand });
           currentProductData = {
             product_name: product_name || null,
             brand: brand || null,
@@ -320,9 +363,78 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided, attempting analysis' });
         }
       }
+      
+      // Step 3: Merge Vision Context with Manual Data (Vision-First Pipeline)
+      if (visionContext && shouldUseVisionFirstPipeline()) {
+        console.log('🔍 [Vision-First] Merging vision context with manual data');
+        
+        const manualData = {
+          product_name,
+          brand,
+          hints,
+          confidence: currentProductData?.confidence || 0,
+          quality_score: currentProductData?.quality_score || 0
+        };
+        
+        const mergedData = mergeVisionWithManual(visionContext, manualData);
+        
+        // Validate merged vision context
+        const validation = validateVisionContext(visionContext);
+        console.log('[Vision-First] Vision context validation:', validation);
+        
+        if (validation.isValid) {
+          console.log('✅ [Vision-First] Vision context is valid, using for ownership research');
+          currentProductData = {
+            product_name: mergedData.productName,
+            brand: mergedData.brand,
+            identifier: identifier,
+            result_type: 'vision_first_analysis',
+            lookup_trace: ['vision_first_analysis'],
+            confidence: mergedData.confidence,
+            quality_score: mergedData.qualityScore,
+            sources: ['vision_analysis'],
+            vision_trace: visionContext.visionTrace,
+            hints: mergedData.hints
+          };
+          
+          await emitProgress(queryId, 'vision_merge', 'completed', {
+            success: true,
+            brand: currentProductData.brand,
+            productName: currentProductData.product_name,
+            confidence: currentProductData.confidence
+          });
+        } else {
+          console.log('⚠️ [Vision-First] Vision context validation failed:', validation.reason);
+          
+          // Fall back to manual data if available
+          if (product_name || brand) {
+            console.log('🔄 [Vision-First] Falling back to manual data');
+            currentProductData = {
+              product_name: product_name || null,
+              brand: brand || null,
+              identifier: identifier,
+              result_type: 'vision_failed_manual_fallback',
+              lookup_trace: ['vision_failed_manual_fallback'],
+              confidence: 60, // Lower confidence due to vision failure
+              sources: ['manual_input'],
+              vision_trace: visionContext.visionTrace // Still include vision trace for debugging
+            };
+          } else {
+            console.log('❌ [Vision-First] No fallback data available');
+            return NextResponse.json({
+              success: false,
+              requires_manual_entry: true,
+              reason: 'vision_extraction_failed_no_fallback',
+              vision_context: visionContext,
+              result_type: 'vision_failed',
+              message: 'Image analysis failed and no manual data provided. Please enter product details manually.',
+              query_id: queryId
+            });
+          }
+        }
+      }
 
-      // Step 2: Quality assessment and vision analysis if needed
-      let needsVisionAnalysis = false;
+      // Step 4: Quality Assessment (Vision-First Pipeline)
       let qualityAssessment = null;
       
       console.log('[Debug] forceFullTrace:', forceFullTrace);
@@ -351,185 +463,82 @@ export async function POST(request: NextRequest) {
           issues: qualityAssessment.issues
         });
         
-        // If forceFullTrace is true, always run vision analysis if image is provided
-        console.log('[Debug] Checking forceFullTrace condition:', { forceFullTrace, hasImageBase64: !!image_base64 });
-        console.log('[Debug] Quality assessment result:', qualityAssessment);
-        if (forceFullTrace && image_base64) {
-          needsVisionAnalysis = true;
-          console.log('🔍 forceFullTrace enabled - will run vision analysis even with good quality data');
-        } else if (!qualityAssessment.is_meaningful && image_base64) {
-          needsVisionAnalysis = true;
-        } else if (!qualityAssessment.is_meaningful) {
-          console.log('❌ Product data insufficient for agentic search and no image available');
+        // For vision-first pipeline, we only proceed if quality is good
+        if (!qualityAssessment.is_meaningful) {
+          console.log('❌ [Vision-First] Product data insufficient for ownership research');
           return NextResponse.json({
             success: false,
             requires_manual_entry: true,
-            reason: 'insufficient_data_no_image',
+            reason: 'insufficient_data_vision_first',
             product_data: currentProductData,
             quality_assessment: qualityAssessment,
-            result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
+            vision_context: visionContext,
+            result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_first', 'insufficient_data'),
             message: 'Product information is insufficient for ownership research. Please provide more details manually.',
             query_id: queryId
           });
         }
-      } else if (image_base64) {
-        // No meaningful product data but we have an image
-        needsVisionAnalysis = true;
       } else {
-        // No meaningful data and no image
+        // No meaningful data available
+        console.log('❌ [Vision-First] No meaningful product data available');
         return NextResponse.json({
           success: false,
           requires_manual_entry: true,
-          reason: 'no_meaningful_data',
+          reason: 'no_meaningful_data_vision_first',
           product_data: currentProductData,
-          result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
-          message: 'No meaningful product information provided. Please enter brand and product name manually.',
+          vision_context: visionContext,
+          result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_first', 'insufficient_data'),
+          message: 'No meaningful product information available. Please provide brand and product name manually.',
           query_id: queryId
         });
       }
 
-      // Step 3: Vision analysis if needed
-      console.log('[Debug] Vision analysis check:', { needsVisionAnalysis, hasImageBase64: !!image_base64 });
-      if (needsVisionAnalysis && image_base64) {
-        console.log('🔍 Attempting vision agent analysis...');
-        console.log('[Debug] needsVisionAnalysis:', needsVisionAnalysis);
-        console.log('[Debug] image_base64 present:', !!image_base64);
-        console.log('[Debug] image_base64 type:', typeof image_base64);
-        console.log('[Debug] image_base64 preview:', image_base64?.slice?.(0, 100));
-        
-        await emitProgress(queryId, 'vision_analysis', 'started', { 
-          reason: qualityAssessment ? 'Quality assessment failed, trying vision analysis' : 'No product data, analyzing image'
-        });
-        
-        try {
-          console.log('🔍 Using enhanced image analysis with trace recording...');
-          const visionResult = await logAgentExecution('AnalyzeProductImage', () => 
-            analyzeProductImage(image_base64, 'jpeg')
-          );
-          
-          console.log('[Debug] analyzeProductImage result:', {
-            success: visionResult.success,
-            hasImageProcessingTrace: !!visionResult.image_processing_trace,
-            traceStages: visionResult.image_processing_trace?.stages?.length || 0
-          });
-          
-          await emitProgress(queryId, 'vision_analysis', 'completed', visionResult);
-          
-          console.log('📊 Enhanced Image Analysis Result:', {
-            success: visionResult.success,
-            confidence: visionResult.data?.confidence,
-            extracted_data: visionResult.data,
-            reasoning: visionResult.data?.reasoning
-          });
-          
-          // Check if enhanced image analysis results are sufficient
-          if (visionResult.success && visionResult.data?.confidence >= 50) {
-            console.log('✅ Vision analysis provided sufficient data, proceeding to ownership research');
-            
-            // Use enhanced image analysis data to enhance the product data
-            let enhancedData = {
-              ...currentProductData,
-              product_name: visionResult.data?.product_name || currentProductData?.product_name,
-              brand: visionResult.data?.brand_name || currentProductData?.brand,
-              result_type: 'enhanced_image_analysis',
-              lookup_trace: [...(currentProductData?.lookup_trace || []), 'enhanced_image_analysis'],
-              // Include the image processing trace
-              image_processing_trace: visionResult.image_processing_trace,
-              // Add contextual clues if available
-              ...(visionResult.contextual_clues && { contextual_clues: visionResult.contextual_clues })
-            };
-            
-            console.log('[Debug] Enhanced data with image processing trace:', {
-              hasImageProcessingTrace: !!enhancedData.image_processing_trace,
-              traceStages: enhancedData.image_processing_trace?.stages?.length || 0,
-              traceStageNames: enhancedData.image_processing_trace?.stages?.map(s => s.stage) || []
-            });
-            
-            // Re-run quality assessment with enhanced data
-            const enhancedQualityAssessment = await qualityAgent.assessProductDataQuality(enhancedData);
-            
-            if (enhancedQualityAssessment.is_meaningful) {
-              console.log('✅ Enhanced data passes quality assessment - proceeding to agentic search');
-              currentProductData = enhancedData;
-              qualityAssessment = enhancedQualityAssessment;
-            } else {
-              console.log('❌ Even with vision data, quality is insufficient');
-              return NextResponse.json({
-                success: false,
-                requires_manual_entry: true,
-                reason: 'insufficient_data_after_vision',
-                product_data: currentProductData,
-                quality_assessment: enhancedQualityAssessment,
-                vision_result: visionResult,
-                result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'insufficient_data'),
-                message: 'Product information is still incomplete even after image analysis. Please provide details manually.',
-                query_id: queryId
-              });
-            }
-          } else {
-            console.log('❌ Vision analysis failed or provided insufficient data');
-            // Instead of returning early, continue with existing data but include the image processing trace
-            if (visionResult.image_processing_trace) {
-              currentProductData = {
-                ...currentProductData,
-                image_processing_trace: visionResult.image_processing_trace
-              };
-              console.log('[Debug] Added image processing trace to currentProductData despite vision failure');
-            }
-          }
-        } catch (visionError) {
-          console.error('❌ Vision analysis error:', visionError);
-          await emitProgress(queryId, 'vision_analysis', 'error', { error: visionError.message });
-          
-          // Continue with existing data instead of returning early
-          console.log('[Debug] Vision analysis error occurred, continuing with existing data');
-        }
-      }
+      // 🧠 VISION-FIRST PIPELINE: Vision analysis is now handled in Step 1 above
+      // Legacy vision analysis section removed - vision is now processed first
 
-      // If barcode lookup returns no data at all, trigger manual entry/camera fallback
+      // Step 5: Fallback Logic (Vision-First Pipeline)
       if (!currentProductData || (!currentProductData.product_name && !currentProductData.brand)) {
-        // If we have image processing trace, continue with ownership research even without product data
-        if ((currentProductData as any)?.image_processing_trace) {
-          console.log('✅ No product data but have image processing trace - continuing with ownership research');
-          // Set default values for ownership research
-          currentProductData = {
-            product_name: 'Unknown Product',
-            brand: 'Unknown Brand',
-            result_type: 'image_analysis_failed',
-            lookup_trace: ['image_analysis_failed'],
-            confidence: 0,
-            sources: ['image_analysis'],
-            image_processing_trace: (currentProductData as any).image_processing_trace
-          };
-        } else {
-          console.log('❌ No meaningful product data available. Triggering manual entry.');
-          return NextResponse.json({
-            success: false,
-            requires_manual_entry: true,
-            reason: 'no_product_data',
-            product_data: currentProductData,
-            result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
-            message: 'No meaningful product information found. Please provide details manually or use camera capture.'
-          });
-        }
+        // For vision-first pipeline, we should have already handled this in Step 3
+        console.log('❌ [Vision-First] No meaningful product data available after all processing');
+        return NextResponse.json({
+          success: false,
+          requires_manual_entry: true,
+          reason: 'no_product_data_vision_first',
+          product_data: currentProductData,
+          vision_context: visionContext,
+          result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_first', 'insufficient_data'),
+          message: 'No meaningful product information found. Please provide details manually or use camera capture.',
+          query_id: queryId
+        });
       }
 
-      // Step 4: Enhanced Ownership research (only if no ownership data found and we have meaningful product data)
-      await emitProgress(queryId, 'ownership_research', 'started', { brand: currentProductData.brand, product_name: currentProductData.product_name });
+      // Step 6: Enhanced Ownership Research (Vision-First Pipeline)
+      await emitProgress(queryId, 'ownership_research', 'started', { 
+        brand: currentProductData.brand, 
+        product_name: currentProductData.product_name,
+        pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy'
+      });
       
       // Enable evaluation logging if requested
       if (evaluation_mode) {
         process.env.ENABLE_EVALUATION_LOGGING = 'true';
       }
       
+      // Prepare hints for ownership research
+      const researchHints = {
+        ...hints,
+        ...(currentProductData.hints || {}),
+        ...(visionContext?.getHints() || {})
+      };
+      
       const ownershipResult = await logAgentExecution('EnhancedAgentOwnershipResearch', () => 
         EnhancedAgentOwnershipResearch({
           barcode: identifier,
           product_name: currentProductData.product_name,
           brand: currentProductData.brand,
-          hints,
+          hints: researchHints,
           enableEvaluation: evaluation_mode,
-          imageProcessingTrace: (currentProductData as any).image_processing_trace || null
+          imageProcessingTrace: (currentProductData as any).image_processing_trace || (currentProductData as any).vision_trace || null
         })
       );
       
@@ -543,7 +552,7 @@ export async function POST(request: NextRequest) {
       // Step 5: Final result
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
-      // Merge product data and ownership result into a flat structure
+      // Step 7: Final Result Merging (Vision-First Pipeline)
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -568,6 +577,15 @@ export async function POST(request: NextRequest) {
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,
         image_processing_trace: (currentProductData as any).image_processing_trace || null,
+        // Vision-first pipeline additions
+        vision_context: visionContext ? {
+          brand: visionContext.brand,
+          productName: visionContext.productName,
+          confidence: visionContext.confidence,
+          isSuccessful: visionContext.isSuccessful(),
+          reasoning: visionContext.reasoning
+        } : null,
+        pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
         query_id: queryId
       };
 
