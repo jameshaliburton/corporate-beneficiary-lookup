@@ -8,7 +8,7 @@ import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js
 import VisionAgent from '@/lib/agents/vision-agent.js';
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
-import { extractVisionContext, validateVisionContext, mergeVisionWithManual } from '@/lib/agents/vision-context-extractor.js';
+import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
 
 // Use feature flag for force full trace
@@ -335,6 +335,20 @@ export async function POST(request: NextRequest) {
         // No barcode provided - start with manual/user provided data
         console.log('🔍 [Legacy] No barcode provided, starting with manual entry or image analysis');
         
+        // Add missing stages for non-vision flows
+        await emitProgress(queryId, 'vision_analysis', 'started', { 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'text_extraction', 'started', { 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'product_detection', 'started', { 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'brand_recognition', 'started', { 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        
         if (product_name || brand) {
           console.log('📝 [Legacy] Using manual entry data:', { product_name, brand });
           currentProductData = {
@@ -362,49 +376,46 @@ export async function POST(request: NextRequest) {
           
           await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided, attempting analysis' });
         }
+        
+        // Complete the non-applicable stages
+        await emitProgress(queryId, 'vision_analysis', 'completed', { 
+          success: false, 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'text_extraction', 'completed', { 
+          success: false, 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'product_detection', 'completed', { 
+          success: false, 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
+        await emitProgress(queryId, 'brand_recognition', 'completed', { 
+          success: false, 
+          reason: 'Stage not applicable for this input type (no image data)' 
+        });
       }
       
-      // Step 3: Merge Vision Context with Manual Data (Vision-First Pipeline)
+      // Step 3: Vision Analysis Processing (Vision-First Pipeline)
       if (visionContext && shouldUseVisionFirstPipeline()) {
-        console.log('🔍 [Vision-First] Merging vision context with manual data');
+        console.log('🔍 [Vision-First] Processing vision analysis results');
         
-        const manualData = {
-          product_name,
-          brand,
-          hints,
-          confidence: currentProductData?.confidence || 0,
-          quality_score: currentProductData?.quality_score || 0
-        };
-        
-        const mergedData = mergeVisionWithManual(visionContext, manualData);
-        
-        // Validate merged vision context
-        const validation = validateVisionContext(visionContext);
-        console.log('[Vision-First] Vision context validation:', validation);
-        
-        if (validation.isValid) {
+        if (visionContext.isSuccessful()) {
           console.log('✅ [Vision-First] Vision context is valid, using for ownership research');
           currentProductData = {
-            product_name: mergedData.productName,
-            brand: mergedData.brand,
+            product_name: visionContext.productName,
+            brand: visionContext.brand,
             identifier: identifier,
             result_type: 'vision_first_analysis',
             lookup_trace: ['vision_first_analysis'],
-            confidence: mergedData.confidence,
-            quality_score: mergedData.qualityScore,
+            confidence: visionContext.confidence,
+            quality_score: visionContext.qualityScore,
             sources: ['vision_analysis'],
             vision_trace: visionContext.visionTrace,
-            hints: mergedData.hints
+            hints: visionContext.getHints()
           };
-          
-          await emitProgress(queryId, 'vision_merge', 'completed', {
-            success: true,
-            brand: currentProductData.brand,
-            productName: currentProductData.product_name,
-            confidence: currentProductData.confidence
-          });
         } else {
-          console.log('⚠️ [Vision-First] Vision context validation failed:', validation.reason);
+          console.log('⚠️ [Vision-First] Vision context validation failed:', visionContext.reasoning);
           
           // Fall back to manual data if available
           if (product_name || brand) {
@@ -478,6 +489,8 @@ export async function POST(request: NextRequest) {
             query_id: queryId
           });
         }
+
+
       } else {
         // No meaningful data available
         console.log('❌ [Vision-First] No meaningful product data available');

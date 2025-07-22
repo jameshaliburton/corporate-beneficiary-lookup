@@ -98,8 +98,32 @@ export async function extractVisionContext(imageBase64, imageFormat = 'jpeg') {
     }
 
     // Extract structured data from analysis result
-    const extractedData = analysisResult.extracted_data || {};
-    const trace = analysisResult.image_processing_trace || null;
+    // The data can be in different locations depending on the analysis result structure
+    let extractedData = {};
+    let trace = null;
+    
+    if (analysisResult.data) {
+      // Direct data structure
+      extractedData = analysisResult.data;
+    } else if (analysisResult.contextual_clues && analysisResult.contextual_clues.extracted_data) {
+      // Nested contextual clues structure
+      extractedData = analysisResult.contextual_clues.extracted_data;
+    } else if (analysisResult.extracted_data) {
+      // Legacy structure
+      extractedData = analysisResult.extracted_data;
+    }
+    
+    trace = analysisResult.image_processing_trace || null;
+
+    console.log('[VisionContextExtractor] Extracted data structure:', {
+      hasData: !!analysisResult.data,
+      hasContextualClues: !!(analysisResult.contextual_clues && analysisResult.contextual_clues.extracted_data),
+      hasExtractedData: !!analysisResult.extracted_data,
+      extractedDataKeys: Object.keys(extractedData),
+      brandName: extractedData.brand_name,
+      productName: extractedData.product_name,
+      confidence: extractedData.confidence
+    });
 
     // Create vision context from extracted data
     const visionContext = new VisionContext({

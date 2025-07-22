@@ -227,54 +227,9 @@ Image: {{image_base64}}`
       confidence: initialAnalysis.confidence
     }, ['OCR extraction completed']);
     
-    // Step 3: Barcode Scanning (for image-based barcode detection)
-    const barcodeStage = new EnhancedStageTracker(imageTraceLogger, 'barcode_scanning', 'Scanning image for barcode patterns');
-    barcodeStage.reason('Checking for visible barcode patterns in image', REASONING_TYPES.INFO);
-    
-    // Debug logging for barcode scanning input
-    console.log("[Debug] Running BarcodeScanningAgent");
-    console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
-    console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
-    console.log("[Debug] imageFormat:", imageFormat);
-    console.log("[Debug] extracted_text from OCR:", initialAnalysis.raw_extraction);
-    
-    // Set enhanced trace data for barcode scanning
-    barcodeStage.setConfig({
-      model: 'gpt-4o',
-      temperature: 0.0,
-      maxTokens: 200,
-      stopSequences: ['\n']
-    });
-    
-    barcodeStage.setVariables({
-      inputVariables: {
-        image_base64: imageBase64.substring(0, 100) + '...',
-        extracted_text: initialAnalysis.raw_extraction,
-        _debugImagePresent: !!imageBase64,
-        _debugImageType: typeof imageBase64,
-        _debugImageLength: imageBase64?.length || 0,
-        _debugImageSnippet: imageBase64?.slice?.(0, 30) || "N/A",
-        _debugExtractedText: initialAnalysis.raw_extraction || "N/A",
-      },
-      outputVariables: {
-        barcode_detected: false,
-        barcode_value: null
-      },
-      intermediateVariables: {
-        barcode_patterns_checked: true
-      }
-    });
-    
-    barcodeStage.setPrompts({
-      compiledPrompt: 'Check the image for any visible barcode patterns or codes.',
-      promptTemplate: 'Analyze the image and identify any barcode patterns or product codes that may be visible.'
-    });
-    
-    barcodeStage.success({
-      success: true,
-      barcode_detected: false,
-      barcode_value: null
-    }, ['Barcode scanning completed - no barcode detected']);
+    // Step 3: Barcode Scanning - REMOVED from vision-first pipeline
+    // Barcode scanning has been completely removed as requested
+    console.log("🚫 Barcode scanning removed from vision-first pipeline");
     
     // Step 1.5: Check cache with extracted brand/product
     console.log('🔍 Step 1.5: Checking cache with extracted data...');
