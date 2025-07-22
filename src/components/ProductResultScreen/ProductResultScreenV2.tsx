@@ -51,6 +51,15 @@ interface ProductResult {
   };
   lookup_trace?: string[];
   requires_manual_entry?: boolean;
+  // Vision-first pipeline additions
+  vision_context?: {
+    brand: string;
+    productName: string;
+    confidence: number;
+    isSuccessful: boolean;
+    reasoning: string;
+  };
+  pipeline_type?: 'vision_first' | 'legacy';
 }
 
 interface ProductResultScreenV2Props {
@@ -84,7 +93,12 @@ export default function ProductResultScreenV2({
   
   // Determine detection method
   const wasBarcodeUsed = result.barcode && !result.barcode.startsWith('img_');
-  const detectionMethod = wasBarcodeUsed ? '📱 Barcode scan' : '📷 Photo analysis';
+  let detectionMethod = wasBarcodeUsed ? '📱 Barcode scan' : '📷 Photo analysis';
+  
+  // Update detection method for vision-first pipeline
+  if (result.pipeline_type === 'vision_first') {
+    detectionMethod = '🤖 Vision-first analysis';
+  }
   
   // Get confidence label and color
   const getConfidenceInfo = (score: number) => {
@@ -186,6 +200,43 @@ export default function ProductResultScreenV2({
               <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
                 ⚠️ This structure is estimated and may not be definitive.
               </p>
+            )}
+            
+            {/* Vision Context Information */}
+            {result.vision_context && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Camera className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-800">Vision Analysis</span>
+                  {result.vision_context.isSuccessful ? (
+                    <Badge className="bg-green-100 text-green-800 text-xs">Successful</Badge>
+                  ) : (
+                    <Badge className="bg-amber-100 text-amber-800 text-xs">Limited</Badge>
+                  )}
+                </div>
+                
+                {result.vision_context.isSuccessful ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Extracted Brand:</span>
+                      <span className="font-medium">{result.vision_context.brand}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Extracted Product:</span>
+                      <span className="font-medium">{result.vision_context.productName}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Vision Confidence:</span>
+                      <span className="font-medium">{result.vision_context.confidence}%</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-amber-700">
+                    <p className="mb-2">Vision analysis was limited:</p>
+                    <p className="text-xs italic">{result.vision_context.reasoning}</p>
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

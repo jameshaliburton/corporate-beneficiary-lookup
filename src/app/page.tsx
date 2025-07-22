@@ -39,6 +39,15 @@ interface ProductResult {
   user_contributed?: boolean;
   ownership_flow?: OwnershipFlowCompany[];
   requires_manual_entry?: boolean;
+  // Vision-first pipeline additions
+  vision_context?: {
+    brand: string;
+    productName: string;
+    confidence: number;
+    isSuccessful: boolean;
+    reasoning: string;
+  };
+  pipeline_type?: 'vision_first' | 'legacy';
 }
 
 interface ProgressUpdate {
@@ -282,64 +291,82 @@ export default function Home() {
         reader.readAsDataURL(file);
       });
 
-      // Generate synthetic identifier for image
-      const imageId = `img_${Date.now()}`;
-
-      console.log('🔍 Starting enhanced image analysis flow...');
+      console.log('🔍 Starting vision-first pipeline analysis...');
       
-      // Step 1: OCR + Brand Detection (Lightweight Agent)
+      // Call vision-first pipeline API
       const response = await fetch('/api/lookup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          barcode: imageId,
           image_base64: base64,
-          evaluation_mode: false
+          evaluation_mode: true
         }),
       });
 
       const data = await response.json();
       setImageProcessing(false);
 
-      // Handle different response scenarios based on the new UX flow
+      console.log('📸 Vision-first API response:', {
+        success: data.success,
+        pipeline_type: data.pipeline_type,
+        vision_context: data.vision_context,
+        requires_manual_entry: data.requires_manual_entry
+      });
+
+      // Handle different response scenarios based on vision-first pipeline
       if (data.success) {
-        // High confidence match found - proceed to ownership research
-        console.log('✅ High confidence match found, proceeding to ownership research');
-        setResult(data);
-        
-        if (data.agent_execution_trace?.query_id) {
-          startProgressTracking(data.agent_execution_trace.query_id);
+        // Success - check vision context
+        if (data.vision_context && data.vision_context.isSuccessful) {
+          console.log('✅ Vision extraction successful:', {
+            brand: data.vision_context.brand,
+            productName: data.vision_context.productName,
+            confidence: data.vision_context.confidence
+          });
+          setResult(data);
+          
+          if (data.agent_execution_trace?.query_id) {
+            startProgressTracking(data.agent_execution_trace.query_id);
+          }
+        } else if (data.vision_context && !data.vision_context.isSuccessful) {
+          // Vision failed but we have a result
+          console.log('⚠️ Vision extraction failed:', data.vision_context.reasoning);
+          setResult(data);
+          
+          if (data.agent_execution_trace?.query_id) {
+            startProgressTracking(data.agent_execution_trace.query_id);
+          }
+        } else {
+          // No vision context - treat as regular result
+          console.log('✅ Standard result (no vision context)');
+          setResult(data);
+          
+          if (data.agent_execution_trace?.query_id) {
+            startProgressTracking(data.agent_execution_trace.query_id);
+          }
         }
       } else if (data.requires_manual_entry) {
-        // Check if this is a disambiguation scenario
-        if (data.disambiguation_candidates && data.disambiguation_candidates.length > 1) {
-          console.log('🔍 Multiple companies found, showing disambiguation modal');
-          setDisambiguationCandidates(data.disambiguation_candidates);
-          setShowDisambiguationModal(true);
-        } else if (data.vision_fallback_needed) {
-          // Vision agent fallback needed
-          console.log('🔍 Vision fallback needed, showing retake photo modal');
-          setVisionFallbackReason(data.reason || 'Low confidence in image analysis');
-          setShowVisionFallbackModal(true);
-        } else {
-          // Standard manual entry required
-          console.log('📝 Manual entry required');
-          setContributionReason('insufficient_data');
-          setShowUserContribution(true);
-          
-          // Pre-fill with any partial data
-          const partialData = {
-            product_name: data.product_data?.product_name || data.product_name || '',
-            brand: data.product_data?.brand || data.brand || ''
-          };
-          setUserContribution(partialData);
-          setLowConfidenceData(partialData);
+        // Manual entry required
+        console.log('📝 Manual entry required:', data.reason);
+        setContributionReason(data.reason || 'insufficient_data');
+        setShowUserContribution(true);
+        
+        // Pre-fill with vision context data if available
+        const partialData = {
+          product_name: data.vision_context?.productName || data.product_data?.product_name || data.product_name || '',
+          brand: data.vision_context?.brand || data.product_data?.brand || data.brand || ''
+        };
+        setUserContribution(partialData);
+        setLowConfidenceData(partialData);
+        
+        // Store vision context for debugging
+        if (data.vision_context) {
+          console.log('🔍 Vision context available for manual entry:', data.vision_context);
         }
       } else {
         // Error or other failure
-        console.error('❌ Image analysis failed:', data.error);
+        console.error('❌ Vision-first analysis failed:', data.error);
         setContributionReason('analysis_failed');
         setShowUserContribution(true);
       }

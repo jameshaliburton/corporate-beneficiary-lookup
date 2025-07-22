@@ -9,7 +9,7 @@ import VisionAgent from '@/lib/agents/vision-agent.js';
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext, validateVisionContext, mergeVisionWithManual } from '@/lib/agents/vision-context-extractor.js';
-import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags.js';
+import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
