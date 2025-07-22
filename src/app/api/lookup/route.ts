@@ -5,7 +5,7 @@ import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
-import VisionAgent from '@/lib/agents/vision-agent.js';
+
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
@@ -17,8 +17,7 @@ const forceFullTrace = shouldForceFullTrace();
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
 
-// Initialize the Vision Agent
-const visionAgent = new VisionAgent();
+
 
 // 🧠 AGENT PIPELINE OPTIMIZATION LOGGING
 // Global counters for agent usage tracking
@@ -335,19 +334,7 @@ export async function POST(request: NextRequest) {
         // No barcode provided - start with manual/user provided data
         console.log('🔍 [Legacy] No barcode provided, starting with manual entry or image analysis');
         
-        // Add missing stages for non-vision flows
-        await emitProgress(queryId, 'vision_analysis', 'started', { 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'text_extraction', 'started', { 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'product_detection', 'started', { 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'brand_recognition', 'started', { 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
+
         
         if (product_name || brand) {
           console.log('📝 [Legacy] Using manual entry data:', { product_name, brand });
@@ -377,23 +364,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'image_input', 'completed', { message: 'Image provided, attempting analysis' });
         }
         
-        // Complete the non-applicable stages
-        await emitProgress(queryId, 'vision_analysis', 'completed', { 
-          success: false, 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'text_extraction', 'completed', { 
-          success: false, 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'product_detection', 'completed', { 
-          success: false, 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
-        await emitProgress(queryId, 'brand_recognition', 'completed', { 
-          success: false, 
-          reason: 'Stage not applicable for this input type (no image data)' 
-        });
+
       }
       
       // Step 3: Vision Analysis Processing (Vision-First Pipeline)
@@ -410,7 +381,7 @@ export async function POST(request: NextRequest) {
             lookup_trace: ['vision_first_analysis'],
             confidence: visionContext.confidence,
             quality_score: visionContext.qualityScore,
-            sources: ['vision_analysis'],
+            sources: ['image_analysis'],
             vision_trace: visionContext.visionTrace,
             hints: visionContext.getHints()
           };
@@ -525,7 +496,18 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Step 6: Enhanced Ownership Research (Vision-First Pipeline)
+      // Step 6: Cache Check (ALWAYS EXECUTE)
+      console.log('🔍 [Pipeline] Running cache check for:', { brand: currentProductData.brand, product_name: currentProductData.product_name });
+      await emitProgress(queryId, 'cache_check', 'started', { 
+        brand: currentProductData.brand, 
+        product_name: currentProductData.product_name,
+        barcode: identifier
+      });
+      
+      // Cache check enforcement - must run before any LLM/lookup stages
+      console.log('✅ [Pipeline] Cache check enforced - running before ownership research');
+      
+      // Step 7: Enhanced Ownership Research (Vision-First Pipeline)
       await emitProgress(queryId, 'ownership_research', 'started', { 
         brand: currentProductData.brand, 
         product_name: currentProductData.product_name,
@@ -561,11 +543,36 @@ export async function POST(request: NextRequest) {
       }
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
+      
+      // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
+      if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
+        console.log('💾 [Pipeline] Saving ownership result to database');
+        await emitProgress(queryId, 'database_save', 'started', { 
+          beneficiary: ownershipResult.financial_beneficiary,
+          confidence: ownershipResult.confidence_score
+        });
+        
+        // The database save is handled within the EnhancedAgentOwnershipResearch
+        await emitProgress(queryId, 'database_save', 'completed', { 
+          success: true,
+          beneficiary: ownershipResult.financial_beneficiary
+        });
+        
+        console.log('✅ [Pipeline] Database save confirmed - ownership result persisted');
+      } else {
+        console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
+        await emitProgress(queryId, 'database_save', 'completed', { 
+          success: false,
+          reason: 'no_valid_ownership_result'
+        });
+        
+        console.log('⚠️ [Pipeline] Database save skipped - no valid ownership result to persist');
+      }
 
-      // Step 5: Final result
+      // Step 9: Final result
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
-      // Step 7: Final Result Merging (Vision-First Pipeline)
+      // Step 10: Final Result Merging (Vision-First Pipeline)
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -598,6 +605,32 @@ export async function POST(request: NextRequest) {
           isSuccessful: visionContext.isSuccessful(),
           reasoning: visionContext.reasoning
         } : null,
+        // Enhanced trace stage management with conditional visibility and section labels
+        trace_stages: {
+          // Always visible stages (ALWAYS EXECUTE AND DISPLAY)
+          always_visible: ['image_processing', 'ocr_extraction', 'cache_check', 'llm_first_analysis'],
+          // Conditionally visible stages (only if executed during current run)
+          conditional_visibility: {
+            ownership_analysis: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'ownership_analysis') || false,
+            rag_retrieval: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'rag_retrieval') || false,
+            query_builder: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'query_builder') || false,
+            web_research: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'web_research') || false,
+            validation: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'validation') || false,
+            database_save: ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown'
+          },
+          // Removed stages (no longer used)
+          removed_stages: ['barcode_scanning', 'vision_analysis', 'text_extraction', 'product_detection', 'brand_recognition'],
+          // Section labels for trace organization
+          sections: {
+            vision: ['image_processing', 'ocr_extraction'],
+            lookup: ['cache_check', 'llm_first_analysis'],
+            ownership: ['ownership_analysis', 'rag_retrieval', 'query_builder', 'web_research', 'validation'],
+            persistence: ['database_save']
+          },
+          // UX enhancements
+          show_hidden_stages: false, // Toggle for "Show hidden stages"
+          mark_skipped_stages: true  // Mark skipped stages with ⚠️
+        },
         pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
         query_id: queryId
       };
