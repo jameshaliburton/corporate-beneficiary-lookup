@@ -19,16 +19,14 @@ export class RAGKnowledgeBase {
       const { data, error } = await supabase
         .from(this.tableName)
         .insert({
-          brand: entry.brand.toLowerCase(),
-          product_name: entry.product_name,
-          barcode: entry.barcode,
-          financial_beneficiary: entry.financial_beneficiary,
-          beneficiary_country: entry.beneficiary_country,
+          brand_name: entry.brand.toLowerCase(),
+          company_name: entry.brand, // Use brand as company_name for now
+          ultimate_owner: entry.financial_beneficiary,
+          country: entry.beneficiary_country,
           ownership_structure_type: entry.ownership_structure_type,
-          ownership_flow: entry.ownership_flow,
           confidence_score: entry.confidence_score,
-          reasoning: entry.reasoning,
-          sources: entry.sources,
+          source_type: 'rag_agent',
+          notes: entry.reasoning,
           tags: entry.tags || [],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -60,7 +58,7 @@ export class RAGKnowledgeBase {
       let { data: exactMatches, error: exactError } = await supabase
         .from(this.tableName)
         .select('*')
-        .ilike('brand', `%${brand.toLowerCase()}%`)
+        .ilike('brand_name', `%${brand.toLowerCase()}%`)
         .order('confidence_score', { ascending: false })
         .limit(limit);
 
