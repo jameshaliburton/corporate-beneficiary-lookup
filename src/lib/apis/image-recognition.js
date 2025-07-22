@@ -117,6 +117,12 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
     const imageProcessingStage = new EnhancedStageTracker(imageTraceLogger, 'image_processing', 'Processing and preparing image for analysis');
     imageProcessingStage.reason('Starting image processing pipeline', REASONING_TYPES.INFO);
     
+    // Debug logging for image input
+    console.log("[Debug] Running ImageProcessingAgent");
+    console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
+    console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
+    console.log("[Debug] imageFormat:", imageFormat);
+    
     // Set enhanced trace data for image processing
     imageProcessingStage.setConfig({
       model: 'gpt-4o',
@@ -129,7 +135,11 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
       inputVariables: {
         image_base64: imageBase64.substring(0, 100) + '...',
         image_format: imageFormat,
-        image_size: 'variable'
+        image_size: 'variable',
+        _debugImagePresent: !!imageBase64,
+        _debugImageType: typeof imageBase64,
+        _debugImageLength: imageBase64?.length || 0,
+        _debugImageSnippet: imageBase64?.slice?.(0, 30) || "N/A",
       },
       outputVariables: {},
       intermediateVariables: {
@@ -152,6 +162,12 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
     const ocrStage = new EnhancedStageTracker(imageTraceLogger, 'ocr_extraction', 'Extracting text content from image');
     ocrStage.reason('Starting OCR text extraction', REASONING_TYPES.INFO);
     
+    // Debug logging for OCR input
+    console.log("[Debug] Running OCRExtractionAgent");
+    console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
+    console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
+    console.log("[Debug] imageFormat:", imageFormat);
+    
     // Set enhanced trace data for OCR
     ocrStage.setConfig({
       model: 'gpt-4o',
@@ -170,7 +186,11 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
     ocrStage.setVariables({
       inputVariables: {
         image_base64: imageBase64.substring(0, 100) + '...',
-        image_format: imageFormat
+        image_format: imageFormat,
+        _debugImagePresent: !!imageBase64,
+        _debugImageType: typeof imageBase64,
+        _debugImageLength: imageBase64?.length || 0,
+        _debugImageSnippet: imageBase64?.slice?.(0, 30) || "N/A",
       },
       outputVariables: {
         extracted_text: initialAnalysis.raw_extraction || 'No text extracted',
@@ -207,6 +227,13 @@ Image: {{image_base64}}`
     const barcodeStage = new EnhancedStageTracker(imageTraceLogger, 'barcode_scanning', 'Scanning image for barcode patterns');
     barcodeStage.reason('Checking for visible barcode patterns in image', REASONING_TYPES.INFO);
     
+    // Debug logging for barcode scanning input
+    console.log("[Debug] Running BarcodeScanningAgent");
+    console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
+    console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
+    console.log("[Debug] imageFormat:", imageFormat);
+    console.log("[Debug] extracted_text from OCR:", initialAnalysis.raw_extraction);
+    
     // Set enhanced trace data for barcode scanning
     barcodeStage.setConfig({
       model: 'gpt-4o',
@@ -218,7 +245,12 @@ Image: {{image_base64}}`
     barcodeStage.setVariables({
       inputVariables: {
         image_base64: imageBase64.substring(0, 100) + '...',
-        extracted_text: initialAnalysis.raw_extraction
+        extracted_text: initialAnalysis.raw_extraction,
+        _debugImagePresent: !!imageBase64,
+        _debugImageType: typeof imageBase64,
+        _debugImageLength: imageBase64?.length || 0,
+        _debugImageSnippet: imageBase64?.slice?.(0, 30) || "N/A",
+        _debugExtractedText: initialAnalysis.raw_extraction || "N/A",
       },
       outputVariables: {
         barcode_detected: false,
@@ -507,7 +539,7 @@ Return your analysis as JSON with all fields.`
             {
               type: "image_url",
               image_url: {
-                url: `data:image/${imageFormat};base64,${imageBase64}`
+                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
               }
             }
           ]
@@ -709,7 +741,7 @@ IMPORTANT:
             {
               type: "image_url",
               image_url: {
-                url: `data:image/${imageFormat};base64,${imageBase64}`,
+                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
                 detail: "high" // High detail for thorough analysis
               }
             }

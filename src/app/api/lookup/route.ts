@@ -100,6 +100,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null } = body;
+    
+    console.log('[Debug] POST request received:', {
+      hasBarcode: !!barcode,
+      hasProductName: !!product_name,
+      hasBrand: !!brand,
+      hasImageBase64: !!image_base64,
+      imageBase64Type: typeof image_base64,
+      imageBase64Preview: image_base64?.slice?.(0, 100)
+    });
 
     // Validate that we have at least some input to work with
     if (!barcode && !product_name && !brand && !image_base64) {
@@ -244,6 +253,17 @@ export async function POST(request: NextRequest) {
       // Step 2: Quality assessment and vision analysis if needed
       let needsVisionAnalysis = false;
       let qualityAssessment = null;
+      
+      console.log('[Debug] forceFullTrace:', forceFullTrace);
+      console.log('[Debug] image_base64 present:', !!image_base64);
+      console.log('[Debug] image_base64 type:', typeof image_base64);
+      console.log('[Debug] image_base64 preview:', image_base64?.slice?.(0, 100));
+      console.log('[Debug] currentProductData:', {
+        hasProductName: !!currentProductData?.product_name,
+        hasBrand: !!currentProductData?.brand,
+        productName: currentProductData?.product_name,
+        brand: currentProductData?.brand
+      });
 
       if (currentProductData && (currentProductData.product_name || currentProductData.brand)) {
         console.log('🔍 Running Quality Assessment Agent...');
@@ -259,6 +279,8 @@ export async function POST(request: NextRequest) {
         });
         
         // If forceFullTrace is true, always run vision analysis if image is provided
+        console.log('[Debug] Checking forceFullTrace condition:', { forceFullTrace, hasImageBase64: !!image_base64 });
+        console.log('[Debug] Quality assessment result:', qualityAssessment);
         if (forceFullTrace && image_base64) {
           needsVisionAnalysis = true;
           console.log('🔍 forceFullTrace enabled - will run vision analysis even with good quality data');
@@ -294,8 +316,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 3: Vision analysis if needed
+      console.log('[Debug] Vision analysis check:', { needsVisionAnalysis, hasImageBase64: !!image_base64 });
       if (needsVisionAnalysis && image_base64) {
         console.log('🔍 Attempting vision agent analysis...');
+        console.log('[Debug] needsVisionAnalysis:', needsVisionAnalysis);
+        console.log('[Debug] image_base64 present:', !!image_base64);
+        console.log('[Debug] image_base64 type:', typeof image_base64);
+        console.log('[Debug] image_base64 preview:', image_base64?.slice?.(0, 100));
+        
         await emitProgress(queryId, 'vision_analysis', 'started', { 
           reason: qualityAssessment ? 'Quality assessment failed, trying vision analysis' : 'No product data, analyzing image'
         });
@@ -303,6 +331,12 @@ export async function POST(request: NextRequest) {
         try {
           console.log('🔍 Using enhanced image analysis with trace recording...');
           const visionResult = await analyzeProductImage(image_base64, 'jpeg');
+          
+          console.log('[Debug] analyzeProductImage result:', {
+            success: visionResult.success,
+            hasImageProcessingTrace: !!visionResult.image_processing_trace,
+            traceStages: visionResult.image_processing_trace?.stages?.length || 0
+          });
           
           await emitProgress(queryId, 'vision_analysis', 'completed', visionResult);
           
@@ -330,6 +364,12 @@ export async function POST(request: NextRequest) {
               ...(visionResult.contextual_clues && { contextual_clues: visionResult.contextual_clues })
             };
             
+            console.log('[Debug] Enhanced data with image processing trace:', {
+              hasImageProcessingTrace: !!enhancedData.image_processing_trace,
+              traceStages: enhancedData.image_processing_trace?.stages?.length || 0,
+              traceStageNames: enhancedData.image_processing_trace?.stages?.map(s => s.stage) || []
+            });
+            
             // Re-run quality assessment with enhanced data
             const enhancedQualityAssessment = await qualityAgent.assessProductDataQuality(enhancedData);
             
@@ -353,47 +393,50 @@ export async function POST(request: NextRequest) {
             }
           } else {
             console.log('❌ Vision analysis failed or provided insufficient data');
-            return NextResponse.json({
-              success: false,
-              requires_manual_entry: true,
-              reason: 'vision_analysis_failed',
-              product_data: currentProductData,
-              quality_assessment: qualityAssessment,
-              vision_result: visionResult,
-              result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'vision_failed'),
-              message: 'Image analysis could not extract sufficient product information. Please provide details manually.',
-              query_id: queryId
-            });
+            // Instead of returning early, continue with existing data but include the image processing trace
+            if (visionResult.image_processing_trace) {
+              currentProductData = {
+                ...currentProductData,
+                image_processing_trace: visionResult.image_processing_trace
+              };
+              console.log('[Debug] Added image processing trace to currentProductData despite vision failure');
+            }
           }
         } catch (visionError) {
           console.error('❌ Vision analysis error:', visionError);
           await emitProgress(queryId, 'vision_analysis', 'error', { error: visionError.message });
           
-          return NextResponse.json({
-            success: false,
-            requires_manual_entry: true,
-            reason: 'vision_analysis_error',
-            product_data: currentProductData,
-            quality_assessment: qualityAssessment,
-            vision_error: visionError.message,
-            result_type: mapToExternalResultType(currentProductData?.result_type || 'vision_enhanced', 'error'),
-            message: 'Image analysis failed. Please provide details manually.',
-            query_id: queryId
-          });
+          // Continue with existing data instead of returning early
+          console.log('[Debug] Vision analysis error occurred, continuing with existing data');
         }
       }
 
       // If barcode lookup returns no data at all, trigger manual entry/camera fallback
       if (!currentProductData || (!currentProductData.product_name && !currentProductData.brand)) {
-        console.log('❌ No meaningful product data available. Triggering manual entry.');
-        return NextResponse.json({
-          success: false,
-          requires_manual_entry: true,
-          reason: 'no_product_data',
-          product_data: currentProductData,
-          result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
-          message: 'No meaningful product information found. Please provide details manually or use camera capture.'
-        });
+        // If we have image processing trace, continue with ownership research even without product data
+        if ((currentProductData as any)?.image_processing_trace) {
+          console.log('✅ No product data but have image processing trace - continuing with ownership research');
+          // Set default values for ownership research
+          currentProductData = {
+            product_name: 'Unknown Product',
+            brand: 'Unknown Brand',
+            result_type: 'image_analysis_failed',
+            lookup_trace: ['image_analysis_failed'],
+            confidence: 0,
+            sources: ['image_analysis'],
+            image_processing_trace: (currentProductData as any).image_processing_trace
+          };
+        } else {
+          console.log('❌ No meaningful product data available. Triggering manual entry.');
+          return NextResponse.json({
+            success: false,
+            requires_manual_entry: true,
+            reason: 'no_product_data',
+            product_data: currentProductData,
+            result_type: mapToExternalResultType(currentProductData?.result_type || 'manual_entry', 'insufficient_data'),
+            message: 'No meaningful product information found. Please provide details manually or use camera capture.'
+          });
+        }
       }
 
       // Step 4: Enhanced Ownership research (only if no ownership data found and we have meaningful product data)
@@ -424,12 +467,12 @@ export async function POST(request: NextRequest) {
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
       // Merge product data and ownership result into a flat structure
-              const mergedResult = {
-          success: true,
-          product_name: currentProductData.product_name,
-          brand: currentProductData.brand,
-          barcode: identifier,
-          financial_beneficiary: ownershipResult.financial_beneficiary,
+      const mergedResult = {
+        success: true,
+        product_name: currentProductData.product_name,
+        brand: currentProductData.brand,
+        barcode: identifier,
+        financial_beneficiary: ownershipResult.financial_beneficiary,
         beneficiary_country: ownershipResult.beneficiary_country,
         beneficiary_flag: ownershipResult.beneficiary_flag,
         confidence_score: ownershipResult.confidence_score,
@@ -450,6 +493,13 @@ export async function POST(request: NextRequest) {
         image_processing_trace: (currentProductData as any).image_processing_trace || null,
         query_id: queryId
       };
+
+      console.log('[Debug] Final merged result:', {
+        hasImageProcessingTrace: !!mergedResult.image_processing_trace,
+        hasAgentExecutionTrace: !!mergedResult.agent_execution_trace,
+        imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
+        agentExecutionStages: mergedResult.agent_execution_trace?.stages?.length || 0
+      });
 
       if (forceFullTrace) {
         return NextResponse.json(mergedResult);
