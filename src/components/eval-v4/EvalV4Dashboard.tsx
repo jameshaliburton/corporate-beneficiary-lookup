@@ -200,7 +200,8 @@ export default function EvalV4Dashboard() {
         
         // Transform API data to match expected format
         const transformedResults = rawResults.map((result: any, index: number) => {
-          console.log(`🚀 EvalV4Dashboard: Processing result ${index}:`, result.id, 'with trace stages:', result.agent_execution_trace?.stages?.length || 0)
+          try {
+            console.log(`🚀 EvalV4Dashboard: Processing result ${index}:`, result.id, 'with trace stages:', result.agent_execution_trace?.stages?.length || 0)
           
           // Define the complete pipeline stages, including early image processing
           const completePipeline = [
@@ -309,12 +310,40 @@ export default function EvalV4Dashboard() {
             evalSheetEntry: result.evalSheetEntry || false,
             status: result.status || 'completed',
             metadata: result.metadata || {},
-            trace: transformedTrace,
+            trace: transformedTrace || [],
             timestamp: result.timestamp || new Date().toISOString()
           }
           
+          // DEBUG: Log the transformed result
+          console.log('🔍 EvalV4Dashboard: Transformed result:', {
+            id: transformedResult.id,
+            brand: transformedResult.brand,
+            owner: transformedResult.owner,
+            confidence: transformedResult.confidence,
+            source: transformedResult.source,
+            traceLength: transformedResult.trace.length
+          })
+          
           console.log('🚀 EvalV4Dashboard: Transformed result:', transformedResult.id, 'with', transformedTrace.length, 'stages')
           return transformedResult
+        } catch (error) {
+          console.error('🚀 EvalV4Dashboard: Error transforming result:', error, 'Result:', result)
+          // Return a fallback result if transformation fails
+          return {
+            id: result.id?.toString() || `result_${Date.now()}`,
+            brand: result.brand || 'Unknown Brand',
+            product: result.product_name || result.product || 'Unknown Product',
+            owner: result.owner || result.financial_beneficiary || result.expected_owner || 'Unknown Owner',
+            confidence: result.confidence_score || result.confidence || 0,
+            source: result.source_type || result.source || 'live',
+            flagged: result.flagged || false,
+            evalSheetEntry: result.evalSheetEntry || false,
+            status: result.status || 'completed',
+            metadata: result.metadata || {},
+            trace: [],
+            timestamp: result.timestamp || new Date().toISOString()
+          }
+        }
         })
         
         console.log('🎯 EvalV4Dashboard: API returned', transformedResults.length, 'results')
@@ -333,6 +362,19 @@ export default function EvalV4Dashboard() {
           hasPromptTemplate: !!s.promptTemplate
         })))
         
+        // DEBUG: Check if results have required fields
+        console.log('🔍 EvalV4Dashboard: Checking required fields for first result:')
+        if (transformedResults[0]) {
+          const result = transformedResults[0]
+          console.log('  - id:', result.id)
+          console.log('  - brand:', result.brand)
+          console.log('  - product:', result.product)
+          console.log('  - owner:', result.owner)
+          console.log('  - confidence:', result.confidence)
+          console.log('  - source:', result.source)
+          console.log('  - trace length:', result.trace?.length)
+        }
+        
         setResults(transformedResults)
         setFilteredResults(transformedResults)
       } catch (error) {
@@ -348,12 +390,19 @@ export default function EvalV4Dashboard() {
 
   // Filter results based on current filters
   useEffect(() => {
-    console.log('Filtering results...')
-    console.log('Total results:', results.length)
-    console.log('Current filters:', filters)
+    console.log('🎨 EvalV4Dashboard: Filtering results...')
+    console.log('🎨 EvalV4Dashboard: Total results:', results.length)
+    console.log('🎨 EvalV4Dashboard: Current filters:', filters)
+    console.log('🎨 EvalV4Dashboard: Sample results:', results.slice(0, 2).map(r => ({
+      id: r.id,
+      brand: r.brand,
+      owner: r.owner,
+      confidence: r.confidence,
+      source: r.source
+    })))
 
     let filtered = [...results]
-    console.log('Initial filtered count:', filtered.length)
+    console.log('🎨 EvalV4Dashboard: Initial filtered count:', filtered.length)
 
     // Search filter
     if (filters.searchTerm) {
