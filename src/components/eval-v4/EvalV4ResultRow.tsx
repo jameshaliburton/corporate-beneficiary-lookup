@@ -16,6 +16,7 @@ import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircle
 import VariableIcon from '@heroicons/react/24/outline/VariableIcon'
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid'
+import EvalV4StructuredTrace from './EvalV4StructuredTrace'
 
 interface TraceStage {
   stage: string
@@ -84,6 +85,27 @@ interface ScanResult {
   flagged: boolean
   evalSheetEntry: boolean
   trace: TraceStage[]
+  agent_execution_trace?: {
+    sections: Array<{
+      id: string
+      label: string
+      stages: Array<{
+        id: string
+        label: string
+        skipped?: boolean
+        inputVariables?: { [key: string]: any }
+        outputVariables?: { [key: string]: any }
+        intermediateVariables?: { [key: string]: any }
+        durationMs?: number
+        model?: string
+        promptTemplate?: string
+        completionSample?: string
+        notes?: string
+      }>
+    }>
+    show_skipped_stages: boolean
+    mark_skipped_stages: boolean
+  }
   timestamp: string
 }
 
@@ -317,89 +339,135 @@ export default function EvalV4ResultRow({
         </div>
       </div>
 
-      {/* Expanded Trace View with Context Clarity */}
+      {/* Expanded Trace View */}
       {isExpanded && (
         <div className="bg-gray-50 p-4">
-          <div className="space-y-4">
-            {result.trace.map((stage, index) => (
-              <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
-                {/* Context Clarity Banner */}
-                <ContextClarityBanner stage={stage} result={result} />
-                
-                {/* Stage Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    {getStatusIcon(stage.status)}
-                    <h4 className="font-medium text-gray-900 capitalize">
-                      {stage.stage.replace('-', ' ')}
-                    </h4>
-                    <Badge variant="outline" className="text-xs">
-                      {stage.confidence}%
-                    </Badge>
-                  </div>
+          {/* Use structured trace if available, otherwise fall back to legacy format */}
+          {result.agent_execution_trace?.sections ? (
+            <EvalV4StructuredTrace 
+              trace={result.agent_execution_trace}
+              onOpenPromptModal={(stage, traceResult) => {
+                // Convert structured stage to legacy format for compatibility
+                const legacyStage: TraceStage = {
+                  stage: stage.id,
+                  agentName: stage.label,
+                  prompt: { system: '', user: '' },
+                  input: JSON.stringify(stage.inputVariables || {}),
+                  output: JSON.stringify(stage.outputVariables || {}),
+                  confidence: 0,
+                  reasoning: stage.notes || '',
+                  duration: stage.durationMs || 0,
+                  status: stage.skipped ? 'skipped' : 'success',
+                  timestamp: new Date().toISOString(),
+                  metadata: {},
+                  variables: stage.inputVariables || stage.outputVariables ? {
+                    inputVariables: stage.inputVariables,
+                    outputVariables: stage.outputVariables,
+                    intermediateVariables: stage.intermediateVariables
+                  } : undefined,
+                  config: stage.model ? {
+                    model: stage.model
+                  } : undefined,
+                  promptTemplate: stage.promptTemplate,
+                  compiledPrompt: stage.completionSample
+                }
+                onOpenPromptModal(legacyStage, result)
+              }}
+            />
+          ) : result.trace && result.trace.length > 0 ? (
+            <div className="space-y-4">
+              {result.trace.map((stage, index) => (
+                <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
+                  {/* Context Clarity Banner */}
+                  <ContextClarityBanner stage={stage} result={result} />
                   
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onOpenPromptModal(stage, result)}
-                      className="text-xs"
-                    >
-                      <PencilIcon className="h-3 w-3 mr-1" />
-                      Edit Prompt
-                    </Button>
-                    
-                    <div className="text-xs text-gray-500">
-                      {new Date(stage.timestamp).toLocaleTimeString()}
+                  {/* Stage Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      {getStatusIcon(stage.status)}
+                      <h4 className="font-medium text-gray-900 capitalize">
+                        {stage.stage.replace('-', ' ')}
+                      </h4>
+                      <Badge variant="outline" className="text-xs">
+                        {stage.confidence}%
+                      </Badge>
                     </div>
-                  </div>
-                </div>
-
-                {/* Stage Content */}
-                <div className="space-y-2">
-                  <div className="text-sm">
-                    <strong>Reasoning:</strong> {stage.reasoning}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <strong>Input:</strong>
-                      <div className="text-gray-600 mt-1 p-2 bg-gray-50 rounded">
-                        {stage.input}
+                    
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onOpenPromptModal(stage, result)}
+                        className="text-xs"
+                      >
+                        <PencilIcon className="h-3 w-3 mr-1" />
+                        Edit Prompt
+                      </Button>
+                      
+                      <div className="text-xs text-gray-500">
+                        {new Date(stage.timestamp).toLocaleTimeString()}
                       </div>
                     </div>
-                    
-                    <div>
-                      <strong>Output:</strong>
-                      <div className="text-gray-600 mt-1 p-2 bg-gray-50 rounded">
-                        {stage.output}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Variable Availability Timeline */}
-                  <div className="mt-3">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <VariableIcon className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-gray-700">Variable Availability</span>
+                  {/* Stage Content */}
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <strong>Reasoning:</strong> {stage.reasoning}
                     </div>
-                    <div className="flex space-x-2">
-                      {result.trace.slice(0, index).map((prevStage, prevIndex) => (
-                        <div key={prevIndex} className="flex items-center space-x-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="text-xs text-gray-600">{prevStage.stage}</span>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <strong>Input:</strong>
+                        <div className="text-gray-600 mt-1 p-2 bg-gray-50 rounded">
+                          {stage.input}
                         </div>
-                      ))}
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-xs font-medium text-blue-600">{stage.stage}</span>
+                      </div>
+                      
+                      <div>
+                        <strong>Output:</strong>
+                        <div className="text-gray-600 mt-1 p-2 bg-gray-50 rounded">
+                          {stage.output}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Variable Availability Timeline */}
+                    <div className="mt-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <VariableIcon className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-700">Variable Availability</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        {result.trace.slice(0, index).map((prevStage, prevIndex) => (
+                          <div key={prevIndex} className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-gray-600">{prevStage.stage}</span>
+                          </div>
+                        ))}
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-xs font-medium text-blue-600">{stage.stage}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">
+                  ⚠️ No trace available for this scan
+                </span>
               </div>
-            ))}
-          </div>
+              <p className="text-xs text-yellow-700 mt-1">
+                This may be due to an incomplete scan or missing trace data.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

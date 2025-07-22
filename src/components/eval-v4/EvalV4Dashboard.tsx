@@ -66,6 +66,27 @@ interface ScanResult {
   flagged: boolean
   evalSheetEntry: boolean
   trace: TraceStage[]
+  agent_execution_trace?: {
+    sections: Array<{
+      id: string
+      label: string
+      stages: Array<{
+        id: string
+        label: string
+        skipped?: boolean
+        inputVariables?: { [key: string]: any }
+        outputVariables?: { [key: string]: any }
+        intermediateVariables?: { [key: string]: any }
+        durationMs?: number
+        model?: string
+        promptTemplate?: string
+        completionSample?: string
+        notes?: string
+      }>
+    }>
+    show_skipped_stages: boolean
+    mark_skipped_stages: boolean
+  }
   timestamp: string
   status: string
   metadata: { [key: string]: any }
@@ -201,103 +222,130 @@ export default function EvalV4Dashboard() {
         // Transform API data to match expected format
         const transformedResults = rawResults.map((result: any, index: number) => {
           try {
-            console.log(`🚀 EvalV4Dashboard: Processing result ${index}:`, result.id, 'with trace stages:', result.agent_execution_trace?.stages?.length || 0)
-          
-          // Define the complete pipeline stages, including early image processing
-          const completePipeline = [
-            'image_processing', 'ocr_extraction', 'barcode_scanning', 'vision_analysis',
-            'text_extraction', 'product_detection', 'brand_recognition',
-            'cache_check', 'static_mapping', 'sheets_mapping',
-            'llm_first_analysis', 'ownership_analysis', 'rag_retrieval',
-            'query_builder', 'web_research', 'validation', 'database_save'
-          ]
-          
-          // Create a map of existing stages
-          const existingStages = new Map()
-          ;(result.agent_execution_trace?.stages || []).forEach((stage: any) => {
-            existingStages.set(stage.stage, stage)
-          })
-          
-          // Transform trace stages to match expected format, including missing early stages
-          const transformedTrace = completePipeline.map((stageName: string) => {
-            const existingStage = existingStages.get(stageName)
+            console.log(`🚀 EvalV4Dashboard: Processing result ${index}:`, result.id)
+            console.log(`🚀 EvalV4Dashboard: Has structured trace:`, !!result.agent_execution_trace?.sections)
+            console.log(`🚀 EvalV4Dashboard: Has legacy trace:`, !!result.agent_execution_trace?.stages)
             
-            if (existingStage) {
-              // Stage exists in the database
-              console.log(`🚀 EvalV4Dashboard: Processing existing stage:`, stageName)
+            // Check if we have structured trace data
+            if (result.agent_execution_trace?.sections) {
+              console.log(`🚀 EvalV4Dashboard: Using structured trace with ${result.agent_execution_trace.sections.length} sections`)
+              // Use structured trace directly - no transformation needed
               return {
-                stage: existingStage.stage || 'unknown',
-                agentName: getAgentName(existingStage.stage),
-                prompt: {
-                  system: existingStage.config?.system_prompt || 'You are an ownership research specialist',
-                  user: existingStage.config?.user_prompt || `Determine the owner of brand: ${result.brand}`
-                },
-                input: formatInput(existingStage),
-                output: formatOutput(existingStage),
-                confidence: existingStage.data?.confidence_score || result.confidence_score || 0,
-                reasoning: formatReasoning(existingStage.reasoning || []),
-                duration: existingStage.duration_ms || 0,
-                status: existingStage.status || 'success',
-                timestamp: existingStage.end_time || existingStage.start_time || new Date().toISOString(),
-                metadata: {
-                  alternatives: existingStage.decisions?.[0]?.alternatives || [],
-                  disambiguation: null,
-                  ocrText: null,
-                  imageAnalysis: null,
-                  entityValidation: null,
-                  fallbackTriggers: [],
-                  lookupResults: []
-                },
-                tokenUsage: existingStage.token_usage || undefined,
-                error: existingStage.error || undefined,
-                variables: existingStage.variables || undefined,
-                config: existingStage.config || undefined,
-                compiledPrompt: existingStage.compiled_prompt || undefined,
-                promptTemplate: existingStage.prompt_template || undefined
-              }
-            } else {
-              // Stage is missing - create a placeholder
-              console.log(`🚀 EvalV4Dashboard: Creating placeholder for missing stage:`, stageName)
-              
-              // Determine if this stage should have run based on input type
-              const hasImage = result.source_type === 'image' || result.metadata?.imageAnalysis || result.image_processing_trace
-              const hasBarcode = result.barcode && result.barcode !== '' && result.barcode !== 'null'
-              
-              let status: 'not_run' | 'skipped' | 'missing_data' = 'not_run'
-              let reasoning = 'Stage not executed in this trace.'
-              
-              if (['image_processing', 'ocr_extraction', 'barcode_scanning', 'vision_analysis'].includes(stageName)) {
-                if (hasImage) {
-                  status = 'missing_data'
-                  reasoning = 'Stage should have run for image input but data is missing from the trace.'
-                } else {
-                  status = 'skipped'
-                  reasoning = 'Stage not applicable for this input type (no image data).'
-                }
-              } else if (hasBarcode && ['barcode_scanning', 'barcode_lookup'].includes(stageName)) {
-                status = 'missing_data'
-                reasoning = 'Stage should have run for barcode input but data is missing from the trace.'
-              }
-              
-              return {
-                stage: stageName,
-                agentName: getAgentName(stageName),
-                prompt: { system: 'N/A', user: 'N/A' },
-                input: 'N/A',
-                output: 'N/A',
-                confidence: 0,
-                reasoning: reasoning,
-                duration: 0,
-                status: status,
-                timestamp: new Date().toISOString(),
-                metadata: {},
-                variables: undefined,
-                config: undefined,
-                compiledPrompt: undefined,
-                promptTemplate: undefined
+                id: result.id || `result-${index}`,
+                brand: result.brand || 'Unknown Brand',
+                product: result.product_name || result.product || 'Unknown Product',
+                owner: result.financial_beneficiary || result.owner || 'Unknown',
+                confidence: result.confidence_score || result.confidence || 0,
+                source: result.result_type || result.source || 'ai_research',
+                flagged: result.flagged || false,
+                evalSheetEntry: result.evalSheetEntry || false,
+                trace: [], // Legacy trace not needed for structured format
+                agent_execution_trace: result.agent_execution_trace,
+                timestamp: result.timestamp || result.created_at || new Date().toISOString(),
+                status: result.status || 'completed'
               }
             }
-          })
+            
+            // Fall back to legacy trace transformation
+            console.log(`🚀 EvalV4Dashboard: Using legacy trace transformation`)
+            const traceStages = result.agent_execution_trace?.stages || []
+            console.log(`🚀 EvalV4Dashboard: Legacy trace stages count:`, traceStages.length)
+            
+            // Define the complete pipeline stages, including early image processing
+            const completePipeline = [
+              'image_processing', 'ocr_extraction', 'barcode_scanning', 'vision_analysis',
+              'text_extraction', 'product_detection', 'brand_recognition',
+              'cache_check', 'static_mapping', 'sheets_mapping',
+              'llm_first_analysis', 'ownership_analysis', 'rag_retrieval',
+              'query_builder', 'web_research', 'validation', 'database_save'
+            ]
+            
+            // Create a map of existing stages
+            const existingStages = new Map()
+            traceStages.forEach((stage: any) => {
+              existingStages.set(stage.stage, stage)
+            })
+            
+            // Transform trace stages to match expected format, including missing early stages
+            const transformedTrace = completePipeline.map((stageName: string) => {
+              const existingStage = existingStages.get(stageName)
+              
+              if (existingStage) {
+                // Stage exists in the database
+                console.log(`🚀 EvalV4Dashboard: Processing existing stage:`, stageName)
+                return {
+                  stage: existingStage.stage || 'unknown',
+                  agentName: getAgentName(existingStage.stage),
+                  prompt: {
+                    system: existingStage.config?.system_prompt || 'You are an ownership research specialist',
+                    user: existingStage.config?.user_prompt || `Determine the owner of brand: ${result.brand}`
+                  },
+                  input: formatInput(existingStage),
+                  output: formatOutput(existingStage),
+                  confidence: existingStage.data?.confidence_score || result.confidence_score || 0,
+                  reasoning: formatReasoning(existingStage.reasoning || []),
+                  duration: existingStage.duration_ms || 0,
+                  status: existingStage.status || 'success',
+                  timestamp: existingStage.end_time || existingStage.start_time || new Date().toISOString(),
+                  metadata: {
+                    alternatives: existingStage.decisions?.[0]?.alternatives || [],
+                    disambiguation: null,
+                    ocrText: null,
+                    imageAnalysis: null,
+                    entityValidation: null,
+                    fallbackTriggers: [],
+                    lookupResults: []
+                  },
+                  tokenUsage: existingStage.token_usage || undefined,
+                  error: existingStage.error || undefined,
+                  variables: existingStage.variables || undefined,
+                  config: existingStage.config || undefined,
+                  compiledPrompt: existingStage.compiled_prompt || undefined,
+                  promptTemplate: existingStage.prompt_template || undefined
+                }
+              } else {
+                // Stage is missing - create a placeholder
+                console.log(`🚀 EvalV4Dashboard: Creating placeholder for missing stage:`, stageName)
+                
+                // Determine if this stage should have run based on input type
+                const hasImage = result.source_type === 'image' || result.metadata?.imageAnalysis || result.image_processing_trace
+                const hasBarcode = result.barcode && result.barcode !== '' && result.barcode !== 'null'
+                
+                let status: 'not_run' | 'skipped' | 'missing_data' = 'not_run'
+                let reasoning = 'Stage not executed in this trace.'
+                
+                if (['image_processing', 'ocr_extraction', 'barcode_scanning', 'vision_analysis'].includes(stageName)) {
+                  if (hasImage) {
+                    status = 'missing_data'
+                    reasoning = 'Stage should have run for image input but data is missing from the trace.'
+                  } else {
+                    status = 'skipped'
+                    reasoning = 'Stage not applicable for this input type (no image data).'
+                  }
+                } else if (hasBarcode && ['barcode_scanning', 'barcode_lookup'].includes(stageName)) {
+                  status = 'missing_data'
+                  reasoning = 'Stage should have run for barcode input but data is missing from the trace.'
+                }
+                
+                return {
+                  stage: stageName,
+                  agentName: getAgentName(stageName),
+                  prompt: { system: 'N/A', user: 'N/A' },
+                  input: 'N/A',
+                  output: 'N/A',
+                  confidence: 0,
+                  reasoning: reasoning,
+                  duration: 0,
+                  status: status,
+                  timestamp: new Date().toISOString(),
+                  metadata: {},
+                  variables: undefined,
+                  config: undefined,
+                  compiledPrompt: undefined,
+                  promptTemplate: undefined
+                }
+              }
+            })
 
           const transformedResult = {
             id: result.id?.toString() || `result_${Date.now()}`,
