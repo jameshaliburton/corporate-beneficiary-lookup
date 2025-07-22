@@ -880,36 +880,34 @@ function buildStructuredTrace(
       if (definition.section === sectionId) {
         const wasExecuted = executedStageIds.has(stageId);
         
-        // Only include if executed OR if showing skipped stages
-        if (wasExecuted || showSkippedStages) {
-          const stageData = wasExecuted 
-            ? executedStages.find(s => s.stage === stageId) || {}
-            : { stage: stageId };
-          
-          const stage = {
-            id: stageId,
-            label: definition.label,
-            ...(wasExecuted ? {
-              inputVariables: stageData.variables || {},
-              outputVariables: stageData.output || {},
-              intermediateVariables: stageData.intermediate || {},
-              durationMs: stageData.duration || 0,
-              model: stageData.model,
-              promptTemplate: stageData.promptTemplate,
-              completionSample: stageData.completionSample,
-              notes: stageData.notes
-            } : {}),
-            ...(markSkippedStages && !wasExecuted ? { skipped: true } : {})
-          };
-          
-          sectionStages.push(stage);
-          
-          // Log stage status
-          if (wasExecuted) {
-            console.log(`[Trace] ✅ Ran stage: ${stageId}`);
-          } else {
-            console.log(`[Trace] ⚠️ Skipped stage: ${stageId}`);
-          }
+        // Always include stages, but mark skipped ones appropriately
+        const stageData = wasExecuted 
+          ? executedStages.find(s => s.stage === stageId) || {}
+          : { stage: stageId };
+        
+        const stage = {
+          id: stageId,
+          label: definition.label,
+          ...(wasExecuted ? {
+            inputVariables: stageData.variables || {},
+            outputVariables: stageData.output || {},
+            intermediateVariables: stageData.intermediate || {},
+            durationMs: stageData.duration || 0,
+            model: stageData.model,
+            promptTemplate: stageData.promptTemplate,
+            completionSample: stageData.completionSample,
+            notes: stageData.notes
+          } : {}),
+          ...(markSkippedStages && !wasExecuted ? { skipped: true } : {})
+        };
+        
+        sectionStages.push(stage);
+        
+        // Log stage status
+        if (wasExecuted) {
+          console.log(`[Trace] ✅ Ran stage: ${stageId}`);
+        } else {
+          console.log(`[Trace] ⚠️ Skipped stage: ${stageId}`);
         }
       }
     }
