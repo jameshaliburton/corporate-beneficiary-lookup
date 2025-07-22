@@ -15,6 +15,9 @@ export async function QueryBuilderAgent({
   barcode,
   hints = {}
 }) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: QueryBuilderAgent');
+  console.time('[AgentTimer] QueryBuilderAgent');
   console.log(`[QueryBuilderAgent] Starting query building for: ${brand}`)
   
   try {
@@ -26,10 +29,16 @@ export async function QueryBuilderAgent({
       queryCount: queryAnalysis.recommended_queries.length
     })
     
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: QueryBuilderAgent (${duration}ms)`);
+    console.timeEnd('[AgentTimer] QueryBuilderAgent');
     return queryAnalysis
     
   } catch (error) {
     console.error('[QueryBuilderAgent] Error:', error)
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in QueryBuilderAgent (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] QueryBuilderAgent');
     
     // Return fallback queries
     return {

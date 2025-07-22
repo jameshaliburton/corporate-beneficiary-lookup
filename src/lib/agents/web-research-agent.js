@@ -55,6 +55,9 @@ export async function WebResearchAgent({
   hints = {},
   queryAnalysis = null
 }) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: WebResearchAgent');
+  console.time('[AgentTimer] WebResearchAgent');
   console.log('[WebResearchAgent] Starting web research for:', { brand, product_name, hints })
   
   try {
@@ -99,10 +102,16 @@ export async function WebResearchAgent({
       average_priority_score: results.average_priority_score
     })
     
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: WebResearchAgent (${duration}ms)`);
+    console.timeEnd('[AgentTimer] WebResearchAgent');
     return results
     
   } catch (error) {
     console.error('[WebResearchAgent] Research failed:', error)
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in WebResearchAgent (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] WebResearchAgent');
     return {
       success: false,
       sources: [],

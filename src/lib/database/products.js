@@ -74,6 +74,10 @@ export async function logScan(barcode, resultType) {
  * Create or update product record
  */
 export async function upsertProduct(productData) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: UpsertProduct');
+  console.time('[AgentTimer] UpsertProduct');
+  
   try {
     const { data, error } = await supabase
       .from('products')
@@ -86,10 +90,16 @@ export async function upsertProduct(productData) {
     }
     
     console.log('[Products] Product upserted:', data[0])
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: UpsertProduct (${duration}ms)`);
+    console.timeEnd('[AgentTimer] UpsertProduct');
     return { success: true, data: data[0] }
     
   } catch (error) {
     console.error('[Products] Upsert error:', error)
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in UpsertProduct (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] UpsertProduct');
     return { success: false, error }
   }
 }

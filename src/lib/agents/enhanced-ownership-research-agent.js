@@ -59,6 +59,9 @@ export async function EnhancedAgentOwnershipResearch({
   const startTime = Date.now()
   const queryId = generateQueryId()
   
+  console.log('[AgentLog] Starting: EnhancedAgentOwnershipResearch');
+  console.time('[AgentTimer] EnhancedAgentOwnershipResearch');
+  
   // Initialize enhanced trace logger
   const traceLogger = createEnhancedTraceLogger(queryId, brand, product_name, barcode)
   const decisionTracker = new DecisionTracker(traceLogger)
@@ -999,6 +1002,9 @@ Respond in valid JSON format.`)
     
     console.log(`[EnhancedAgentOwnershipResearch] Research complete:`, validated)
     
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: EnhancedAgentOwnershipResearch (${duration}ms)`);
+    console.timeEnd('[AgentTimer] EnhancedAgentOwnershipResearch');
     return validated
     
   } catch (error) {
@@ -1014,6 +1020,9 @@ Respond in valid JSON format.`)
     const fallbackResult = createFallbackResponse(brand, error.message)
     fallbackResult.agent_execution_trace = combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat())
     
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in EnhancedAgentOwnershipResearch (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] EnhancedAgentOwnershipResearch');
     return fallbackResult
   }
 }

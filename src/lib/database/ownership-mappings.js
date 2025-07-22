@@ -9,6 +9,10 @@ import { supabase } from '../supabase.ts'
  * Lookup ownership mapping by brand name
  */
 export async function lookupOwnershipMapping(brandName) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: LookupOwnershipMapping');
+  console.time('[AgentTimer] LookupOwnershipMapping');
+  
   try {
     if (!brandName) return null
     
@@ -29,6 +33,9 @@ export async function lookupOwnershipMapping(brandName) {
     
     if (data && data.length > 0) {
       console.log(`[OwnershipMappings] Found exact match for ${brandName}:`, data[0])
+      const duration = Date.now() - startTime;
+      console.log(`[AgentLog] Completed: LookupOwnershipMapping (${duration}ms)`);
+      console.timeEnd('[AgentTimer] LookupOwnershipMapping');
       return data[0]
     }
     
@@ -46,14 +53,23 @@ export async function lookupOwnershipMapping(brandName) {
     
     if (partialData && partialData.length > 0) {
       console.log(`[OwnershipMappings] Found partial match for ${brandName}:`, partialData[0])
+      const duration = Date.now() - startTime;
+      console.log(`[AgentLog] Completed: LookupOwnershipMapping (${duration}ms)`);
+      console.timeEnd('[AgentTimer] LookupOwnershipMapping');
       return partialData[0]
     }
     
     console.log(`[OwnershipMappings] No mapping found for ${brandName}`)
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: LookupOwnershipMapping (${duration}ms)`);
+    console.timeEnd('[AgentTimer] LookupOwnershipMapping');
     return null
     
   } catch (error) {
     console.error('[OwnershipMappings] Lookup error:', error)
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in LookupOwnershipMapping (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] LookupOwnershipMapping');
     return null
   }
 }

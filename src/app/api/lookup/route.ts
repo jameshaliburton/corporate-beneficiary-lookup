@@ -17,6 +17,72 @@ const qualityAgent = new QualityAssessmentAgent();
 // Initialize the Vision Agent
 const visionAgent = new VisionAgent();
 
+// 🧠 AGENT PIPELINE OPTIMIZATION LOGGING
+// Global counters for agent usage tracking
+const agentUsage: { [key: string]: number } = {};
+const agentTiming: { [key: string]: { total: number, count: number, avg: number } } = {};
+
+// Utility function to count agent usage
+function countAgent(agentName: string) {
+  agentUsage[agentName] = (agentUsage[agentName] || 0) + 1;
+  console.log(`[AgentCounter] ${agentName}: ${agentUsage[agentName]} calls`);
+}
+
+// Utility function to log agent execution with timing
+async function logAgentExecution<T>(stageName: string, fn: () => Promise<T>): Promise<T> {
+  const startTime = Date.now();
+  countAgent(stageName);
+  
+  console.log(`[AgentLog] Starting: ${stageName}`);
+  console.time(`[AgentTimer] ${stageName}`);
+  
+  try {
+    const result = await fn();
+    const duration = Date.now() - startTime;
+    
+    // Update timing stats
+    if (!agentTiming[stageName]) {
+      agentTiming[stageName] = { total: 0, count: 0, avg: 0 };
+    }
+    agentTiming[stageName].total += duration;
+    agentTiming[stageName].count += 1;
+    agentTiming[stageName].avg = agentTiming[stageName].total / agentTiming[stageName].count;
+    
+    console.log(`[AgentLog] Completed: ${stageName} (${duration}ms, avg: ${agentTiming[stageName].avg.toFixed(0)}ms)`);
+    return result;
+  } catch (err) {
+    console.warn(`[AgentLog] Error in ${stageName}:`, err);
+    throw err;
+  } finally {
+    console.timeEnd(`[AgentTimer] ${stageName}`);
+  }
+}
+
+// Function to log pipeline trigger conditions
+function logPipelineTrigger(inputs: any) {
+  console.log('[TraceTrigger] Inputs:', {
+    barcode: inputs.barcode,
+    product_name: inputs.product_name,
+    brand: inputs.brand,
+    hasImageBase64: !!inputs.image_base64,
+    imageBase64Type: typeof inputs.image_base64,
+    forceFullTrace,
+    evaluation_mode: inputs.evaluation_mode
+  });
+}
+
+// Function to log final trace summary
+function logTraceSummary(result: any) {
+  console.log('[Trace] agent_execution_trace stages:', 
+    (result.agent_execution_trace?.stages ?? []).map((s: any) => s.stage));
+  console.log('[Trace] image_processing_trace stages:', 
+    (result.image_processing_trace?.stages ?? []).map((s: any) => s.stage));
+  
+  // Log agent usage summary
+  console.log('[AgentUsage] Summary:', agentUsage);
+  console.log('[AgentTiming] Summary:', agentTiming);
+}
+
 // Helper function to check if product data is meaningful
 function isProductDataMeaningful(productData: any): boolean {
   // Pattern-based detection of generic/incomplete data
@@ -101,6 +167,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null } = body;
     
+    // 🧠 PIPELINE TRIGGER LOGGING
+    logPipelineTrigger({ barcode, product_name, brand, image_base64, evaluation_mode });
+    
     console.log('[Debug] POST request received:', {
       hasBarcode: !!barcode,
       hasProductName: !!product_name,
@@ -149,7 +218,9 @@ export async function POST(request: NextRequest) {
           region_hint: hints.country_of_origin
         } : null;
         
-        const barcodeData = await enhancedLookupProduct(identifier, userData);
+        const barcodeData = await logAgentExecution('EnhancedBarcodeLookup', () => 
+          enhancedLookupProduct(identifier, userData)
+        );
         await emitProgress(queryId, 'barcode_lookup', 'completed', barcodeData);
 
         currentProductData = { ...barcodeData };
@@ -268,7 +339,9 @@ export async function POST(request: NextRequest) {
       if (currentProductData && (currentProductData.product_name || currentProductData.brand)) {
         console.log('🔍 Running Quality Assessment Agent...');
         
-        qualityAssessment = await qualityAgent.assessProductDataQuality(currentProductData);
+        qualityAssessment = await logAgentExecution('QualityAssessmentAgent', () => 
+          qualityAgent.assessProductDataQuality(currentProductData)
+        );
         
         console.log('📊 Quality Assessment Result:', {
           is_meaningful: qualityAssessment.is_meaningful,
@@ -330,7 +403,9 @@ export async function POST(request: NextRequest) {
         
         try {
           console.log('🔍 Using enhanced image analysis with trace recording...');
-          const visionResult = await analyzeProductImage(image_base64, 'jpeg');
+          const visionResult = await logAgentExecution('AnalyzeProductImage', () => 
+            analyzeProductImage(image_base64, 'jpeg')
+          );
           
           console.log('[Debug] analyzeProductImage result:', {
             success: visionResult.success,
@@ -447,14 +522,16 @@ export async function POST(request: NextRequest) {
         process.env.ENABLE_EVALUATION_LOGGING = 'true';
       }
       
-              const ownershipResult = await EnhancedAgentOwnershipResearch({
+      const ownershipResult = await logAgentExecution('EnhancedAgentOwnershipResearch', () => 
+        EnhancedAgentOwnershipResearch({
           barcode: identifier,
           product_name: currentProductData.product_name,
           brand: currentProductData.brand,
           hints,
           enableEvaluation: evaluation_mode,
           imageProcessingTrace: (currentProductData as any).image_processing_trace || null
-        });
+        })
+      );
       
       // Reset evaluation logging
       if (evaluation_mode) {
@@ -500,6 +577,9 @@ export async function POST(request: NextRequest) {
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
         agentExecutionStages: mergedResult.agent_execution_trace?.stages?.length || 0
       });
+
+      // 🧠 TRACE SUMMARY LOGGING
+      logTraceSummary(mergedResult);
 
       if (forceFullTrace) {
         return NextResponse.json(mergedResult);

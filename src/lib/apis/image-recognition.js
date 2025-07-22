@@ -107,6 +107,10 @@ async function checkOwnershipMappings(brand) {
  * @returns {Promise<Object>} Recognition results
  */
 export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: AnalyzeProductImage');
+  console.time('[AgentTimer] AnalyzeProductImage');
+  
   try {
     console.log('🔍 Starting enhanced image analysis flow with cache checks...');
     
@@ -474,8 +478,16 @@ Image: {{image_base64}}`
       image_processing_trace: imageTraceLogger.toDatabaseFormat()
     };
 
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: AnalyzeProductImage (${duration}ms)`);
+    console.timeEnd('[AgentTimer] AnalyzeProductImage');
+    return result;
+
   } catch (error) {
     console.error('❌ Error in enhanced image analysis:', error);
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in AnalyzeProductImage (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] AnalyzeProductImage');
     return {
       success: false,
       error: error.message,
@@ -492,6 +504,10 @@ Image: {{image_base64}}`
  * Extracts brand/product info AND multiple contextual clues for disambiguation
  */
 async function runLightweightAnalysis(imageBase64, imageFormat) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: RunLightweightAnalysis');
+  console.time('[AgentTimer] RunLightweightAnalysis');
+  
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // Use GPT-4o for image support
@@ -594,10 +610,16 @@ Return your analysis as JSON with all fields.`
     };
 
     console.log('🔍 Enhanced lightweight analysis result:', result);
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: RunLightweightAnalysis (${duration}ms)`);
+    console.timeEnd('[AgentTimer] RunLightweightAnalysis');
     return result;
 
   } catch (error) {
     console.error('❌ Error in lightweight analysis:', error);
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in RunLightweightAnalysis (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] RunLightweightAnalysis');
     return {
       brand_name: 'Unknown Brand',
       product_name: 'Unknown Product',
@@ -624,6 +646,10 @@ Return your analysis as JSON with all fields.`
  * Step 2: Quality Assessment Agent
  */
 async function assessQuality(analysisResult) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: AssessQuality');
+  console.time('[AgentTimer] AssessQuality');
+  
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -679,6 +705,9 @@ Return JSON:
       };
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: AssessQuality (${duration}ms)`);
+    console.timeEnd('[AgentTimer] AssessQuality');
     return {
       brand_name: result.brand_name || analysisResult.brand_name,
       product_name: result.product_name || analysisResult.product_name,
@@ -691,6 +720,9 @@ Return JSON:
 
   } catch (error) {
     console.error('❌ Quality assessment failed:', error);
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in AssessQuality (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] AssessQuality');
     return {
       ...analysisResult,
       quality_score: analysisResult.confidence,
@@ -703,6 +735,10 @@ Return JSON:
  * Step 3: Vision Agent (high-powered analysis when confidence is low)
  */
 async function runVisionAgent(imageBase64, imageFormat, previousAnalysis) {
+  const startTime = Date.now();
+  console.log('[AgentLog] Starting: RunVisionAgent');
+  console.time('[AgentTimer] RunVisionAgent');
+  
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // High-powered model for difficult cases
@@ -761,6 +797,9 @@ IMPORTANT:
       result = extractInfoFromText(content);
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Completed: RunVisionAgent (${duration}ms)`);
+    console.timeEnd('[AgentTimer] RunVisionAgent');
     return {
       brand_name: result.brand_name || previousAnalysis.brand_name,
       product_name: result.product_name || previousAnalysis.product_name,
@@ -771,6 +810,9 @@ IMPORTANT:
 
   } catch (error) {
     console.error('❌ Vision agent failed:', error);
+    const duration = Date.now() - startTime;
+    console.log(`[AgentLog] Error in RunVisionAgent (${duration}ms):`, error.message);
+    console.timeEnd('[AgentTimer] RunVisionAgent');
     return previousAnalysis; // Fallback to previous result
   }
 }

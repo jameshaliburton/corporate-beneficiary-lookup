@@ -51,6 +51,10 @@ export class RAGKnowledgeBase {
    * Search for relevant ownership patterns using semantic similarity
    */
   async searchSimilar(brand, product_name, limit = 5) {
+    const startTime = Date.now();
+    console.log('[AgentLog] Starting: RAGKnowledgeBaseSearch');
+    console.time('[AgentTimer] RAGKnowledgeBaseSearch');
+    
     try {
       // First, try exact brand match
       let { data: exactMatches, error: exactError } = await supabase
@@ -93,12 +97,20 @@ export class RAGKnowledgeBase {
       })) || [];
 
       // Sort by similarity score and return top results
-      return scoredResults
+      const result = scoredResults
         .sort((a, b) => (b.similarity_score || 0) - (a.similarity_score || 0))
         .slice(0, limit);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[AgentLog] Completed: RAGKnowledgeBaseSearch (${duration}ms)`);
+      console.timeEnd('[AgentTimer] RAGKnowledgeBaseSearch');
+      return result;
 
     } catch (error) {
       console.error('Error searching knowledge base:', error);
+      const duration = Date.now() - startTime;
+      console.log(`[AgentLog] Error in RAGKnowledgeBaseSearch (${duration}ms):`, error.message);
+      console.timeEnd('[AgentTimer] RAGKnowledgeBaseSearch');
       return []; // Always return empty array instead of throwing
     }
   }
