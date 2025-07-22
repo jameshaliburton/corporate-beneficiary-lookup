@@ -906,71 +906,94 @@ Respond in valid JSON format.`)
     
     // Step 10: Database Save
     const saveStage = new EnhancedStageTracker(traceLogger, 'database_save', 'Saving result to database')
-    await emitProgress(queryId, 'database_save', 'started', { 
-      financial_beneficiary: ownership.financial_beneficiary,
-      confidence_score: ownership.confidence_score 
+    
+    // Check if we should save to database
+    const shouldSave = ownership.financial_beneficiary && ownership.financial_beneficiary !== 'Unknown'
+    console.log('💾 [Pipeline] Database save decision:', { 
+      financial_beneficiary: ownership.financial_beneficiary, 
+      shouldSave 
     })
     
-    try {
-      const { data: product, error: saveError } = await supabase
-        .from('products')
-        .upsert({
-          barcode,
-          product_name,
-          brand,
-          financial_beneficiary: ownership.financial_beneficiary,
-          beneficiary_country: ownership.beneficiary_country,
-          beneficiary_flag: ownership.beneficiary_flag,
-          confidence: ownership.confidence_score,
-          verification_status: ownership.verification_status,
-          sources: ownership.sources,
-          reasoning: ownership.reasoning,
-          result_type: ownership.result_type,
-          ownership_structure_type: ownership.ownership_structure_type,
-          ownership_flow: ownership.ownership_flow,
-          user_contributed: false,
-          agent_execution_trace: traceLogger.getTrace(),
-          confidence_factors: ownership.confidence_factors,
-          confidence_breakdown: ownership.confidence_breakdown,
-          confidence_reasoning: ownership.confidence_reasoning,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (saveError) throw saveError
+    if (shouldSave) {
+      await emitProgress(queryId, 'database_save', 'started', { 
+        financial_beneficiary: ownership.financial_beneficiary,
+        confidence_score: ownership.confidence_score 
+      })
       
-      saveStage.success({ product_id: product.id }, ['Result saved to database'])
-      await emitProgress(queryId, 'database_save', 'completed', { product_id: product.id })
-      
-      // Store successful result in knowledge base for future RAG queries
-      if (ownership.confidence_score >= 70 && ownership.financial_beneficiary !== 'Unknown') {
-        try {
-          const knowledgeEntry = {
-            brand: brand.toLowerCase(),
-            product_name,
+      try {
+        const { data: product, error: saveError } = await supabase
+          .from('products')
+          .upsert({
             barcode,
+            product_name,
+            brand,
             financial_beneficiary: ownership.financial_beneficiary,
             beneficiary_country: ownership.beneficiary_country,
+            beneficiary_flag: ownership.beneficiary_flag,
+            confidence: ownership.confidence_score,
+            verification_status: ownership.verification_status,
+            sources: ownership.sources,
+            reasoning: ownership.reasoning,
+            result_type: ownership.result_type,
             ownership_structure_type: ownership.ownership_structure_type,
             ownership_flow: ownership.ownership_flow,
-            confidence_score: ownership.confidence_score,
-            reasoning: ownership.reasoning,
-            sources: ownership.sources,
-            tags: ['enhanced_agent', 'web_research', ownership.confidence_score >= 90 ? 'high_confidence' : 'medium_confidence']
+            user_contributed: false,
+            agent_execution_trace: traceLogger.getTrace(),
+            confidence_factors: ownership.confidence_factors,
+            confidence_breakdown: ownership.confidence_breakdown,
+            confidence_reasoning: ownership.confidence_reasoning,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (saveError) throw saveError
+        
+        saveStage.success({ product_id: product.id }, ['Result saved to database'])
+        await emitProgress(queryId, 'database_save', 'completed', { product_id: product.id })
+        
+                console.log('✅ [Pipeline] Ownership saved to database:', {
+          brand,
+          product_name,
+          beneficiary: ownership.financial_beneficiary,
+          product_id: product.id
+        })
+        
+        // Store successful result in knowledge base for future RAG queries
+        if (ownership.confidence_score >= 70 && ownership.financial_beneficiary !== 'Unknown') {
+          try {
+            const knowledgeEntry = {
+              brand: brand.toLowerCase(),
+              product_name,
+              barcode,
+              financial_beneficiary: ownership.financial_beneficiary,
+              beneficiary_country: ownership.beneficiary_country,
+              ownership_structure_type: ownership.ownership_structure_type,
+              ownership_flow: ownership.ownership_flow,
+              confidence_score: ownership.confidence_score,
+              reasoning: ownership.reasoning,
+              sources: ownership.sources,
+              tags: ['enhanced_agent', 'web_research', ownership.confidence_score >= 90 ? 'high_confidence' : 'medium_confidence']
+            }
+            
+            await ragKnowledgeBase.storeEntry(knowledgeEntry)
+            console.log(`✅ Stored research result in knowledge base: ${brand} → ${ownership.financial_beneficiary}`)
+          } catch (knowledgeError) {
+            console.warn('Failed to store result in knowledge base:', knowledgeError.message)
           }
-          
-          await ragKnowledgeBase.storeEntry(knowledgeEntry)
-          console.log(`✅ Stored research result in knowledge base: ${brand} → ${ownership.financial_beneficiary}`)
-        } catch (knowledgeError) {
-          console.warn('Failed to store result in knowledge base:', knowledgeError.message)
         }
+        
+      } catch (error) {
+        saveStage.error(error, {}, ['Failed to save result to database'])
+        await emitProgress(queryId, 'database_save', 'failed', { error: error.message })
+        console.error('Database save error:', error)
       }
-      
-    } catch (error) {
-      saveStage.error(error, {}, ['Failed to save result to database'])
-      await emitProgress(queryId, 'database_save', 'failed', { error: error.message })
-      console.error('Database save error:', error)
+    } else {
+      console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result')
+      await emitProgress(queryId, 'database_save', 'completed', { 
+        success: false,
+        reason: 'no_valid_ownership_result'
+      })
     }
     
     // Set final result

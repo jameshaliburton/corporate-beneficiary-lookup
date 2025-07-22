@@ -618,7 +618,16 @@ export async function POST(request: NextRequest) {
             validation: ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'validation') || false,
             database_save: ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown'
           },
-          // Removed stages (no longer used)
+          // Skipped stages (not executed in this run)
+          skipped_stages: {
+            ownership_analysis: !ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'ownership_analysis'),
+            rag_retrieval: !ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'rag_retrieval'),
+            query_builder: !ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'query_builder'),
+            web_research: !ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'web_research'),
+            validation: !ownershipResult.agent_execution_trace?.stages?.some((s: any) => s.stage === 'validation'),
+            database_save: !(ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown')
+          },
+          // Removed stages (no longer used in pipeline)
           removed_stages: ['barcode_scanning', 'vision_analysis', 'text_extraction', 'product_detection', 'brand_recognition'],
           // Section labels for trace organization
           sections: {

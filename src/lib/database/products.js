@@ -64,11 +64,20 @@ export async function getProductByBrandAndName(brand, productName) {
   try {
     if (!brand || !productName) return null
     
+    // Normalize cache keys for consistent lookup
+    const normalizedBrand = brand.toLowerCase().trim()
+    const normalizedProductName = productName.toLowerCase().trim()
+    
+    console.log('🔍 [Cache] Lookup key:', { 
+      original: `${brand} / ${productName}`,
+      normalized: `${normalizedBrand} / ${normalizedProductName}`
+    })
+    
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('brand', brand)
-      .eq('product_name', productName)
+      .eq('brand', normalizedBrand)
+      .eq('product_name', normalizedProductName)
       .limit(1)
     
     if (error) {
@@ -76,7 +85,18 @@ export async function getProductByBrandAndName(brand, productName) {
       return null
     }
     
-    return data && data.length > 0 ? data[0] : null
+    const result = data && data.length > 0 ? data[0] : null
+    if (result) {
+      console.log('✅ [Cache] Hit found:', { 
+        brand: result.brand, 
+        product_name: result.product_name,
+        beneficiary: result.financial_beneficiary 
+      })
+    } else {
+      console.log('❌ [Cache] Miss - no existing record found')
+    }
+    
+    return result
     
   } catch (error) {
     console.error('[Products] Get by brand and name error:', error)
@@ -106,9 +126,22 @@ export async function upsertProduct(productData) {
   console.time('[AgentTimer] UpsertProduct');
   
   try {
+    // Normalize brand and product_name for consistent storage
+    const normalizedData = {
+      ...productData,
+      brand: productData.brand ? productData.brand.toLowerCase().trim() : productData.brand,
+      product_name: productData.product_name ? productData.product_name.toLowerCase().trim() : productData.product_name
+    }
+    
+    console.log('💾 [Cache] Save key:', { 
+      original: `${productData.brand} / ${productData.product_name}`,
+      normalized: `${normalizedData.brand} / ${normalizedData.product_name}`,
+      beneficiary: productData.financial_beneficiary
+    })
+    
     const { data, error } = await supabase
       .from('products')
-      .upsert([productData], { onConflict: 'barcode' })
+      .upsert([normalizedData], { onConflict: 'barcode' })
       .select()
     
     if (error) {
