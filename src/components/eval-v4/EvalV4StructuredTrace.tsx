@@ -111,6 +111,8 @@ export default function EvalV4StructuredTrace({
 }: EvalV4StructuredTraceProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
+  
+  // Use local state for toggle, but initialize from trace data
   const [showSkippedStages, setShowSkippedStages] = useState(trace?.show_skipped_stages || false)
 
   // Handle missing or empty trace
