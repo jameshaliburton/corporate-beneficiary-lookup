@@ -75,9 +75,28 @@ const formatVariables = (variables: { [key: string]: any } | undefined) => {
     return 'No data'
   }
   
-  return Object.entries(variables)
-    .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-    .join(', ')
+  try {
+    return Object.entries(variables)
+      .map(([key, value]) => {
+        // Handle different types of values safely
+        let displayValue: string
+        if (value === null || value === undefined) {
+          displayValue = 'null'
+        } else if (typeof value === 'object') {
+          try {
+            displayValue = JSON.stringify(value)
+          } catch {
+            displayValue = '[Complex Object]'
+          }
+        } else {
+          displayValue = String(value)
+        }
+        return `${key}: ${displayValue}`
+      })
+      .join(', ')
+  } catch (error) {
+    return 'Error formatting variables'
+  }
 }
 
 // Format duration
@@ -319,7 +338,9 @@ export default function EvalV4StructuredTrace({
                             {stage.notes && (
                               <div>
                                 <span className="text-xs font-medium text-gray-700">Notes:</span>
-                                <span className="text-xs text-gray-600 ml-1">{stage.notes}</span>
+                                <span className="text-xs text-gray-600 ml-1">
+                                  {typeof stage.notes === 'string' ? stage.notes : JSON.stringify(stage.notes)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -332,9 +353,11 @@ export default function EvalV4StructuredTrace({
                                 <span className="text-xs font-medium text-gray-700">Completion Sample</span>
                               </div>
                               <div className="text-xs bg-gray-50 p-2 rounded font-mono">
-                                {stage.completionSample.length > 300 
-                                  ? `${stage.completionSample.substring(0, 300)}...`
-                                  : stage.completionSample
+                                {typeof stage.completionSample === 'string' 
+                                  ? (stage.completionSample.length > 300 
+                                      ? `${stage.completionSample.substring(0, 300)}...`
+                                      : stage.completionSample)
+                                  : JSON.stringify(stage.completionSample)
                                 }
                               </div>
                             </div>

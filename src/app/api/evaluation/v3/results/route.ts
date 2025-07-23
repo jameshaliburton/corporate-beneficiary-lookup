@@ -54,9 +54,9 @@ function transformLegacyTraceToStructured(legacyTrace: any) {
       intermediateVariables: stage.variables?.intermediateVariables || {},
       durationMs: stage.duration_ms || 0,
       model: stage.config?.model,
-      promptTemplate: stage.prompt_template,
-      completionSample: stage.compiled_prompt,
-      notes: stage.reasoning ? (Array.isArray(stage.reasoning) ? stage.reasoning.join('; ') : stage.reasoning) : undefined
+      promptTemplate: typeof stage.prompt_template === 'string' ? stage.prompt_template : JSON.stringify(stage.prompt_template),
+      completionSample: typeof stage.compiled_prompt === 'string' ? stage.compiled_prompt : JSON.stringify(stage.compiled_prompt),
+      notes: stage.reasoning ? (Array.isArray(stage.reasoning) ? stage.reasoning.map(r => typeof r === 'object' ? JSON.stringify(r) : String(r)).join('; ') : String(stage.reasoning)) : undefined
     })
   })
 
