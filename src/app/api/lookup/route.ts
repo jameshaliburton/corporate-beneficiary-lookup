@@ -735,21 +735,19 @@ export async function POST(request: NextRequest) {
         agent_execution_trace: (() => {
           // Build structured trace from ownership result
           const allStages = [
-            // Vision stages (always executed)
-            {
-              stage: 'image_processing',
-              status: 'completed',
-              variables: { hasImage: !!image_base64 },
-              output: { success: true },
-              duration: 50
-            },
-            {
-              stage: 'ocr_extraction',
-              status: 'completed',
-              variables: { hasImage: !!image_base64, hasProductData: !!(currentProductData.product_name || currentProductData.brand) },
-              output: { success: true, extractedText: currentProductData.product_name || currentProductData.brand || 'No text extracted' },
-              duration: 100
-            },
+            // Vision stages from actual trace data
+            ...(currentProductData.image_processing_trace?.stages || []).map((visionStage: any) => ({
+              stage: visionStage.stage,
+              status: visionStage.status || 'completed',
+              variables: visionStage.variables || { hasImage: !!image_base64 },
+              output: visionStage.output || { success: true },
+              intermediate: visionStage.intermediate || {},
+              duration: visionStage.duration || 0,
+              model: visionStage.model,
+              promptTemplate: visionStage.promptTemplate,
+              completionSample: visionStage.completionSample,
+              notes: visionStage.notes
+            })),
             // Cache check (always executed)
             {
               stage: 'cache_check',
