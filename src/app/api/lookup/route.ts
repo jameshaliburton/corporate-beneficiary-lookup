@@ -735,9 +735,16 @@ export async function POST(request: NextRequest) {
         agent_execution_trace: (() => {
           // Build structured trace from ownership result
           const allStages = [
+            // Debug vision trace data
+            console.log('[Debug] Vision trace data:', {
+              hasVisionTrace: !!currentProductData.vision_trace,
+              hasImageProcessingTrace: !!currentProductData.image_processing_trace,
+              visionTraceStages: currentProductData.vision_trace?.stages?.length || 0,
+              imageProcessingTraceStages: currentProductData.image_processing_trace?.stages?.length || 0
+            }),
             // Vision stages from actual trace data
-            ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).map((visionStage: any) => ({
-              stage: visionStage.stage,
+            ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).filter((visionStage: any) => visionStage && typeof visionStage === 'object').map((visionStage: any) => ({
+              stage: visionStage.stage || 'unknown_vision_stage',
               status: visionStage.status || 'completed',
               variables: visionStage.variables || { hasImage: !!image_base64 },
               output: visionStage.output || { success: true },
@@ -778,6 +785,9 @@ export async function POST(request: NextRequest) {
               duration: 200
             }] : [])
           ];
+          
+          // Debug: Log what's in allStages
+          console.log('[Debug] allStages structure:', allStages.map(s => ({ stage: s.stage, status: s.status })));
           
           return buildStructuredTrace(allStages, false, true);
         })(),
