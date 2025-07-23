@@ -736,7 +736,7 @@ export async function POST(request: NextRequest) {
           // Build structured trace from ownership result
           const allStages = [
             // Vision stages from actual trace data
-            ...(currentProductData.image_processing_trace?.stages || []).map((visionStage: any) => ({
+            ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).map((visionStage: any) => ({
               stage: visionStage.stage,
               status: visionStage.status || 'completed',
               variables: visionStage.variables || { hasImage: !!image_base64 },
