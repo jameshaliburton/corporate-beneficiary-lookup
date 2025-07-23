@@ -17,7 +17,10 @@ import PauseIcon from '@heroicons/react/24/outline/PauseIcon'
 import CogIcon from '@heroicons/react/24/outline/CogIcon'
 import ClipboardDocumentIcon from '@heroicons/react/24/outline/ClipboardDocumentIcon'
 import VariableIcon from '@heroicons/react/24/outline/VariableIcon'
+import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon'
+import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon'
 
+// Legacy trace stage interface (for backward compatibility)
 interface TraceStage {
   stage: string
   agentName: string
@@ -61,11 +64,39 @@ interface TraceStage {
   promptTemplate?: string
 }
 
+// New structured trace interfaces
+interface StructuredTraceStage {
+  id: string
+  label: string
+  skipped?: boolean
+  inputVariables?: { [key: string]: any }
+  outputVariables?: { [key: string]: any }
+  intermediateVariables?: { [key: string]: any }
+  durationMs?: number
+  model?: string
+  promptTemplate?: string
+  completionSample?: string
+  notes?: string
+}
+
+interface StructuredTraceSection {
+  id: string
+  label: string
+  stages: StructuredTraceStage[]
+}
+
+interface StructuredTrace {
+  sections: StructuredTraceSection[]
+  show_skipped_stages: boolean
+  mark_skipped_stages: boolean
+}
+
 interface ScanResult {
   id: string
   product: string
   brand: string
   trace: TraceStage[]
+  agent_execution_trace?: StructuredTrace
   source: string
   confidence: number
   status: string
@@ -76,15 +107,15 @@ interface ScanResult {
 interface EvalV4TraceModalProps {
   result: ScanResult
   onClose: () => void
-  onEditPrompt?: (stage: TraceStage) => void
+  onEditPrompt?: (stage: TraceStage | StructuredTraceStage) => void
 }
 
 export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: EvalV4TraceModalProps) {
-  console.log('🔍 EvalV4TraceModal: Received result:', result.id, 'with', result.trace?.length || 0, 'stages')
-  console.log('🔍 EvalV4TraceModal: Sample stages:', result.trace?.slice(0, 2).map(s => ({ stage: s.stage, status: s.status, hasVariables: !!s.variables, hasConfig: !!s.config, hasCompiledPrompt: !!s.compiledPrompt })))
-  console.log('🔍 EvalV4TraceModal: FULL RESULT STRUCTURE:', JSON.stringify(result, null, 2))
+  console.log('🔍 EvalV4TraceModal: Received result:', result.id)
+  console.log('🔍 EvalV4TraceModal: Has structured trace:', !!result.agent_execution_trace?.sections)
+  console.log('🔍 EvalV4TraceModal: Has legacy trace:', !!result.trace?.length)
   
-  const [selectedStage, setSelectedStage] = useState<TraceStage | null>(null)
+  const [selectedStage, setSelectedStage] = useState<TraceStage | StructuredTraceStage | null>(null)
   const [filterSettings, setFilterSettings] = useState({
     showErrors: true,
     showWarnings: true,
@@ -92,71 +123,54 @@ export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: Eval
     showPending: true,
     showTechnicalSteps: false,
     showPerformanceAlerts: true,
+    showSkippedStages: false,
     minConfidence: 0,
     maxDuration: Infinity,
   })
   const [viewMode, setViewMode] = useState<'timeline' | 'detailed'>('timeline')
   const [autoPlay, setAutoPlay] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [showAllStages, setShowAllStages] = useState(true)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
 
-  // Filter stages based on settings and showAllStages
-  const filteredStages = useMemo(() => {
-    let stages = result.trace
+  // Determine if we're using structured or legacy trace
+  const isStructuredTrace = !!result.agent_execution_trace?.sections
+  const structuredTrace = result.agent_execution_trace
+  const legacyTrace = result.trace || []
 
-    // Filter by showAllStages setting
-    if (!showAllStages) {
-      stages = stages.filter(stage => 
-        stage.status === 'success' || 
-        stage.status === 'error' || 
-        stage.status === 'warning' || 
-        stage.status === 'missing_data'
-      )
+  // Get section icon for structured traces
+  const getSectionIcon = (sectionId: string) => {
+    const icons: { [key: string]: string } = {
+      vision: '🖼️',
+      retrieval: '🔍',
+      ownership: '🧠',
+      persistence: '📦'
     }
-
-    // Apply other filters
-    return stages.filter(stage => {
-      if (!filterSettings.showErrors && stage.status === 'error') return false
-      if (!filterSettings.showWarnings && stage.status === 'warning') return false
-      if (!filterSettings.showSuccess && stage.status === 'success') return false
-      if (!filterSettings.showPending && stage.status === 'pending') return false
-      if (stage.confidence < filterSettings.minConfidence) return false
-      if (stage.duration > filterSettings.maxDuration) return false
-      return true
-    })
-  }, [result.trace, showAllStages, filterSettings])
-
-  // Auto-play functionality
-  useEffect(() => {
-    if (!autoPlay) return
-
-    const interval = setInterval(() => {
-      setCurrentStepIndex(prev => {
-        if (prev >= filteredStages.length - 1) {
-          setAutoPlay(false)
-          return prev
-        }
-        return prev + 1
-      })
-    }, 2000)
-
-    return () => clearInterval(interval)
-  }, [autoPlay, filteredStages.length])
-
-  // Calculate aggregated metrics
-  const metrics = {
-    totalStages: result.trace.length,
-    visibleStages: filteredStages.length,
-    hiddenStages: result.trace.length - filteredStages.length,
-    totalDuration: result.trace.reduce((sum, stage) => sum + stage.duration, 0),
-    totalTokens: result.trace.reduce((sum, stage) => sum + (stage.tokenUsage?.total || 0), 0),
-    totalCost: result.trace.reduce((sum, stage) => sum + (stage.tokenUsage?.cost || 0), 0),
-    errors: result.trace.filter(stage => stage.status === 'error').length,
-    warnings: result.trace.filter(stage => stage.status === 'warning').length,
-    missingData: result.trace.filter(stage => stage.status === 'missing_data').length,
-    avgConfidence: result.trace.reduce((sum, stage) => sum + stage.confidence, 0) / result.trace.length,
+    return icons[sectionId] || '📋'
   }
 
+  // Get status icon for stages
+  const getStatusIcon = (stage: TraceStage | StructuredTraceStage) => {
+    if ('skipped' in stage && stage.skipped) {
+      return <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500" />
+    }
+    if ('status' in stage) {
+      switch (stage.status) {
+        case 'success':
+          return <CheckIcon className="h-4 w-4 text-green-500" />
+        case 'error':
+          return <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+        case 'warning':
+          return <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500" />
+        case 'pending':
+          return <ClockIcon className="h-4 w-4 text-blue-500" />
+        default:
+          return <InformationCircleIcon className="h-4 w-4 text-gray-500" />
+      }
+    }
+    return <CheckIcon className="h-4 w-4 text-green-500" />
+  }
+
+  // Get status color for stages
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'success': return 'bg-green-100 text-green-800 border-green-200'
@@ -170,21 +184,66 @@ export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: Eval
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success': return <CheckIcon className="w-4 h-4" />
-      case 'error': return <ExclamationTriangleIcon className="w-4 h-4" />
-      case 'warning': return <ExclamationTriangleIcon className="w-4 h-4" />
-      case 'pending': return <ClockIcon className="w-4 h-4" />
-      case 'missing_data': return <EyeSlashIcon className="w-4 h-4" />
-      case 'skipped': return <ClockIcon className="w-4 h-4" />
-      case 'not_run': return <CogIcon className="w-4 h-4" />
-      default: return <InformationCircleIcon className="w-4 h-4" />
+  // Filter stages based on settings
+  const getVisibleStages = (stages: StructuredTraceStage[]) => {
+    if (filterSettings.showSkippedStages) {
+      return stages
     }
+    return stages.filter(stage => !stage.skipped)
   }
 
+  // Get visible sections for structured trace
+  const visibleSections = useMemo(() => {
+    if (!structuredTrace) return []
+    
+    return structuredTrace.sections.map(section => {
+      const visibleStages = getVisibleStages(section.stages)
+      const executedStages = visibleStages.filter(stage => !stage.skipped)
+      
+      return {
+        ...section,
+        visibleStages,
+        executedStages,
+        shouldShow: visibleStages.length > 0
+      }
+    }).filter(section => section.shouldShow)
+  }, [structuredTrace, filterSettings.showSkippedStages])
+
+  // Get total visible stages count
+  const totalVisibleStages = useMemo(() => {
+    if (isStructuredTrace) {
+      return visibleSections.reduce((total, section) => total + section.visibleStages.length, 0)
+    } else {
+      return legacyTrace.length
+    }
+  }, [isStructuredTrace, visibleSections, legacyTrace])
+
+  // Toggle section expansion
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections)
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId)
+    } else {
+      newExpanded.add(sectionId)
+    }
+    setExpandedSections(newExpanded)
+  }
+
+  // Copy to clipboard utility
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+  }
+
+  // Format duration
+  const formatDuration = (durationMs: number | undefined) => {
+    if (!durationMs) return 'N/A'
+    return `${durationMs}ms`
+  }
+
+  // Format variables
+  const formatVariables = (variables: { [key: string]: any } | undefined) => {
+    if (!variables || Object.keys(variables).length === 0) return 'No variables'
+    return JSON.stringify(variables, null, 2)
   }
 
   return (
@@ -192,162 +251,289 @@ export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: Eval
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="w-full max-w-7xl h-[90vh] bg-white rounded-lg shadow-xl flex flex-col">
+        <Dialog.Panel className="w-full max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
-              <div>
-                <Dialog.Title className="text-lg font-semibold text-gray-900">
-                  Trace Visualization: {result.brand} - {result.product}
-                </Dialog.Title>
-                <p className="text-sm text-gray-500">
-                  {filteredStages.length} of {result.trace.length} stages • {metrics.totalDuration}ms • ${metrics.totalCost.toFixed(4)}
-                  {!showAllStages && metrics.hiddenStages > 0 && (
-                    <span className="ml-2 text-orange-600">({metrics.hiddenStages} stages hidden)</span>
-                  )}
-                </p>
-              </div>
+            <div>
+              <Dialog.Title className="text-lg font-semibold text-gray-900">
+                Trace Details: {result.brand} - {result.product}
+              </Dialog.Title>
+              <p className="text-sm text-gray-500 mt-1">
+                {isStructuredTrace ? `${totalVisibleStages} stages across ${visibleSections.length} sections` : `${legacyTrace.length} stages`}
+              </p>
             </div>
             
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowAllStages(!showAllStages)}
-                className="flex items-center space-x-1 px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {showAllStages ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                <span>{showAllStages ? 'Hide' : 'Show'} all stages</span>
-              </button>
-              <button
-                onClick={() => setViewMode(viewMode === 'timeline' ? 'detailed' : 'timeline')}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {viewMode === 'timeline' ? 'Detailed' : 'Timeline'}
-              </button>
-              <button
-                onClick={() => setAutoPlay(!autoPlay)}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {autoPlay ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
-              </button>
-              <button
                 onClick={onClose}
                 className="p-2 text-gray-400 hover:text-gray-600"
               >
-                <XMarkIcon className="w-5 h-5" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
           </div>
 
-          {/* Metrics Bar */}
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="grid grid-cols-8 gap-4 text-sm">
-              <div className="text-center">
-                <div className="font-semibold text-gray-900">{metrics.visibleStages}</div>
-                <div className="text-gray-500">Visible</div>
+          {/* Controls */}
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={filterSettings.showSkippedStages}
+                    onChange={(e) => setFilterSettings(prev => ({ ...prev, showSkippedStages: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">Show skipped stages</span>
+                </label>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setViewMode('timeline')}
+                    className={`px-3 py-1 text-sm rounded ${
+                      viewMode === 'timeline' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'
+                    }`}
+                  >
+                    Timeline
+                  </button>
+                  <button
+                    onClick={() => setViewMode('detailed')}
+                    className={`px-3 py-1 text-sm rounded ${
+                      viewMode === 'detailed' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'
+                    }`}
+                  >
+                    Detailed
+                  </button>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900">{metrics.totalDuration}ms</div>
-                <div className="text-gray-500">Duration</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900">{metrics.totalTokens}</div>
-                <div className="text-gray-500">Tokens</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900">${metrics.totalCost.toFixed(4)}</div>
-                <div className="text-gray-500">Cost</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-red-600">{metrics.errors}</div>
-                <div className="text-gray-500">Errors</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-yellow-600">{metrics.warnings}</div>
-                <div className="text-gray-500">Warnings</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-orange-600">{metrics.missingData}</div>
-                <div className="text-gray-500">Missing Data</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-gray-900">{metrics.avgConfidence.toFixed(1)}%</div>
-                <div className="text-gray-500">Avg Confidence</div>
+              
+              <div className="text-sm text-gray-500">
+                {isStructuredTrace ? (
+                  <span>
+                    {visibleSections.length} sections, {totalVisibleStages} stages
+                  </span>
+                ) : (
+                  <span>{legacyTrace.length} stages</span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Filter Controls */}
-          <div className="px-6 py-3 bg-white border-b border-gray-200">
-            <div className="flex items-center space-x-4 text-sm">
-              <span className="font-medium text-gray-700">Filters:</span>
-              
-              <label className="flex items-center space-x-1">
-                <input
-                  type="checkbox"
-                  checked={filterSettings.showErrors}
-                  onChange={(e) => setFilterSettings(prev => ({ ...prev, showErrors: e.target.checked }))}
-                  className="rounded"
-                />
-                <span className="text-red-600">Errors</span>
-              </label>
-              
-              <label className="flex items-center space-x-1">
-                <input
-                  type="checkbox"
-                  checked={filterSettings.showWarnings}
-                  onChange={(e) => setFilterSettings(prev => ({ ...prev, showWarnings: e.target.checked }))}
-                  className="rounded"
-                />
-                <span className="text-yellow-600">Warnings</span>
-              </label>
-              
-              <label className="flex items-center space-x-1">
-                <input
-                  type="checkbox"
-                  checked={filterSettings.showSuccess}
-                  onChange={(e) => setFilterSettings(prev => ({ ...prev, showSuccess: e.target.checked }))}
-                  className="rounded"
-                />
-                <span className="text-green-600">Success</span>
-              </label>
-              
-              <label className="flex items-center space-x-1">
-                <input
-                  type="checkbox"
-                  checked={filterSettings.showTechnicalSteps}
-                  onChange={(e) => setFilterSettings(prev => ({ ...prev, showTechnicalSteps: e.target.checked }))}
-                  className="rounded"
-                />
-                <span className="text-gray-600">Technical</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-hidden">
-            {viewMode === 'timeline' ? (
-              <TimelineView
-                stages={filteredStages}
-                selectedStage={selectedStage}
+          {/* Content */}
+          <div className="flex-1 overflow-auto">
+            {isStructuredTrace ? (
+              <StructuredTraceView
+                sections={visibleSections}
+                selectedStage={selectedStage as StructuredTraceStage}
                 onStageSelect={setSelectedStage}
-                currentStepIndex={currentStepIndex}
+                expandedSections={expandedSections}
+                onToggleSection={toggleSection}
                 onEditPrompt={onEditPrompt}
                 copyToClipboard={copyToClipboard}
+                viewMode={viewMode}
               />
             ) : (
-              <DetailedView
-                stages={filteredStages}
-                selectedStage={selectedStage}
+              <LegacyTraceView
+                stages={legacyTrace}
+                selectedStage={selectedStage as TraceStage}
                 onStageSelect={setSelectedStage}
                 onEditPrompt={onEditPrompt}
                 copyToClipboard={copyToClipboard}
+                viewMode={viewMode}
               />
             )}
           </div>
+
+          {/* Stage Details */}
+          {selectedStage && (
+            <div className="border-t border-gray-200 p-4 bg-gray-50">
+              <StageDetails
+                stage={selectedStage}
+                onEditPrompt={onEditPrompt}
+                copyToClipboard={copyToClipboard}
+              />
+            </div>
+          )}
         </Dialog.Panel>
       </div>
     </Dialog>
   )
+}
+
+
+
+// Structured trace view component
+function StructuredTraceView({
+  sections,
+  selectedStage,
+  onStageSelect,
+  expandedSections,
+  onToggleSection,
+  onEditPrompt,
+  copyToClipboard,
+  viewMode
+}: {
+  sections: Array<StructuredTraceSection & { visibleStages: StructuredTraceStage[], executedStages: StructuredTraceStage[], shouldShow: boolean }>
+  selectedStage: StructuredTraceStage | null
+  onStageSelect: (stage: StructuredTraceStage) => void
+  expandedSections: Set<string>
+  onToggleSection: (sectionId: string) => void
+  onEditPrompt?: (stage: StructuredTraceStage) => void
+  copyToClipboard: (text: string) => void
+  viewMode: 'timeline' | 'detailed'
+}) {
+  const getSectionIcon = (sectionId: string) => {
+    switch (sectionId) {
+      case 'vision': return '👁️'
+      case 'retrieval': return '🔍'
+      case 'ownership': return '🏢'
+      case 'persistence': return '💾'
+      default: return '📋'
+    }
+  }
+
+  const getStatusIcon = (stage: StructuredTraceStage) => {
+    if (stage.skipped) return '⏭️'
+    return '✅'
+  }
+
+  const formatDuration = (durationMs: number | undefined) => {
+    if (!durationMs) return 'N/A'
+    return `${durationMs}ms`
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      {sections.map((section) => {
+        const isExpanded = expandedSections.has(section.id)
+        const executedCount = section.executedStages.length
+        const totalCount = section.visibleStages.length
+        
+        return (
+          <div key={section.id} className="border border-gray-200 rounded-lg">
+            {/* Section Header */}
+            <div 
+              className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
+              onClick={() => onToggleSection(section.id)}
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-lg">{getSectionIcon(section.id)}</span>
+                <h3 className="font-medium text-gray-900">
+                  {section.label}
+                </h3>
+                <span className="text-sm text-gray-500">
+                  {executedCount} executed / {totalCount} total
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {isExpanded ? (
+                  <ChevronDownIcon className="h-4 w-4" />
+                ) : (
+                  <ChevronRightIcon className="h-4 w-4" />
+                )}
+              </div>
+            </div>
+
+            {/* Section Stages */}
+            {isExpanded && (
+              <div className="p-3 space-y-2">
+                {section.visibleStages.map((stage) => {
+                  const isSelected = selectedStage?.id === stage.id
+                  
+                  return (
+                    <div 
+                      key={stage.id} 
+                      className={`border rounded-lg p-3 cursor-pointer ${
+                        stage.skipped 
+                          ? 'bg-yellow-50 border-yellow-200' 
+                          : 'bg-white border-gray-200'
+                      } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+                      onClick={() => onStageSelect(stage)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {getStatusIcon(stage)}
+                          <h4 className="font-medium text-gray-900">
+                            {stage.label}
+                          </h4>
+                          {stage.skipped && (
+                            <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
+                              Skipped
+                            </span>
+                          )}
+                          {stage.durationMs && (
+                            <span className="text-xs text-gray-500">
+                              {formatDuration(stage.durationMs)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {onEditPrompt && stage.promptTemplate && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEditPrompt(stage)
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              <EyeIcon className="h-3 w-3 mr-1" />
+                              View Prompt
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Legacy trace view component (existing implementation)
+function LegacyTraceView({
+  stages,
+  selectedStage,
+  onStageSelect,
+  onEditPrompt,
+  copyToClipboard,
+  viewMode
+}: {
+  stages: TraceStage[]
+  selectedStage: TraceStage | null
+  onStageSelect: (stage: TraceStage) => void
+  onEditPrompt?: (stage: TraceStage) => void
+  copyToClipboard: (text: string) => void
+  viewMode: 'timeline' | 'detailed'
+}) {
+  if (viewMode === 'timeline') {
+    return (
+      <TimelineView
+        stages={stages}
+        selectedStage={selectedStage}
+        onStageSelect={onStageSelect}
+        currentStepIndex={0}
+        onEditPrompt={onEditPrompt}
+        copyToClipboard={copyToClipboard}
+      />
+    )
+  } else {
+    return (
+      <DetailedView
+        stages={stages}
+        selectedStage={selectedStage}
+        onStageSelect={onStageSelect}
+        onEditPrompt={onEditPrompt}
+        copyToClipboard={copyToClipboard}
+      />
+    )
+  }
 }
 
 // Timeline View Component
@@ -598,8 +784,8 @@ function StageDetails({
   onEditPrompt,
   copyToClipboard
 }: {
-  stage: TraceStage
-  onEditPrompt?: (stage: TraceStage) => void
+  stage: TraceStage | StructuredTraceStage
+  onEditPrompt?: (stage: TraceStage | StructuredTraceStage) => void
   copyToClipboard: (text: string) => void
 }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'prompt' | 'input' | 'output' | 'metrics' | 'variables'>('overview')
@@ -613,17 +799,17 @@ function StageDetails({
     { id: 'variables', label: 'Variables' },
   ]
 
-  const hasVariables = stage.variables && (
-    stage.variables.inputVariables || 
-    stage.variables.outputVariables || 
-    stage.variables.intermediateVariables
+  const hasVariables = 'variables' in stage && (
+    stage.variables?.inputVariables || 
+    stage.variables?.outputVariables || 
+    stage.variables?.intermediateVariables
   )
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">{stage.stage}</h3>
-        {onEditPrompt && stage.status !== 'skipped' && stage.status !== 'not_run' && (
+        {onEditPrompt && 'status' in stage && stage.status !== 'skipped' && stage.status !== 'not_run' && (
           <button
             onClick={() => onEditPrompt(stage)}
             className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
