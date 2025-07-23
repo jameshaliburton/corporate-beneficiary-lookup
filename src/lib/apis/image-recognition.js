@@ -112,6 +112,28 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
   console.time('[AgentTimer] AnalyzeProductImage');
   
   try {
+    // Validate image input
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new Error('Invalid image data: imageBase64 must be a non-empty string');
+    }
+    
+    // Validate image format
+    const validFormats = ['jpeg', 'jpg', 'png', 'webp', 'gif'];
+    const normalizedFormat = imageFormat.toLowerCase();
+    if (!validFormats.includes(normalizedFormat)) {
+      throw new Error(`Unsupported image format: ${imageFormat}. Supported formats: ${validFormats.join(', ')}`);
+    }
+    
+    // Validate base64 data
+    if (!imageBase64.startsWith('data:')) {
+      // Check if it's valid base64
+      try {
+        atob(imageBase64);
+      } catch (e) {
+        throw new Error('Invalid base64 image data');
+      }
+    }
+    
     console.log('🔍 Starting enhanced image analysis flow with cache checks...');
     
     // Initialize trace logger for image processing
@@ -695,6 +717,20 @@ async function runVisionAgent(imageBase64, imageFormat, previousAnalysis) {
   console.time('[AgentTimer] RunVisionAgent');
   
   try {
+    // Validate and normalize image data
+    let imageUrl;
+    if (imageBase64.startsWith('data:')) {
+      // Already a data URL
+      imageUrl = imageBase64;
+    } else {
+      // Convert base64 to data URL with proper format
+      const mimeType = imageFormat === 'png' ? 'image/png' : 
+                      imageFormat === 'webp' ? 'image/webp' : 
+                      imageFormat === 'gif' ? 'image/gif' : 
+                      'image/jpeg'; // Default to JPEG
+      imageUrl = `data:${mimeType};base64,${imageBase64}`;
+    }
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // High-powered model for difficult cases
       messages: [
@@ -732,7 +768,7 @@ IMPORTANT:
             {
               type: "image_url",
               image_url: {
-                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
+                url: imageUrl,
                 detail: "high" // High detail for thorough analysis
               }
             }

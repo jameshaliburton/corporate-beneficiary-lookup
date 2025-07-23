@@ -6,6 +6,22 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Safe JSON serialization that handles circular references
+ */
+function safeStringify(obj: any): string {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
+/**
  * Emit progress update for real-time tracking
  */
 export async function emitProgress(queryId: string, stage: string, status: 'started' | 'success' | 'error' | 'completed', data?: any, error?: string) {
@@ -24,7 +40,7 @@ export async function emitProgress(queryId: string, stage: string, status: 'star
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: safeStringify({
         queryId,
         stage,
         status,

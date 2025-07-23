@@ -20,6 +20,40 @@ import VariableIcon from '@heroicons/react/24/outline/VariableIcon'
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon'
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon'
 
+// Utility function for status colors
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'success': return 'bg-green-100 text-green-800 border-green-200'
+    case 'error': return 'bg-red-100 text-red-800 border-red-200'
+    case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200'
+    case 'missing_data': return 'bg-orange-100 text-orange-800 border-orange-200'
+    case 'skipped': return 'bg-gray-100 text-gray-600 border-gray-200'
+    case 'not_run': return 'bg-gray-50 text-gray-500 border-gray-100'
+    default: return 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+}
+
+// Utility function for formatting duration
+const formatDuration = (durationMs: number | undefined) => {
+  if (!durationMs) return 'N/A'
+  return `${durationMs}ms`
+}
+
+// Type guard to check if stage is StructuredTraceStage
+const isStructuredTraceStage = (stage: TraceStage | StructuredTraceStage): stage is StructuredTraceStage => {
+  return 'id' in stage && 'label' in stage
+}
+
+// Type guard to check if stage has variables
+const hasVariables = (stage: TraceStage | StructuredTraceStage): stage is StructuredTraceStage => {
+  return isStructuredTraceStage(stage) && (
+    'inputVariables' in stage || 
+    'outputVariables' in stage || 
+    'intermediateVariables' in stage
+  )
+}
+
 // Legacy trace stage interface (for backward compatibility)
 interface TraceStage {
   stage: string
@@ -170,20 +204,6 @@ export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: Eval
     return <CheckIcon className="h-4 w-4 text-green-500" />
   }
 
-  // Get status color for stages
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'bg-green-100 text-green-800 border-green-200'
-      case 'error': return 'bg-red-100 text-red-800 border-red-200'
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'missing_data': return 'bg-orange-100 text-orange-800 border-orange-200'
-      case 'skipped': return 'bg-gray-100 text-gray-600 border-gray-200'
-      case 'not_run': return 'bg-gray-50 text-gray-500 border-gray-100'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
   // Filter stages based on settings
   const getVisibleStages = (stages: StructuredTraceStage[]) => {
     if (filterSettings.showSkippedStages) {
@@ -232,12 +252,6 @@ export default function EvalV4TraceModal({ result, onClose, onEditPrompt }: Eval
   // Copy to clipboard utility
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-  }
-
-  // Format duration
-  const formatDuration = (durationMs: number | undefined) => {
-    if (!durationMs) return 'N/A'
-    return `${durationMs}ms`
   }
 
   // Format variables
@@ -808,330 +822,144 @@ function StageDetails({
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">{stage.stage}</h3>
+        <h3 className="text-lg font-semibold">{'stage' in stage ? stage.stage : stage.id}</h3>
         {onEditPrompt && 'status' in stage && stage.status !== 'skipped' && stage.status !== 'not_run' && (
           <button
             onClick={() => onEditPrompt(stage)}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Edit Prompt
           </button>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-4">
-        <nav className="flex space-x-8">
-          {tabs.map(tab => (
+      <div className="space-y-4">
+        {/* Status */}
+        <div>
+          <h4 className="font-medium text-gray-700 mb-2">Status</h4>
+          <div className="flex items-center space-x-2">
+            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor('status' in stage ? stage.status : 'completed')}`}>
+              {'status' in stage ? stage.status : 'completed'}
+            </span>
+            {'agentName' in stage && (
+              <span className="text-sm text-gray-500">Agent: {stage.agentName}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Duration */}
+        <div>
+          <h4 className="font-medium text-gray-700 mb-2">Duration</h4>
+          <p className="text-sm text-gray-600">
+            {'duration' in stage ? formatDuration(stage.duration) : formatDuration(stage.durationMs)}
+          </p>
+        </div>
+
+        {/* Confidence */}
+        {'confidence' in stage && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Confidence</h4>
+            <p className="text-sm text-gray-600">{stage.confidence}%</p>
+          </div>
+        )}
+
+        {/* Reasoning */}
+        {'reasoning' in stage && stage.reasoning && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Reasoning</h4>
+            <p className="text-sm text-gray-600">{stage.reasoning}</p>
+          </div>
+        )}
+
+        {/* Status */}
+        {'status' in stage && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Status</h4>
+            <p className="text-sm text-gray-600">{stage.status}</p>
+          </div>
+        )}
+
+        {/* Input/Output */}
+        {'input' in stage && stage.input && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Input</h4>
+            <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+              <pre className="whitespace-pre-wrap">{stage.input}</pre>
+            </div>
+          </div>
+        )}
+
+        {'output' in stage && stage.output && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Output</h4>
+            <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+              <pre className="whitespace-pre-wrap">{stage.output}</pre>
+            </div>
+          </div>
+        )}
+
+        {/* Prompt */}
+        {'compiledPrompt' in stage && stage.compiledPrompt && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Compiled Prompt</h4>
+            <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+              <pre className="whitespace-pre-wrap">{stage.compiledPrompt}</pre>
+            </div>
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              onClick={() => copyToClipboard(stage.compiledPrompt)}
+              className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
             >
-              {tab.label}
-              {tab.id === 'variables' && hasVariables && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                  {Object.keys(stage.variables || {}).length}
-                </span>
-              )}
+              Copy to Clipboard
             </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-auto">
-        {activeTab === 'overview' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Agent</div>
-                <div className="text-lg">{stage.agentName}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Status</div>
-                <div className="text-lg">{stage.status}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Duration</div>
-                <div className="text-lg">{stage.duration}ms</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Confidence</div>
-                <div className="text-lg">{stage.confidence}%</div>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-sm font-medium text-gray-700 mb-2">Reasoning</div>
-              <div className="text-sm text-gray-600">{stage.reasoning}</div>
-            </div>
-
-            {stage.status === 'missing_data' && (
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="text-sm font-medium text-orange-800 mb-2">Missing Data</div>
-                <div className="text-sm text-orange-700">
-                  This stage should have run for this input type, but the execution data is missing from the trace.
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {activeTab === 'prompt' && (
-          <div className="space-y-4">
-            {stage.promptTemplate && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Prompt Template</h4>
-                <div className="relative">
-                  <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                    {stage.promptTemplate}
-                  </pre>
-                  <button
-                    onClick={() => copyToClipboard(stage.promptTemplate || '')}
-                    className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                    title="Copy to clipboard"
-                  >
-                    <ClipboardDocumentIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {stage.compiledPrompt && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Compiled Prompt</h4>
-                <div className="relative">
-                  <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                    {stage.compiledPrompt}
-                  </pre>
-                  <button
-                    onClick={() => copyToClipboard(stage.compiledPrompt || '')}
-                    className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                    title="Copy to clipboard"
-                  >
-                    <ClipboardDocumentIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">System Prompt</h4>
-              <div className="relative">
-                <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                  {stage.prompt.system}
-                </pre>
-                <button
-                  onClick={() => copyToClipboard(stage.prompt.system)}
-                  className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                  title="Copy to clipboard"
-                >
-                  <ClipboardDocumentIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">User Prompt</h4>
-              <div className="relative">
-                <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                  {stage.prompt.user}
-                </pre>
-                <button
-                  onClick={() => copyToClipboard(stage.prompt.user)}
-                  className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                  title="Copy to clipboard"
-                >
-                  <ClipboardDocumentIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {stage.config && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {stage.config.model && (
-                    <div className="p-3 bg-gray-50 rounded">
-                      <div className="text-sm font-medium text-gray-700">Model</div>
-                      <div className="text-sm">{stage.config.model}</div>
-                    </div>
-                  )}
-                  {stage.config.temperature !== undefined && (
-                    <div className="p-3 bg-gray-50 rounded">
-                      <div className="text-sm font-medium text-gray-700">Temperature</div>
-                      <div className="text-sm">{stage.config.temperature}</div>
-                    </div>
-                  )}
-                  {stage.config.maxTokens && (
-                    <div className="p-3 bg-gray-50 rounded">
-                      <div className="text-sm font-medium text-gray-700">Max Tokens</div>
-                      <div className="text-sm">{stage.config.maxTokens}</div>
-                    </div>
-                  )}
-                  {stage.config.stopSequences && stage.config.stopSequences.length > 0 && (
-                    <div className="p-3 bg-gray-50 rounded">
-                      <div className="text-sm font-medium text-gray-700">Stop Sequences</div>
-                      <div className="text-sm">{stage.config.stopSequences.join(', ')}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'input' && (
+        {/* Prompt Template */}
+        {'compiledPrompt' in stage && stage.promptTemplate && (
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">Input</h4>
-            <div className="relative">
-              <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-96">
-                {stage.input}
-              </pre>
-              <button
-                onClick={() => copyToClipboard(stage.input)}
-                className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                title="Copy to clipboard"
-              >
-                <ClipboardDocumentIcon className="w-4 h-4" />
-              </button>
+            <h4 className="font-medium text-gray-700 mb-2">Prompt Template</h4>
+            <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+              <pre className="whitespace-pre-wrap">{stage.promptTemplate}</pre>
             </div>
+            <button
+              onClick={() => copyToClipboard(stage.promptTemplate)}
+              className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+            >
+              Copy to Clipboard
+            </button>
           </div>
         )}
 
-        {activeTab === 'output' && (
+        {/* Variables */}
+        {('inputVariables' in stage || 'outputVariables' in stage || 'intermediateVariables' in stage) && (
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">Output</h4>
-            <div className="relative">
-              <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-96">
-                {stage.output}
-              </pre>
-              <button
-                onClick={() => copyToClipboard(stage.output)}
-                className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                title="Copy to clipboard"
-              >
-                <ClipboardDocumentIcon className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'metrics' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Input Tokens</div>
-                <div className="text-lg">{stage.tokenUsage?.input || 0}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Output Tokens</div>
-                <div className="text-lg">{stage.tokenUsage?.output || 0}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Total Tokens</div>
-                <div className="text-lg">{stage.tokenUsage?.total || 0}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm font-medium text-gray-700">Cost</div>
-                <div className="text-lg">${stage.tokenUsage?.cost?.toFixed(4) || '0.0000'}</div>
-              </div>
-            </div>
-            
-            {stage.error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <h4 className="font-medium text-red-900 mb-2">Error Details</h4>
-                <div className="text-sm text-red-700">
-                  <div><strong>Type:</strong> {stage.error.type}</div>
-                  <div><strong>Message:</strong> {stage.error.message}</div>
-                  {stage.error.details && (
-                    <pre className="mt-2 text-xs overflow-auto">
-                      {JSON.stringify(stage.error.details, null, 2)}
-                    </pre>
-                  )}
+            <h4 className="font-medium text-gray-700 mb-2">Variables</h4>
+            <div className="space-y-2">
+              {'inputVariables' in stage && stage.inputVariables && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-600">Input Variables</h5>
+                  <pre className="bg-gray-100 p-2 rounded text-xs font-mono">
+                    {JSON.stringify(stage.inputVariables, null, 2)}
+                  </pre>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'variables' && (
-          <div className="space-y-4">
-            {hasVariables ? (
-              <>
-                {stage.variables?.inputVariables && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                      <VariableIcon className="w-4 h-4 mr-2" />
-                      Input Variables
-                    </h4>
-                    <div className="relative">
-                      <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                        {JSON.stringify(stage.variables.inputVariables, null, 2)}
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(JSON.stringify(stage.variables?.inputVariables, null, 2))}
-                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                        title="Copy to clipboard"
-                      >
-                        <ClipboardDocumentIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {stage.variables?.outputVariables && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                      <VariableIcon className="w-4 h-4 mr-2" />
-                      Output Variables
-                    </h4>
-                    <div className="relative">
-                      <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                        {JSON.stringify(stage.variables.outputVariables, null, 2)}
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(JSON.stringify(stage.variables?.outputVariables, null, 2))}
-                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                        title="Copy to clipboard"
-                      >
-                        <ClipboardDocumentIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {stage.variables?.intermediateVariables && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                      <VariableIcon className="w-4 h-4 mr-2" />
-                      Intermediate Variables
-                    </h4>
-                    <div className="relative">
-                      <pre className="p-4 bg-gray-50 rounded-lg text-sm overflow-auto max-h-40">
-                        {JSON.stringify(stage.variables.intermediateVariables, null, 2)}
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(JSON.stringify(stage.variables?.intermediateVariables, null, 2))}
-                        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700"
-                        title="Copy to clipboard"
-                      >
-                        <ClipboardDocumentIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <VariableIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No variables available for this stage.</p>
-              </div>
-            )}
+              )}
+              {'outputVariables' in stage && stage.outputVariables && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-600">Output Variables</h5>
+                  <pre className="bg-gray-100 p-2 rounded text-xs font-mono">
+                    {JSON.stringify(stage.outputVariables, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {'intermediateVariables' in stage && stage.intermediateVariables && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-600">Intermediate Variables</h5>
+                  <pre className="bg-gray-100 p-2 rounded text-xs font-mono">
+                    {JSON.stringify(stage.intermediateVariables, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

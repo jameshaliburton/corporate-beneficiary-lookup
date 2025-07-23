@@ -9,7 +9,7 @@ import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
-import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
+import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags.js';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -83,13 +83,13 @@ function logTraceSummary(result: any) {
     });
   } else if (result.agent_execution_trace?.stages) {
     console.log('[Trace] agent_execution_trace stages:', 
-      result.agent_execution_trace.stages.map((s: any) => s.stage));
+      result.agent_execution_trace.stages.map((s: any) => s?.stage).filter(Boolean));
   } else {
     console.log('[Trace] No agent execution trace found');
   }
   
   console.log('[Trace] image_processing_trace stages:', 
-    (result.image_processing_trace?.stages ?? []).map((s: any) => s.stage));
+    (result.image_processing_trace?.stages ?? []).map((s: any) => s?.stage).filter(Boolean));
   
   // Log agent usage summary
   console.log('[AgentUsage] Summary:', agentUsage);
@@ -787,7 +787,7 @@ export async function POST(request: NextRequest) {
           ];
           
           // Debug: Log what's in allStages
-          console.log('[Debug] allStages structure:', allStages.map(s => ({ stage: s.stage, status: s.status })));
+          console.log('[Debug] allStages structure:', allStages.map(s => ({ stage: s?.stage, status: s?.status })).filter(s => s.stage));
           
           return buildStructuredTrace(allStages, false, true);
         })(),
@@ -876,8 +876,8 @@ function buildStructuredTrace(
     database_save: { section: 'persistence', label: 'Database Save' }
   };
   
-  // Get executed stage IDs
-  const executedStageIds = new Set(executedStages.map(s => s.stage));
+  // Get executed stage IDs with null checks
+  const executedStageIds = new Set(executedStages.map(s => s?.stage).filter(Boolean));
   
   // Build sections
   const sections = ['vision', 'retrieval', 'ownership', 'persistence'].map(sectionId => {

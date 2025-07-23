@@ -4,7 +4,7 @@
  */
 
 import { analyzeProductImage } from '../apis/image-recognition.js';
-import { shouldUseVisionFirstPipeline, getVisionConfidenceThreshold } from '../config/feature-flags';
+import { shouldUseVisionFirstPipeline, getVisionConfidenceThreshold } from '../config/feature-flags.js';
 
 /**
  * Extracted context from vision analysis
