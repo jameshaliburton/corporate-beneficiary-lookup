@@ -1,8 +1,5 @@
 // Mock data types
-export interface TraceReasoning {
-  type: 'info' | 'evidence' | 'error' | 'warning'
-  content: string
-}
+import { TraceReasoning } from '@/types/trace'
 
 export interface PromptInfo {
   version: string
@@ -13,7 +10,8 @@ export interface PromptInfo {
   latency_ms: number
 }
 
-export interface TraceStage {
+// Mock-specific trace stage interface (different from the main TraceStage)
+export interface MockTraceStage {
   stage: string
   status: 'success' | 'error' | 'pending'
   duration_ms: number
@@ -30,7 +28,7 @@ export interface ScanResult {
   country: string
   source: 'live' | 'eval' | 'retry'
   timestamp: string
-  trace: TraceStage[]
+  trace: MockTraceStage[]
 }
 
 // Mock scan results data

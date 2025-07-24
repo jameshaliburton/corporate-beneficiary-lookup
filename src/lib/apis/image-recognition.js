@@ -112,8 +112,18 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
   console.time('[AgentTimer] AnalyzeProductImage');
   
   try {
+    // 🔍 COMPREHENSIVE IMAGE DEBUG LOGGING
+    console.log('[Debug] Image Analysis Input Validation:');
+    console.log('  - MIME type:', imageFormat);
+    console.log('  - Image size (KB):', Math.round((imageBase64?.length || 0) * 0.75 / 1024));
+    console.log('  - File extension:', imageFormat);
+    console.log('  - Image type:', typeof imageBase64);
+    console.log('  - Has data: prefix:', imageBase64?.startsWith('data:'));
+    console.log('  - Image preview:', imageBase64?.slice?.(0, 50) + '...');
+    
     // Validate image input
     if (!imageBase64 || typeof imageBase64 !== 'string') {
+      console.log('[Debug] ❌ Image validation failed: Invalid image data type');
       throw new Error('Invalid image data: imageBase64 must be a non-empty string');
     }
     
@@ -121,6 +131,7 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
     const validFormats = ['jpeg', 'jpg', 'png', 'webp', 'gif'];
     const normalizedFormat = imageFormat.toLowerCase();
     if (!validFormats.includes(normalizedFormat)) {
+      console.log(`[Debug] ❌ Image validation failed: Unsupported format ${imageFormat}`);
       throw new Error(`Unsupported image format: ${imageFormat}. Supported formats: ${validFormats.join(', ')}`);
     }
     
@@ -129,11 +140,16 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
       // Check if it's valid base64
       try {
         atob(imageBase64);
+        console.log('[Debug] ✅ Base64 validation passed');
       } catch (e) {
+        console.log('[Debug] ❌ Base64 validation failed:', e.message);
         throw new Error('Invalid base64 image data');
       }
+    } else {
+      console.log('[Debug] ✅ Data URL format detected');
     }
     
+    console.log('[Debug] ✅ Image validation passed - proceeding with analysis');
     console.log('🔍 Starting enhanced image analysis flow with cache checks...');
     
     // Initialize trace logger for image processing
@@ -143,7 +159,8 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
     const imageProcessingStage = new EnhancedStageTracker(imageTraceLogger, 'image_processing', 'Processing and preparing image for analysis');
     imageProcessingStage.reason('Starting image processing pipeline', REASONING_TYPES.INFO);
     
-    // Debug logging for image input
+    // 🔍 TRACE STAGE DEBUG LOGGING
+    console.log("[Debug] ✅ Created image_processing trace stage");
     console.log("[Debug] Running ImageProcessingAgent");
     console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
     console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
@@ -184,11 +201,14 @@ export async function analyzeProductImage(imageBase64, imageFormat = 'jpeg') {
       duration: 100
     }, ['Image processing completed']);
     
+    console.log("[Debug] ✅ Completed image_processing trace stage");
+    
     // Step 2: OCR Extraction
     const ocrStage = new EnhancedStageTracker(imageTraceLogger, 'ocr_extraction', 'Extracting text content from image');
     ocrStage.reason('Starting OCR text extraction', REASONING_TYPES.INFO);
     
-    // Debug logging for OCR input
+    // 🔍 TRACE STAGE DEBUG LOGGING
+    console.log("[Debug] ✅ Created ocr_extraction trace stage");
     console.log("[Debug] Running OCRExtractionAgent");
     console.log("[Debug] Received imageBase64 type:", typeof imageBase64);
     console.log("[Debug] imageBase64 preview:", imageBase64?.slice?.(0, 100));
@@ -248,6 +268,8 @@ Image: {{image_base64}}`
       product_name: initialAnalysis.product_name,
       confidence: initialAnalysis.confidence
     }, ['OCR extraction completed']);
+    
+    console.log("[Debug] ✅ Completed ocr_extraction trace stage");
     
     // Step 3: Barcode Scanning - REMOVED from vision-first pipeline
     // Barcode scanning has been completely removed as requested
@@ -716,12 +738,20 @@ async function runVisionAgent(imageBase64, imageFormat, previousAnalysis) {
   console.log('[AgentLog] Starting: RunVisionAgent');
   console.time('[AgentTimer] RunVisionAgent');
   
+  // 🔍 VISION AGENT DEBUG LOGGING
+  console.log('[Debug] Vision Agent Input:');
+  console.log('  - Previous analysis:', previousAnalysis);
+  console.log('  - Image format:', imageFormat);
+  console.log('  - Image type:', typeof imageBase64);
+  console.log('  - Image size (KB):', Math.round((imageBase64?.length || 0) * 0.75 / 1024));
+  
   try {
     // Validate and normalize image data
     let imageUrl;
     if (imageBase64.startsWith('data:')) {
       // Already a data URL
       imageUrl = imageBase64;
+      console.log('[Debug] ✅ Using existing data URL format');
     } else {
       // Convert base64 to data URL with proper format
       const mimeType = imageFormat === 'png' ? 'image/png' : 
@@ -729,6 +759,7 @@ async function runVisionAgent(imageBase64, imageFormat, previousAnalysis) {
                       imageFormat === 'gif' ? 'image/gif' : 
                       'image/jpeg'; // Default to JPEG
       imageUrl = `data:${mimeType};base64,${imageBase64}`;
+      console.log('[Debug] ✅ Converted to data URL with MIME type:', mimeType);
     }
 
     const response = await openai.chat.completions.create({

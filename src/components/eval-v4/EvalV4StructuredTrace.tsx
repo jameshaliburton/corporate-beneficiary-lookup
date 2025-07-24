@@ -14,31 +14,12 @@ import VariableIcon from '@heroicons/react/24/outline/VariableIcon'
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid'
 
-interface StructuredTraceStage {
-  id: string
-  label: string
-  skipped?: boolean
-  inputVariables?: { [key: string]: any }
-  outputVariables?: { [key: string]: any }
-  intermediateVariables?: { [key: string]: any }
-  durationMs?: number
-  model?: string
-  promptTemplate?: string
-  completionSample?: string
-  notes?: string
-}
-
-interface StructuredTraceSection {
-  id: string
-  label: string
-  stages: StructuredTraceStage[]
-}
-
-interface StructuredTrace {
-  sections: StructuredTraceSection[]
-  show_skipped_stages: boolean
-  mark_skipped_stages: boolean
-}
+// Import shared trace types
+import { 
+  StructuredTraceStage, 
+  StructuredTraceSection, 
+  StructuredTrace
+} from '@/types/trace'
 
 interface EvalV4StructuredTraceProps {
   trace: StructuredTrace | null

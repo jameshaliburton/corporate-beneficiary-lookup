@@ -582,62 +582,14 @@ export async function enhancedLookupProduct(barcode, userData = null) {
         lookup_trace: lookupTrace
       }
     } else {
-      console.log('⚠️ LLM/RAG returned poor results - trying web query services')
+      console.log('⚠️ LLM/RAG returned poor results - web research DISABLED for performance')
       
-      // Stage 6: Web Query Services (only if LLM/RAG poor results)
-      console.log('🔍 Stage 6: Web Query Services (SerpAPI, etc.)')
+      // Stage 6: Web Query Services DISABLED
+      console.log('🔍 Stage 6: Web Query Services DISABLED (performance optimization)')
       
-      // Try SerpAPI and other web research services
-      try {
-        const webAgent = new WebResearchAgent();
-        const webResult = await webAgent.researchOwnership(productInfo.brand || productInfo.product_name);
-        
-        lookupTrace.attempts.push({
-          source: 'web_research_agent',
-          success: webResult.success,
-          timestamp: new Date().toISOString()
-        })
-        
-        if (webResult.success && webResult.data) {
-          console.log('✅ Web research found additional data')
-          lookupTrace.final_result = 'web_research_success'
-          lookupTrace.total_duration_ms = Date.now() - startTime
-          
-          return {
-            ...productInfo,
-            financial_beneficiary: webResult.data.financial_beneficiary || agentResult.financial_beneficiary,
-            beneficiary_country: webResult.data.beneficiary_country || agentResult.beneficiary_country,
-            beneficiary_flag: webResult.data.beneficiary_flag || agentResult.beneficiary_flag,
-            ownership_structure_type: webResult.data.ownership_structure_type || agentResult.ownership_structure_type,
-            confidence_score: Math.max(webResult.data.confidence_score || 0, agentResult.confidence_score),
-            confidence_level: webResult.data.confidence_level || agentResult.confidence_level,
-            confidence_factors: webResult.data.confidence_factors || agentResult.confidence_factors,
-            confidence_breakdown: webResult.data.confidence_breakdown || agentResult.confidence_breakdown,
-            confidence_reasoning: webResult.data.confidence_reasoning || agentResult.confidence_reasoning,
-            ownership_flow: webResult.data.ownership_flow || agentResult.ownership_flow,
-            sources: [...(agentResult.sources || []), ...(webResult.data.sources || [])],
-            reasoning: webResult.data.reasoning || agentResult.reasoning,
-            source: 'barcode_dbs + llm_rag + web_research',
-            result_type: 'web-research-enhanced',
-            quality_assessment: qualityAssessment,
-            agent_execution_trace: agentResult.agent_execution_trace,
-            web_research_trace: webResult.trace,
-            lookup_trace: lookupTrace
-          }
-        }
-      } catch (webError) {
-        console.error('Web research agent error:', webError)
-        lookupTrace.attempts.push({
-          source: 'web_research_agent',
-          success: false,
-          timestamp: new Date().toISOString(),
-          error: webError.message
-        })
-      }
-      
-      // If web research also failed, return LLM/RAG results anyway
-      console.log('📋 Returning LLM/RAG results (even if poor)')
-      lookupTrace.final_result = 'llm_rag_poor_results'
+      // Web research temporarily disabled to speed up pipeline
+      console.log('📋 Returning LLM/RAG results (web research disabled)')
+      lookupTrace.final_result = 'llm_rag_poor_results_web_disabled'
       lookupTrace.total_duration_ms = Date.now() - startTime
       
       return {

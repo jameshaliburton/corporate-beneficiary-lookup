@@ -9,7 +9,7 @@ import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
-import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags.js';
+import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -713,6 +713,68 @@ export async function POST(request: NextRequest) {
       await emitProgress(queryId, 'complete', 'completed', { success: true });
 
       // Step 10: Final Result Merging (Vision-First Pipeline)
+      
+      // 🔧 SHARED TRACE ASSIGNMENT - Build trace once and assign to both fields
+      
+      // Debug vision trace data
+      console.log('[Debug] Vision trace data:', {
+        hasVisionTrace: !!currentProductData.vision_trace,
+        hasImageProcessingTrace: !!currentProductData.image_processing_trace,
+        visionTraceStages: currentProductData.vision_trace?.stages?.length || 0,
+        imageProcessingTraceStages: currentProductData.image_processing_trace?.stages?.length || 0
+      });
+      
+      const allStages = [
+        // Vision stages from actual trace data
+        ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).filter((visionStage: any) => visionStage && typeof visionStage === 'object').map((visionStage: any) => ({
+          stage: visionStage.stage || 'unknown_vision_stage',
+          status: visionStage.status || 'completed',
+          variables: visionStage.variables || { hasImage: !!image_base64 },
+          output: visionStage.output || { success: true },
+          intermediate: visionStage.intermediate || {},
+          duration: visionStage.duration || 0,
+          model: visionStage.model,
+          promptTemplate: visionStage.promptTemplate,
+          completionSample: visionStage.completionSample,
+          notes: visionStage.notes
+        })),
+        // Cache check (always executed)
+        {
+          stage: 'cache_check',
+          status: 'completed',
+          variables: { cacheKey: `${currentProductData.brand?.toLowerCase().trim() || ''} / ${currentProductData.product_name?.toLowerCase().trim() || ''}` },
+          output: { success: true, hit: false },
+          duration: 87
+        },
+        // Ownership research stages (from agent execution trace)
+        ...(ownershipResult.agent_execution_trace?.stages || []).map((s: any) => ({
+          stage: s?.stage || 'unknown_stage',
+          status: s?.status || 'completed',
+          variables: s?.variables || {},
+          output: s?.output || {},
+          intermediate: s?.intermediate || {},
+          duration: s?.duration || 0,
+          model: s?.model,
+          promptTemplate: s?.promptTemplate,
+          completionSample: s?.completionSample,
+          notes: s?.notes
+        })).filter(s => s.stage !== 'unknown_stage'),
+        // Database save (if executed)
+        ...(ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown' ? [{
+          stage: 'database_save',
+          status: 'completed',
+          variables: { beneficiary: ownershipResult.financial_beneficiary, confidence: ownershipResult.confidence_score },
+          output: { success: true, beneficiary: ownershipResult.financial_beneficiary },
+          duration: 200
+        }] : [])
+      ];
+      
+      // Debug: Log what's in allStages
+      console.log('[Debug] allStages structure:', allStages.map(s => ({ stage: s?.stage, status: s?.status })).filter(s => s.stage));
+      
+      const sharedTrace = buildStructuredTrace(allStages, false, true);
+      console.log('[Debug] Built shared trace with sections:', sharedTrace?.sections?.length || 0);
+      
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -732,65 +794,7 @@ export async function POST(request: NextRequest) {
         reasoning: ownershipResult.reasoning,
         result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
         user_contributed: !!(product_name || brand),
-        agent_execution_trace: (() => {
-          // Build structured trace from ownership result
-          const allStages = [
-            // Debug vision trace data
-            console.log('[Debug] Vision trace data:', {
-              hasVisionTrace: !!currentProductData.vision_trace,
-              hasImageProcessingTrace: !!currentProductData.image_processing_trace,
-              visionTraceStages: currentProductData.vision_trace?.stages?.length || 0,
-              imageProcessingTraceStages: currentProductData.image_processing_trace?.stages?.length || 0
-            }),
-            // Vision stages from actual trace data
-            ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).filter((visionStage: any) => visionStage && typeof visionStage === 'object').map((visionStage: any) => ({
-              stage: visionStage.stage || 'unknown_vision_stage',
-              status: visionStage.status || 'completed',
-              variables: visionStage.variables || { hasImage: !!image_base64 },
-              output: visionStage.output || { success: true },
-              intermediate: visionStage.intermediate || {},
-              duration: visionStage.duration || 0,
-              model: visionStage.model,
-              promptTemplate: visionStage.promptTemplate,
-              completionSample: visionStage.completionSample,
-              notes: visionStage.notes
-            })),
-            // Cache check (always executed)
-            {
-              stage: 'cache_check',
-              status: 'completed',
-              variables: { cacheKey: `${currentProductData.brand?.toLowerCase().trim() || ''} / ${currentProductData.product_name?.toLowerCase().trim() || ''}` },
-              output: { success: true, hit: false },
-              duration: 87
-            },
-            // Ownership research stages (from agent execution trace)
-            ...(ownershipResult.agent_execution_trace?.stages || []).map((s: any) => ({
-              stage: s.stage,
-              status: s.status || 'completed',
-              variables: s.variables || {},
-              output: s.output || {},
-              intermediate: s.intermediate || {},
-              duration: s.duration || 0,
-              model: s.model,
-              promptTemplate: s.promptTemplate,
-              completionSample: s.completionSample,
-              notes: s.notes
-            })),
-            // Database save (if executed)
-            ...(ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown' ? [{
-              stage: 'database_save',
-              status: 'completed',
-              variables: { beneficiary: ownershipResult.financial_beneficiary, confidence: ownershipResult.confidence_score },
-              output: { success: true, beneficiary: ownershipResult.financial_beneficiary },
-              duration: 200
-            }] : [])
-          ];
-          
-          // Debug: Log what's in allStages
-          console.log('[Debug] allStages structure:', allStages.map(s => ({ stage: s?.stage, status: s?.status })).filter(s => s.stage));
-          
-          return buildStructuredTrace(allStages, false, true);
-        })(),
+        agent_execution_trace: sharedTrace,
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,
@@ -852,6 +856,11 @@ function buildStructuredTrace(
   markSkippedStages: boolean = true
 ) {
   console.log('[Trace] Building structured trace with', executedStages.length, 'executed stages');
+  console.log('[Trace] Executed stages structure:', executedStages.map(s => ({ 
+    hasStage: !!s?.stage, 
+    stage: s?.stage, 
+    type: typeof s 
+  })));
   
   // Define all possible stages and their sections
   const stageDefinitions = {
@@ -876,8 +885,14 @@ function buildStructuredTrace(
     database_save: { section: 'persistence', label: 'Database Save' }
   };
   
-  // Get executed stage IDs with null checks
-  const executedStageIds = new Set(executedStages.map(s => s?.stage).filter(Boolean));
+  // Get executed stage IDs with robust null checks
+  const executedStageIds = new Set(
+    executedStages
+      .filter(s => s && typeof s === 'object' && s.stage)
+      .map(s => s.stage)
+  );
+  
+  console.log('[Trace] Valid executed stage IDs:', Array.from(executedStageIds));
   
   // Build sections
   const sections = ['vision', 'retrieval', 'ownership', 'persistence'].map(sectionId => {
@@ -890,7 +905,7 @@ function buildStructuredTrace(
         
         // Always include stages, but mark skipped ones appropriately
         const stageData = wasExecuted 
-          ? executedStages.find(s => s.stage === stageId) || {}
+          ? executedStages.find(s => s && s.stage === stageId) || {}
           : { stage: stageId };
         
         const stage = {
@@ -922,6 +937,7 @@ function buildStructuredTrace(
     
     // Only include section if it has stages
     if (sectionStages.length > 0) {
+      console.log(`[Trace] ✅ Including section: ${sectionId} with ${sectionStages.length} stages`);
       return {
         id: sectionId,
         label: sectionId.charAt(0).toUpperCase() + sectionId.slice(1),
@@ -929,6 +945,7 @@ function buildStructuredTrace(
       };
     }
     
+    console.log(`[Trace] ⚠️ Skipping empty section: ${sectionId}`);
     return null;
   }).filter(Boolean);
   

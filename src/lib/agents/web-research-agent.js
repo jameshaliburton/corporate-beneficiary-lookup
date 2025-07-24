@@ -855,14 +855,11 @@ function compileResearchResults(searchResults, scrapedData, businessData) {
 
 /**
  * Helper function to check if web research is available
+ * DISABLED: Web research temporarily disabled to speed up pipeline
  */
 export function isWebResearchAvailable() {
-  const available = !!(GOOGLE_API_KEY && GOOGLE_CSE_ID)
-  console.log('[WebResearchAgent] Web research available:', available, {
-    hasGoogleKey: !!GOOGLE_API_KEY,
-    hasGoogleCseId: !!GOOGLE_CSE_ID
-  })
-  return available
+  console.log('[WebResearchAgent] Web research DISABLED for performance')
+  return false
 }
 
 /**
