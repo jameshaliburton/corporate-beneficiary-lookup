@@ -392,8 +392,8 @@ function StructuredTraceView({
                         
                         <div className="flex items-center space-x-2">
                           {(() => {
-                            console.log('🔍 EvalV4TraceModal: Stage:', stage.id, 'onEditPrompt:', !!onEditPrompt, 'promptTemplate:', !!stage.promptTemplate, 'prompt:', !!stage.prompt)
-                            return onEditPrompt && (stage.promptTemplate || stage.prompt) && (
+                            console.log('🔍 EvalV4TraceModal: Stage:', stage.id, 'onEditPrompt:', !!onEditPrompt, 'promptTemplate:', !!stage.promptTemplate)
+                            return onEditPrompt && stage.promptTemplate && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
