@@ -45,7 +45,8 @@ function transformLegacyTraceToStructured(legacyTrace: any) {
       sections[sectionId] = []
     }
     
-    sections[sectionId].push({
+    // Always map both prompt and promptTemplate for all stages
+    const mappedStage = {
       id: stage.stage,
       label: stage.stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
       skipped: stage.status === 'skipped' || stage.status === 'not_run',
@@ -54,10 +55,29 @@ function transformLegacyTraceToStructured(legacyTrace: any) {
       intermediateVariables: stage.variables?.intermediateVariables || {},
       durationMs: stage.duration_ms || 0,
       model: stage.config?.model,
-      promptTemplate: typeof stage.prompt_template === 'string' ? stage.prompt_template : JSON.stringify(stage.prompt_template),
+      prompt: stage.prompt || stage.compiled_prompt || null,
+      promptTemplate: stage.promptTemplate 
+        || (stage.prompt?.promptTemplate 
+              ? (typeof stage.prompt.promptTemplate === "string" 
+                  ? stage.prompt.promptTemplate 
+                  : JSON.stringify(stage.prompt.promptTemplate)) 
+              : null)
+        || (stage.prompt_template 
+              ? (typeof stage.prompt_template === "string" 
+                  ? stage.prompt_template 
+                  : JSON.stringify(stage.prompt_template)) 
+              : null),
       completionSample: typeof stage.compiled_prompt === 'string' ? stage.compiled_prompt : JSON.stringify(stage.compiled_prompt),
       notes: stage.reasoning ? (Array.isArray(stage.reasoning) ? stage.reasoning.map(r => typeof r === 'object' ? JSON.stringify(r) : String(r)).join('; ') : String(stage.reasoning)) : undefined
-    })
+    };
+    // Debug logging for vision stages (commented out for production)
+    // if (sectionId === 'vision') {
+    //   console.log("[Transform] Vision Stage:", mappedStage.id, {
+    //     hasPrompt: !!mappedStage.prompt,
+    //     hasPromptTemplate: !!mappedStage.promptTemplate
+    //   });
+    // }
+    sections[sectionId].push(mappedStage);
   })
 
   // Convert to structured format
@@ -98,6 +118,17 @@ export async function GET(request: NextRequest) {
     const liveScans = supabaseData.data || []
     const evalScans = sheetsData || []
     
+    // Debug: Log the first scan's trace structure (commented out for production)
+    // if (liveScans.length > 0) {
+    //   console.log("[Debug] First scan agent_execution_trace type:", typeof liveScans[0].agent_execution_trace)
+    //   console.log("[Debug] First scan agent_execution_trace keys:", liveScans[0].agent_execution_trace ? Object.keys(liveScans[0].agent_execution_trace) : "null")
+    //   if (liveScans[0].agent_execution_trace && liveScans[0].agent_execution_trace.stages) {
+    //     console.log("[Debug] First scan has legacy stages format")
+    //   } else if (liveScans[0].agent_execution_trace && liveScans[0].agent_execution_trace.sections) {
+    //     console.log("[Debug] First scan has new sections format")
+    //   }
+    // }
+    
     // Transform and combine results based on data source filter
     let results = []
     
@@ -126,7 +157,24 @@ export async function GET(request: NextRequest) {
         
         // Trace and execution data
         trace_id: scan.trace_id || `trace_${scan.id}`,
-        agent_execution_trace: transformLegacyTraceToStructured(scan.agent_execution_trace),
+        agent_execution_trace: (() => {
+          let trace = scan.agent_execution_trace && scan.agent_execution_trace.sections 
+            ? scan.agent_execution_trace // Already in new format
+            : transformLegacyTraceToStructured(scan.agent_execution_trace); // Transform legacy format
+          
+          // Post-process to fix missing promptTemplate fields
+          if (trace && trace.sections) {
+            trace.sections.forEach((section: any) => {
+              section.stages.forEach((stage: any) => {
+                if (stage.prompt && stage.prompt.promptTemplate && !stage.promptTemplate) {
+                  stage.promptTemplate = stage.prompt.promptTemplate;
+                }
+              });
+            });
+          }
+          
+          return trace;
+        })(),
         agent_results: scan.agent_results || null,
         
         // Research metadata

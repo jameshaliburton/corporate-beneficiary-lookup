@@ -7,6 +7,7 @@ import EvalV4ResultRow from './EvalV4ResultRow'
 import EvalV4BatchToolbar from './EvalV4BatchToolbar'
 import EvalV4StructuredTrace from './EvalV4StructuredTrace'
 import EvalV4PromptWorkflowModal from './EvalV4PromptWorkflowModal'
+import EvalV4TraceModal from './EvalV4TraceModal'
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -556,7 +557,45 @@ export default function EvalV4Dashboard() {
     setTraceModalOpen(true)
   }
 
-  const handleOpenPromptModal = (stage: TraceStage, result: ScanResult) => {
+  const handleOpenPromptModal = (stage: TraceStage | any) => {
+    // Convert structured trace stage to TraceStage format if needed
+    let convertedStage: TraceStage
+    
+    if (stage.id && stage.prompt) {
+      // This is a structured trace stage, convert it
+      convertedStage = {
+        stage: stage.id,
+        agentName: stage.label || stage.id,
+        prompt: stage.prompt,
+        input: JSON.stringify(stage.inputVariables || {}),
+        output: JSON.stringify(stage.outputVariables || {}),
+        confidence: 0,
+        reasoning: stage.notes || '',
+        duration: stage.durationMs || 0,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        metadata: {},
+        variables: {
+          inputVariables: stage.inputVariables,
+          outputVariables: stage.outputVariables,
+          intermediateVariables: stage.intermediateVariables
+        },
+        config: {
+          model: stage.model
+        },
+        compiledPrompt: stage.compiledPrompt,
+        promptTemplate: stage.promptTemplate
+      }
+    } else {
+      // This is already a TraceStage
+      convertedStage = stage as TraceStage
+    }
+    
+    setSelectedStage(convertedStage)
+    setPromptModalOpen(true)
+  }
+
+  const handleOpenPromptModalWithResult = (stage: TraceStage, result: ScanResult) => {
     setSelectedStage(stage)
     setSelectedTrace(result)
     setPromptModalOpen(true)
@@ -735,7 +774,7 @@ export default function EvalV4Dashboard() {
                     onToggleExpand={() => handleToggleExpand(result.id)}
                     onToggleSelect={() => handleToggleSelect(result.id)}
                     onOpenTraceModal={handleOpenTraceModal}
-                    onOpenPromptModal={handleOpenPromptModal}
+                    onOpenPromptModal={handleOpenPromptModalWithResult}
                     onRerun={handleRerun}
                     onFlag={handleFlag}
                   />
@@ -748,64 +787,11 @@ export default function EvalV4Dashboard() {
 
       {/* Trace Modal */}
       {selectedTrace && traceModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setTraceModalOpen(false)}></div>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Trace Details: {selectedTrace.brand} - {selectedTrace.product}
-                  </h3>
-                  <button
-                    onClick={() => setTraceModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                
-                {selectedTrace.agent_execution_trace?.sections ? (
-                  <EvalV4StructuredTrace
-                    trace={selectedTrace.agent_execution_trace}
-                    onOpenPromptModal={(stage, result) => {
-                      // Convert structured stage to legacy format for compatibility
-                      const legacyStage: TraceStage = {
-                        stage: stage.id,
-                        agentName: stage.label,
-                        prompt: { system: '', user: '' },
-                        input: JSON.stringify(stage.inputVariables || {}),
-                        output: JSON.stringify(stage.outputVariables || {}),
-                        confidence: 0,
-                        reasoning: stage.notes || '',
-                        duration: stage.durationMs || 0,
-                        status: stage.skipped ? 'skipped' : 'success',
-                        timestamp: new Date().toISOString(),
-                        metadata: {},
-                        variables: stage.inputVariables || stage.outputVariables ? {
-                          inputVariables: stage.inputVariables,
-                          outputVariables: stage.outputVariables,
-                          intermediateVariables: stage.intermediateVariables
-                        } : undefined,
-                        config: stage.model ? {
-                          model: stage.model
-                        } : undefined,
-                        promptTemplate: stage.promptTemplate,
-                        compiledPrompt: stage.completionSample
-                      }
-                      handleOpenPromptModal(legacyStage, selectedTrace)
-                    }}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No structured trace data available for this result.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <EvalV4TraceModal
+          result={selectedTrace}
+          onClose={() => setTraceModalOpen(false)}
+          onEditPrompt={handleOpenPromptModal}
+        />
       )}
 
       {selectedStage && selectedTrace && promptModalOpen && (

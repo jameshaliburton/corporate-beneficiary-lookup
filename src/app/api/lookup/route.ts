@@ -725,19 +725,50 @@ export async function POST(request: NextRequest) {
       });
       
       const allStages = [
-        // Vision stages from actual trace data
-        ...(currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).filter((visionStage: any) => visionStage && typeof visionStage === 'object').map((visionStage: any) => ({
-          stage: visionStage.stage || 'unknown_vision_stage',
-          status: visionStage.status || 'completed',
-          variables: visionStage.variables || { hasImage: !!image_base64 },
-          output: visionStage.output || { success: true },
-          intermediate: visionStage.intermediate || {},
-          duration: visionStage.duration || 0,
-          model: visionStage.model,
-          promptTemplate: visionStage.promptTemplate,
-          completionSample: visionStage.completionSample,
-          notes: visionStage.notes
-        })),
+        // Vision stages from actual trace data - only create if there's image input or vision trace data
+        ...(image_base64 ||
+           (currentProductData?.vision_trace?.stages?.length > 0) ||
+           (currentProductData?.image_processing_trace?.stages?.length > 0)
+           ? (currentProductData.vision_trace?.stages || currentProductData.image_processing_trace?.stages || []).filter((visionStage: any) => visionStage && typeof visionStage === 'object').map((visionStage: any) => {
+             // Get actual vision prompts from prompt registry
+             let visionPrompt = null;
+             try {
+               const { getPromptBuilder } = require('@/lib/agents/prompt-registry.js');
+               const promptBuilder = getPromptBuilder('VISION_AGENT', 'v1.0');
+               visionPrompt = promptBuilder({ 
+                 barcode: identifier,
+                 partialData: currentProductData
+               });
+             } catch (error) {
+               console.warn('[Trace] Could not get vision prompt:', error.message);
+             }
+             
+             const hasImage = !!image_base64;
+             
+             return {
+               stage: visionStage.stage || 'unknown_vision_stage',
+               status: visionStage.status || 'completed',
+               variables: visionStage.variables || { hasImage },
+               output: visionStage.output || { success: true },
+               intermediate: visionStage.intermediate || {},
+               duration: visionStage.duration || 0,
+               model: visionStage.model,
+               promptTemplate: visionStage.promptTemplate || (visionPrompt ? JSON.stringify(visionPrompt) : null),
+               completionSample: visionStage.completionSample,
+               notes: visionStage.notes,
+               // Add prompt information for dashboard compatibility
+               prompt: visionStage.prompt || (visionPrompt ? {
+                 system: visionPrompt.system_prompt,
+                 user: visionPrompt.user_prompt
+               } : {
+                 system: 'You are analyzing a product image to extract key information for corporate ownership research.',
+                 user: 'Please analyze this image and extract brand and product information.'
+               }),
+               // Mark as skipped if no image input
+               ...(hasImage ? {} : { skipped: true })
+             };
+           }) : []
+        ),
         // Cache check (always executed)
         {
           stage: 'cache_check',
@@ -864,9 +895,11 @@ function buildStructuredTrace(
   
   // Define all possible stages and their sections
   const stageDefinitions = {
-    // Vision section
-    image_processing: { section: 'vision', label: 'Image Processing' },
-    ocr_extraction: { section: 'vision', label: 'OCR Extraction' },
+    // Vision section - only include if there are actual vision stages
+    ...(executedStages.some(s => s?.stage === 'image_processing' || s?.stage === 'ocr_extraction') ? {
+      image_processing: { section: 'vision', label: 'Image Processing' },
+      ocr_extraction: { section: 'vision', label: 'OCR Extraction' }
+    } : {}),
     
     // Retrieval section
     cache_check: { section: 'retrieval', label: 'Cache Check' },
@@ -919,7 +952,39 @@ function buildStructuredTrace(
             model: stageData.model,
             promptTemplate: stageData.promptTemplate,
             completionSample: stageData.completionSample,
-            notes: stageData.notes
+            notes: stageData.notes,
+            // Add prompt information for dashboard compatibility
+            prompt: stageData.prompt || (() => {
+              // For vision stages, use actual vision prompts
+              if (sectionId === 'vision') {
+                console.log(`[Trace] 🔍 Generating prompt for vision stage: ${stageId}`);
+                const { getPromptBuilder } = require('@/lib/agents/prompt-registry.js');
+                try {
+                  const promptBuilder = getPromptBuilder('VISION_AGENT', 'v1.0');
+                  const visionPrompt = promptBuilder({ 
+                    barcode: stageData.variables?.barcode,
+                    partialData: stageData.variables?.partialData 
+                  });
+                  console.log(`[Trace] ✅ Generated vision prompt for ${stageId}:`, {
+                    hasSystem: !!visionPrompt.system_prompt,
+                    hasUser: !!visionPrompt.user_prompt
+                  });
+                  return {
+                    system: visionPrompt.system_prompt,
+                    user: visionPrompt.user_prompt
+                  };
+                } catch (error) {
+                  console.warn('[Trace] ❌ Could not get vision prompt:', error.message);
+                }
+              }
+              
+              // Fallback to generic prompt
+              console.log(`[Trace] 🔄 Using fallback prompt for stage: ${stageId}`);
+              return {
+                system: 'You are an ownership research specialist',
+                user: `Determine the owner of brand: ${stageData.variables?.brand || 'Unknown'}`
+              };
+            })(),
           } : {}),
           ...(markSkippedStages && !wasExecuted ? { skipped: true } : {})
         };

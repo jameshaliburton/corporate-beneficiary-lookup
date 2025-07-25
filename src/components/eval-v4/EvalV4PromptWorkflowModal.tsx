@@ -100,12 +100,42 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
   console.log('🔧 EvalV4PromptWorkflowModal: Stage config:', stage.config)
   console.log('🔧 EvalV4PromptWorkflowModal: Stage compiledPrompt:', !!stage.compiledPrompt)
   console.log('🔧 EvalV4PromptWorkflowModal: Stage promptTemplate:', !!stage.promptTemplate)
+  console.log('🔧 EvalV4PromptWorkflowModal: Stage prompt:', !!stage.prompt)
+  
+  // Handle both old format (stage.prompt.system/user) and new structured trace format
+  const getInitialPrompts = () => {
+    if (stage.prompt && stage.prompt.system && stage.prompt.user) {
+      // Old format: stage.prompt.system and stage.prompt.user
+      return {
+        system: stage.prompt.system,
+        user: stage.prompt.user
+      }
+    } else if ('prompt' in stage && stage.prompt && typeof stage.prompt === 'object') {
+      // New structured trace format: stage.prompt is an object with system/user
+      const promptObj = stage.prompt as any
+      return {
+        system: promptObj.system || '',
+        user: promptObj.user || ''
+      }
+    } else {
+      // Fallback: try to extract from promptTemplate if available
+      if (stage.promptTemplate) {
+        try {
+          const parsed = JSON.parse(stage.promptTemplate)
+          return {
+            system: parsed.system_prompt || '',
+            user: parsed.user_prompt || ''
+          }
+        } catch (e) {
+          console.warn('Failed to parse promptTemplate:', e)
+        }
+      }
+      return { system: '', user: '' }
+    }
+  }
   
   const [currentStep, setCurrentStep] = useState(0)
-  const [editedPrompts, setEditedPrompts] = useState<{ system: string; user: string }>({ 
-    system: stage.prompt.system, 
-    user: stage.prompt.user 
-  })
+  const [editedPrompts, setEditedPrompts] = useState<{ system: string; user: string }>(getInitialPrompts())
   const [extractedVariables, setExtractedVariables] = useState<ExtractedVariable[]>([])
   const [selectedVariables, setSelectedVariables] = useState<Set<string>>(new Set())
   const [previewMode, setPreviewMode] = useState(false)
@@ -347,13 +377,13 @@ export default function EvalV4PromptWorkflowModal({ stage, result, onClose }: Ev
               <div className="border rounded-lg p-4">
                 <h4 className="font-semibold mb-2">System Prompt</h4>
                 <div className="bg-gray-50 p-3 rounded text-sm font-mono">
-                  {stage.prompt.system}
+                  {getInitialPrompts().system || 'No system prompt available'}
                 </div>
               </div>
               <div className="border rounded-lg p-4">
                 <h4 className="font-semibold mb-2">User Prompt</h4>
                 <div className="bg-gray-50 p-3 rounded text-sm font-mono">
-                  {stage.prompt.user}
+                  {getInitialPrompts().user || 'No user prompt available'}
                 </div>
               </div>
             </div>

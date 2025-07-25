@@ -45,6 +45,30 @@ interface Product {
     }>
     final_result: string
     total_duration_ms: number
+  } | {
+    sections: Array<{
+      id: string
+      label: string
+      stages: Array<{
+        id: string
+        label: string
+        inputVariables?: any
+        outputVariables?: any
+        intermediateVariables?: any
+        durationMs?: number
+        model?: string
+        promptTemplate?: string
+        completionSample?: string
+        notes?: string
+        prompt?: {
+          system: string
+          user: string
+        }
+        skipped?: boolean
+      }>
+    }>
+    show_skipped_stages: boolean
+    mark_skipped_stages: boolean
   }
   initial_llm_confidence?: number
   agent_results?: {
@@ -416,6 +440,34 @@ export default function DashboardPage() {
     })
   }
 
+  // Helper function to extract stages from both old and new trace formats
+  const getStagesFromTrace = (trace: any) => {
+    if (!trace) return []
+    
+    // New structured format
+    if (trace.sections) {
+      return trace.sections.flatMap((section: any) => 
+        section.stages.map((stage: any) => ({
+          ...stage,
+          section: section.id,
+          sectionLabel: section.label
+        }))
+      )
+    }
+    
+    // Old format
+    if (trace.stages) {
+      return trace.stages
+    }
+    
+    return []
+  }
+
+  // Helper function to get prompts from stages
+  const getPromptsFromStages = (stages: any[]) => {
+    return stages.filter(stage => stage.prompt || stage.promptTemplate)
+  }
+
   const totalPages = Math.ceil(totalProducts / filters.limit)
   const currentStats = filteredStats || stats
 
@@ -678,6 +730,7 @@ export default function DashboardPage() {
                         <Tabs defaultValue="process" className="w-full mt-2">
                           <TabsList className="mb-4">
                             <TabsTrigger value="process">Process</TabsTrigger>
+                            <TabsTrigger value="prompts">Prompts</TabsTrigger>
                             <TabsTrigger value="sources">Sources</TabsTrigger>
                             <TabsTrigger value="ownership">Ownership Chain</TabsTrigger>
                             <TabsTrigger value="raw">Raw Data</TabsTrigger>
@@ -696,8 +749,8 @@ export default function DashboardPage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {product.agent_execution_trace?.stages?.map((stage, idx) => {
-                                    const stageInfo = getStageInfo(stage.stage)
+                                  {getStagesFromTrace(product.agent_execution_trace).map((stage, idx) => {
+                                    const stageInfo = getStageInfo(stage.stage || stage.id)
                                     return (
                                       <tr key={idx} className="border-b last:border-b-0">
                                         <td className="px-3 py-2 whitespace-nowrap flex items-center gap-2">
@@ -742,7 +795,7 @@ export default function DashboardPage() {
                                             </div>
                                           ) : (
                                             <>
-                                              {stage.data?.reasoning || stage.description || '—'}
+                                              {stage.data?.reasoning || stage.description || stage.notes || '—'}
                                               {Array.isArray(stage.data?.citations) && stage.data.citations.length > 0 && (
                                                 <ul className="mt-1 list-disc list-inside text-blue-700">
                                                   {stage.data.citations.map((citation: string, i: number) => (
@@ -757,7 +810,7 @@ export default function DashboardPage() {
                                           {formatDate(stage.start_time)}
                                         </td>
                                         <td className="px-3 py-2 text-xs text-gray-500">
-                                          {stage.duration_ms ? `${stage.duration_ms}ms` : '—'}
+                                          {stage.duration_ms || stage.durationMs ? `${stage.duration_ms || stage.durationMs}ms` : '—'}
                                         </td>
                                         <td className="px-3 py-2 text-xs text-red-600">
                                           {stage.error || '—'}
@@ -767,6 +820,62 @@ export default function DashboardPage() {
                                   })}
                                 </tbody>
                               </table>
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="prompts">
+                            <div className="space-y-4">
+                              <h4 className="font-medium mb-2">Vision Prompts</h4>
+                              {getPromptsFromStages(getStagesFromTrace(product.agent_execution_trace))
+                                .filter(stage => (stage.stage || stage.id).startsWith('vision_'))
+                                .map((stage, idx) => (
+                                <div key={idx} className="bg-gray-50 p-4 rounded-lg">
+                                  <h5 className="font-semibold mb-1">Vision Prompt for {(stage.stage || stage.id).replace('vision_', '')}</h5>
+                                  <div className="text-sm text-gray-800">
+                                    {stage.prompt ? (
+                                      <div className="space-y-2">
+                                        <div>
+                                          <strong>System:</strong>
+                                          <pre className="bg-blue-50 p-2 rounded text-xs mt-1">{stage.prompt.system}</pre>
+                                        </div>
+                                        <div>
+                                          <strong>User:</strong>
+                                          <pre className="bg-green-50 p-2 rounded text-xs mt-1">{stage.prompt.user}</pre>
+                                        </div>
+                                      </div>
+                                    ) : stage.promptTemplate ? (
+                                      <pre className="bg-gray-100 p-2 rounded text-xs">{stage.promptTemplate}</pre>
+                                    ) : (
+                                      'No prompt recorded for this stage.'
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              <h4 className="font-medium mb-2">Other Prompts</h4>
+                              {getPromptsFromStages(getStagesFromTrace(product.agent_execution_trace))
+                                .filter(stage => !(stage.stage || stage.id).startsWith('vision_'))
+                                .map((stage, idx) => (
+                                <div key={idx} className="bg-gray-50 p-4 rounded-lg">
+                                  <h5 className="font-semibold mb-1">Prompt for {stage.stage || stage.id}</h5>
+                                  <div className="text-sm text-gray-800">
+                                    {stage.prompt ? (
+                                      <div className="space-y-2">
+                                        <div>
+                                          <strong>System:</strong>
+                                          <pre className="bg-blue-50 p-2 rounded text-xs mt-1">{stage.prompt.system}</pre>
+                                        </div>
+                                        <div>
+                                          <strong>User:</strong>
+                                          <pre className="bg-green-50 p-2 rounded text-xs mt-1">{stage.prompt.user}</pre>
+                                        </div>
+                                      </div>
+                                    ) : stage.promptTemplate ? (
+                                      <pre className="bg-gray-100 p-2 rounded text-xs">{stage.promptTemplate}</pre>
+                                    ) : (
+                                      'No prompt recorded for this stage.'
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </TabsContent>
                           <TabsContent value="sources">
