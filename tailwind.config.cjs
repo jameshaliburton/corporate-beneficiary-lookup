@@ -18,6 +18,9 @@ module.exports = {
             },
         },
         extend: {
+            fontFamily: {
+                sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+            },
             keyframes: {
                 "accordion-down": {
                     from: { height: 0 },
@@ -49,7 +52,17 @@ module.exports = {
                 foreground: 'hsl(var(--foreground))',
                 primary: {
                     DEFAULT: 'hsl(var(--primary))',
-                    foreground: 'hsl(var(--primary-foreground))'
+                    foreground: 'hsl(var(--primary-foreground))',
+                    hover: 'hsl(var(--primary-hover))',
+                    glow: 'hsl(var(--primary-glow))',
+                    '20': 'hsl(var(--primary) / 0.2)',
+                    '30': 'hsl(var(--primary) / 0.3)',
+                    '40': 'hsl(var(--primary) / 0.4)',
+                    '50': 'hsl(var(--primary) / 0.5)',
+                    '60': 'hsl(var(--primary) / 0.6)',
+                    '70': 'hsl(var(--primary) / 0.7)',
+                    '80': 'hsl(var(--primary) / 0.8)',
+                    '90': 'hsl(var(--primary) / 0.9)'
                 },
                 secondary: {
                     DEFAULT: 'hsl(var(--secondary))',
