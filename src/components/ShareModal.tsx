@@ -20,8 +20,12 @@ interface ShareModalProps {
     headline: string;
     subheadline: string;
     description: string;
-    socialShare: string;
     countryFact: string;
+    traceSummary: {
+      vision: string;
+      retrieval: string;
+      mapping: string;
+    };
   };
 }
 

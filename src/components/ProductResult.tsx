@@ -26,8 +26,12 @@ interface ProductResultProps {
     headline: string;
     subheadline: string;
     description: string;
-    socialShare: string;
     countryFact: string;
+    traceSummary: {
+      vision: string;
+      retrieval: string;
+      mapping: string;
+    };
   };
 }
 
@@ -226,19 +230,52 @@ export function ProductResult({
           
           {showTrace && (
             <CardContent className="space-y-card-gap-sm p-card-padding pt-0 animate-accordion-down">
-              {formatTraceStages(traces).map((section, sectionIndex) => (
-                <div key={sectionIndex} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
-                    <span className="text-xs text-muted-foreground">{section.description}</span>
+              {generatedCopy?.traceSummary ? (
+                // Use LLM-generated trace summaries
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-foreground">Vision Analysis</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {generatedCopy.traceSummary.vision}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    {section.stages.map((trace, traceIndex) => (
-                      <TraceSection key={`${sectionIndex}-${traceIndex}`} {...trace} />
-                    ))}
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-foreground">Data Retrieval</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {generatedCopy.traceSummary.retrieval}
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-foreground">Ownership Mapping</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {generatedCopy.traceSummary.mapping}
+                    </p>
                   </div>
                 </div>
-              ))}
+              ) : (
+                // Fallback to original trace formatting
+                formatTraceStages(traces).map((section, sectionIndex) => (
+                  <div key={sectionIndex} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
+                      <span className="text-xs text-muted-foreground">{section.description}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {section.stages.map((trace, traceIndex) => (
+                        <TraceSection key={`${sectionIndex}-${traceIndex}`} {...trace} />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           )}
         </Card>

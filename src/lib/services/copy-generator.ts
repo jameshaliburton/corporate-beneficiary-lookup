@@ -8,56 +8,63 @@ export interface GeneratedCopy {
   headline: string;
   subheadline: string;
   description: string;
-  socialShare: string;
   countryFact: string;
+  traceSummary: {
+    vision: string;
+    retrieval: string;
+    mapping: string;
+  };
 }
 
 export async function generateOwnershipCopy(
-  brand: string,
-  owner: string,
-  country: string,
-  ownershipChain: any[],
-  confidence: number
+  ownershipData: any
 ): Promise<GeneratedCopy> {
   try {
-    const systemPrompt = `You are a copywriter creating short, viral, and informative text about brand ownership. Your goal is to make corporate ownership feel engaging and surprising.
+    const systemPrompt = `You are an AI copywriter for OwnedBy – an app that reveals who really owns consumer brands.
+Your job is to create short, punchy, factual content that feels exciting and shareable.
 
-Key principles:
-- Be factual but entertaining
-- Use emojis sparingly but effectively
-- Keep headlines under 60 characters
-- Make the ownership feel surprising or interesting
-- Include the country prominently
-- Use a conversational, viral tone for social sharing
+RULES:
+	•	Analyze the ownership chain and ultimate owner country.
+	•	Decide the most interesting angle:
+	1.	✅ Local independent company → "This is a homegrown brand 🇸🇪"
+	2.	✅ Foreign-owned brand → "Your money ultimately supports a company abroad 🇺🇸"
+	3.	✅ Conglomerate brand → "Part of a massive global empire"
+	•	Lead with ultimate owner and country as the main story.
+	•	Always mention which country ultimately benefits.
+	•	Tone: engaging, factual, never misleading.
+	•	Return valid JSON only – no extra text.
 
-Output format must be valid JSON with these exact fields:
-- headline: Short, punchy headline (under 60 chars)
-- subheadline: Brief explanation of ownership
-- description: 1-2 sentence detailed explanation
-- socialShare: Viral caption for social media
-- countryFact: Fact about the country's role in ownership`;
+OUTPUT KEYS:
+	•	headline: Punchy hook (≤ 10 words)
+	•	subheadline: Factual ownership summary
+	•	description: 1–2 sentences expanding on the story
+	•	countryFact: 1 sentence about where the money goes
+	•	traceSummary.vision: What the AI vision system did (past tense)
+	•	traceSummary.retrieval: What the retrieval stage found (past tense)
+	•	traceSummary.mapping: What the ownership mapping confirmed (past tense)`;
 
-    const userPrompt = `Generate fun, engaging, and factual copy for this brand ownership result.
+    const userPrompt = `Here is the data for the brand:
 
-Data:
-Brand: ${brand}
-Owner: ${owner}
-Country: ${country}
-Confidence: ${confidence}%
-Ownership Chain: ${JSON.stringify(ownershipChain)}
+${JSON.stringify(ownershipData, null, 2)}
 
-Output in JSON:
+OUTPUT FORMAT:
+Return only valid JSON like this:
+
 {
-  "headline": "...",
-  "subheadline": "...", 
-  "description": "...",
-  "socialShare": "...",
-  "countryFact": "..."
+  "headline": "Clinique is a homegrown beauty brand 🇺🇸",
+  "subheadline": "Owned by The Estée Lauder Companies in the United States.",
+  "description": "Clinique is part of the iconic Estée Lauder family, meaning every purchase supports one of America's biggest beauty powerhouses.",
+  "countryFact": "Your money ultimately goes to the United States 🇺🇸.",
+  "traceSummary": {
+    "vision": "Analyzed the product photo and detected the Clinique logo and packaging details.",
+    "retrieval": "Fetched corporate ownership data from company filings and global databases.",
+    "mapping": "Confirmed The Estée Lauder Companies (USA) as the ultimate parent company."
+  }
 }`;
 
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 500,
+      max_tokens: 800,
       temperature: 0.7,
       system: systemPrompt,
       messages: [
@@ -82,10 +89,18 @@ Output in JSON:
     const generatedCopy: GeneratedCopy = JSON.parse(jsonMatch[0]);
     
     // Validate required fields
-    const requiredFields = ['headline', 'subheadline', 'description', 'socialShare', 'countryFact'];
+    const requiredFields = ['headline', 'subheadline', 'description', 'countryFact', 'traceSummary'];
     for (const field of requiredFields) {
       if (!generatedCopy[field as keyof GeneratedCopy]) {
         throw new Error(`Missing required field: ${field}`);
+      }
+    }
+
+    // Validate traceSummary sub-fields
+    const requiredTraceFields = ['vision', 'retrieval', 'mapping'];
+    for (const field of requiredTraceFields) {
+      if (!generatedCopy.traceSummary[field as keyof typeof generatedCopy.traceSummary]) {
+        throw new Error(`Missing required traceSummary field: ${field}`);
       }
     }
 
@@ -94,12 +109,20 @@ Output in JSON:
     console.error('Error generating copy:', error);
     
     // Fallback copy if LLM fails
+    const brand = ownershipData.brand || 'This brand';
+    const owner = ownershipData.ultimateOwner || 'a larger company';
+    const country = ownershipData.ultimateCountry || 'abroad';
+    
     return {
       headline: `${brand} isn't as independent as you think 👀`,
       subheadline: `It's owned by ${owner} (${country})`,
       description: `${brand} is part of a larger corporate structure controlled by ${owner}, headquartered in ${country}.`,
-      socialShare: `${brand} isn't as independent as you think 👀 – it's owned by ${owner} (${country})`,
-      countryFact: `This brand is ultimately controlled from ${country}`
+      countryFact: `Your money ultimately goes to ${country}`,
+      traceSummary: {
+        vision: "Analyzed the product photo and detected brand details.",
+        retrieval: "Fetched corporate ownership data from company databases.",
+        mapping: "Confirmed the ultimate parent company and ownership structure."
+      }
     };
   }
 } 

@@ -59,8 +59,12 @@ export interface PipelineResult {
     headline: string;
     subheadline: string;
     description: string;
-    socialShare: string;
     countryFact: string;
+    traceSummary: {
+      vision: string;
+      retrieval: string;
+      mapping: string;
+    };
   };
 }
 
@@ -95,8 +99,12 @@ export interface ProductResultProps {
     headline: string;
     subheadline: string;
     description: string;
-    socialShare: string;
     countryFact: string;
+    traceSummary: {
+      vision: string;
+      retrieval: string;
+      mapping: string;
+    };
   };
 }
 

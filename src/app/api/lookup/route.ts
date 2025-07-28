@@ -809,13 +809,21 @@ export async function POST(request: NextRequest) {
       
       // Generate engaging copy using LLM
       console.log('🎨 Generating engaging copy for brand ownership result...');
-      const generatedCopy = await generateOwnershipCopy(
-        currentProductData.brand,
-        ownershipResult.financial_beneficiary,
-        ownershipResult.beneficiary_country,
-        ownershipResult.ownership_flow || [],
-        ownershipResult.confidence_score || 0
-      );
+      
+      // Build ownership data object for LLM analysis
+      const ownershipData = {
+        brand: currentProductData.brand,
+        ultimateOwner: ownershipResult.financial_beneficiary,
+        ultimateCountry: ownershipResult.beneficiary_country,
+        ownershipChain: ownershipResult.ownership_flow || [],
+        confidence: ownershipResult.confidence_score || 0,
+        ownershipStructureType: ownershipResult.ownership_structure_type,
+        sources: ownershipResult.sources || [],
+        reasoning: ownershipResult.reasoning,
+        beneficiaryFlag: ownershipResult.beneficiary_flag
+      };
+      
+      const generatedCopy = await generateOwnershipCopy(ownershipData);
       console.log('✅ Generated copy:', generatedCopy);
       
       const mergedResult = {
