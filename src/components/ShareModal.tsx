@@ -16,6 +16,13 @@ interface ShareModalProps {
     countryFlag: string;
     avatar: string;
   }>;
+  generatedCopy?: {
+    headline: string;
+    subheadline: string;
+    description: string;
+    socialShare: string;
+    countryFact: string;
+  };
 }
 
 export function ShareModal({ 
@@ -24,7 +31,8 @@ export function ShareModal({
   brand, 
   owner, 
   productImage,
-  ownershipChain = []
+  ownershipChain = [],
+  generatedCopy
 }: ShareModalProps) {
   const [copySuccess, setCopySuccess] = useState(false);
   
@@ -112,12 +120,12 @@ export function ShareModal({
 
           {/* Country-Focused Headline */}
           <h2 className="text-subheadline text-foreground leading-tight">
-            {getCountryHeadline()}
+            {generatedCopy?.headline || getCountryHeadline()}
           </h2>
           
           {/* AI-Powered Story */}
           <p className="text-body text-muted-foreground leading-relaxed">
-            Our AI agents found that {brand} is owned by {owner} {countryFlag}, a global powerhouse in beauty and fashion.
+            {generatedCopy?.description || `Our AI agents found that ${brand} is owned by ${owner} ${countryFlag}, a global powerhouse in beauty and fashion.`}
           </p>
 
           {/* Ownership Chain Recap */}

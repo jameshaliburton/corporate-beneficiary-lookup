@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { ProductResult } from '@/components/ProductResult';
 import { AppHeader } from '@/components/AppHeader';
 import { transformPipelineData, type PipelineResult } from '@/lib/utils/pipeline-transformer';
+import Head from 'next/head';
 
 export default function ResultPage() {
   const params = useParams();
@@ -60,6 +61,7 @@ export default function ResultPage() {
         confidence_score: 85,
         ownership_flow: getMockOwnershipFlow(brand),
         reasoning: getMockReasoning(brand),
+        generated_copy: getMockGeneratedCopy(brand),
         agent_execution_trace: {
           sections: [
             {
@@ -135,6 +137,46 @@ export default function ResultPage() {
     return reasoning[brand.toLowerCase()] || `Analysis of ${brand} ownership structure completed successfully.`;
   };
 
+  const getMockGeneratedCopy = (brand: string) => {
+    const copy: Record<string, any> = {
+      'nike': {
+        headline: 'Nike isn\'t as independent as you think 👀',
+        subheadline: 'It\'s owned by Nike Inc. (USA)',
+        description: 'Nike is a publicly traded company headquartered in Oregon, USA. The company maintains its independence as a global athletic footwear and apparel leader.',
+        socialShare: 'Nike isn\'t as independent as you think 👀 – it\'s owned by Nike Inc. (USA)',
+        countryFact: 'This brand is ultimately controlled from the United States 🇺🇸'
+      },
+      'apple': {
+        headline: 'Apple isn\'t as independent as you think 👀',
+        subheadline: 'It\'s owned by Apple Inc. (USA)',
+        description: 'Apple is one of the most valuable companies in the world, publicly traded on NASDAQ. The company maintains its independence as a global technology leader.',
+        socialShare: 'Apple isn\'t as independent as you think 👀 – it\'s owned by Apple Inc. (USA)',
+        countryFact: 'This brand is ultimately controlled from the United States 🇺🇸'
+      },
+      'coca-cola': {
+        headline: 'Coca-Cola isn\'t as independent as you think 👀',
+        subheadline: 'It\'s owned by The Coca-Cola Company (USA)',
+        description: 'The Coca-Cola Company is a publicly traded company headquartered in Atlanta, Georgia. Founded in 1892, it remains an independent public company.',
+        socialShare: 'Coca-Cola isn\'t as independent as you think 👀 – it\'s owned by The Coca-Cola Company (USA)',
+        countryFact: 'This brand is ultimately controlled from the United States 🇺🇸'
+      },
+      'loreal': {
+        headline: 'L\'Oréal isn\'t as independent as you think 👀',
+        subheadline: 'It\'s owned by L\'Oréal Group (France)',
+        description: 'L\'Oréal Group is a publicly traded company on Euronext Paris. Founded in 1909, it is headquartered in France and maintains its independence.',
+        socialShare: 'L\'Oréal isn\'t as independent as you think 👀 – it\'s owned by L\'Oréal Group (France)',
+        countryFact: 'This brand is ultimately controlled from France 🇫🇷'
+      }
+    };
+    return copy[brand.toLowerCase()] || {
+      headline: `${brand} isn't as independent as you think 👀`,
+      subheadline: `It's owned by ${brand} Inc. (Unknown)`,
+      description: `Analysis of ${brand} ownership structure completed successfully.`,
+      socialShare: `${brand} isn't as independent as you think 👀 – it's owned by ${brand} Inc.`,
+      countryFact: 'This brand is ultimately controlled from an unknown country'
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background dark-gradient">
@@ -193,11 +235,25 @@ export default function ResultPage() {
   const productResultProps = transformPipelineData(pipelineResult);
 
   return (
-    <div className="min-h-screen bg-background dark-gradient">
-      <AppHeader />
-      <div className="container mx-auto max-w-md px-4 pt-4">
-        <ProductResult {...productResultProps} />
+    <>
+      <Head>
+        <title>{productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`}</title>
+        <meta name="description" content={productResultProps.generatedCopy?.description || `Discover who owns ${productResultProps.brand}`} />
+        <meta property="og:title" content={productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`} />
+        <meta property="og:description" content={productResultProps.generatedCopy?.socialShare || `Discover who owns ${productResultProps.brand}`} />
+        <meta property="og:image" content={productResultProps.productImage || '/logo.png'} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`} />
+        <meta name="twitter:description" content={productResultProps.generatedCopy?.socialShare || `Discover who owns ${productResultProps.brand}`} />
+        <meta name="twitter:image" content={productResultProps.productImage || '/logo.png'} />
+      </Head>
+      <div className="min-h-screen bg-background dark-gradient">
+        <AppHeader />
+        <div className="container mx-auto max-w-md px-4 pt-4">
+          <ProductResult {...productResultProps} />
+        </div>
       </div>
-    </div>
+    </>
   );
 } 

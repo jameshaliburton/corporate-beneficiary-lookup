@@ -49,26 +49,42 @@ function cleanPipelineResult(result: any) {
 
 export default function CameraPage() {
   const [isScanning, setIsScanning] = useState(false);
+  const [debugMessage, setDebugMessage] = useState('Page loaded');
   const router = useRouter();
 
-  const handleCapture = async () => {
+  const handleTestClick = () => {
+    console.log('🎯 Test button clicked!');
+    setDebugMessage('Test button works!');
+    alert('JavaScript is working!');
+  };
+
+  const handleCapture = async (imageData?: string) => {
+    if (!imageData) {
+      console.log('❌ No image data provided, not proceeding with API call');
+      return; // Don't proceed if no image was captured
+    }
+
     setIsScanning(true);
     
     try {
       console.log('📸 Camera capture triggered, calling real pipeline API...');
+      console.log('📸 Image data provided:', !!imageData);
+      console.log('📸 Image data length:', imageData.length);
       
-      // Call the real pipeline API - VideoCapture doesn't provide actual image data
-      // so we'll provide a default search term for the vision-first pipeline
+      // Send the captured image to the API
+      const requestBody = {
+        image_base64: imageData
+      };
+      
+      console.log('📸 Sending image data to API (length:', imageData.length, ')');
+      
+      // Call the real pipeline API
       const response = await fetch('/api/lookup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          // Provide a default search term since the API requires at least one parameter
-          brand: 'apple',
-          product_name: 'apple'
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       console.log('📡 API Response status:', response.status);
@@ -89,94 +105,108 @@ export default function CameraPage() {
       });
 
       // Clean the result to remove circular references
-      const pipelineResult = cleanPipelineResult(rawPipelineResult);
+      const cleanResult = cleanPipelineResult(rawPipelineResult);
       
       console.log('🧹 Cleaned pipeline result:', {
-        success: pipelineResult.success,
-        brand: pipelineResult.brand,
-        confidence: pipelineResult.confidence_score
+        success: cleanResult.success,
+        brand: cleanResult.brand,
+        confidence: cleanResult.confidence_score
       });
 
-      // Test JSON serialization to catch circular reference early
+      // Test JSON serializability
       try {
-        JSON.stringify(pipelineResult);
-        console.log('✅ Pipeline result is serializable');
-      } catch (serializeError) {
-        console.error('❌ Pipeline result has circular reference:', serializeError);
-        throw new Error('Pipeline result contains circular references');
+        JSON.stringify(cleanResult);
+        console.log('✅ Cleaned result is JSON serializable');
+      } catch (err) {
+        console.error('❌ Cleaned result is NOT JSON serializable:', err);
       }
 
-      if (!pipelineResult.success) {
-        throw new Error('Pipeline processing failed');
+      if (cleanResult.success) {
+        const searchParams = new URLSearchParams({
+          success: 'true',
+          brand: cleanResult.brand || 'unknown',
+          confidence: cleanResult.confidence_score?.toString() || '0'
+        });
+        
+        const resultUrl = `/result/${encodeURIComponent(cleanResult.brand || 'unknown')}?${searchParams.toString()}`;
+        console.log('🚀 Navigating to:', resultUrl);
+        
+        router.push(resultUrl);
+      } else {
+        const searchParams = new URLSearchParams({
+          success: 'false',
+          error: 'No product found'
+        });
+        
+        const resultUrl = `/result/unknown?${searchParams.toString()}`;
+        console.log('❌ Navigating to error page:', resultUrl);
+        
+        router.push(resultUrl);
       }
-
-      // Navigate to results page with minimal data in URL
-      const brandSlug = pipelineResult.brand?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'unknown';
-      const searchParams = new URLSearchParams({
-        success: 'true',
-        brand: pipelineResult.brand || 'unknown',
-        confidence: pipelineResult.confidence_score?.toString() || '0'
-      });
-      
-      console.log('🚀 Navigating to results page:', `/result/${brandSlug}?${searchParams.toString()}`);
-      router.push(`/result/${brandSlug}?${searchParams.toString()}`);
       
     } catch (error) {
-      console.error('❌ Camera capture failed:', error);
+      console.error('❌ Error during API call:', error);
       
-      // Navigate to results page with error state
       const searchParams = new URLSearchParams({
         success: 'false',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       
-      console.log('🚀 Navigating to error page:', `/result/error?${searchParams.toString()}`);
-      router.push(`/result/error?${searchParams.toString()}`);
+      const resultUrl = `/result/error?${searchParams.toString()}`;
+      console.log('❌ Navigating to error page:', resultUrl);
+      
+      router.push(resultUrl);
     } finally {
       setIsScanning(false);
     }
   };
 
-  const handleManualSearch = () => {
-    router.push('/manual');
-  };
-
-  // Show loading screen during processing
+  // Show loading screen when scanning
   if (isScanning) {
     return (
-      <div className="min-h-screen bg-background dark-gradient">
-        <AppHeader />
-        <LoadingScreen />
+      <div className="min-h-screen bg-background dark-gradient flex items-center justify-center">
+        <div className="container mx-auto max-w-md px-4">
+          <LoadingScreen />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background dark-gradient">
-      <AppHeader />
       <div className="container mx-auto max-w-md px-4 pt-4">
-        <div className="text-center mb-8">
-          <h1 className="text-headline mb-2">Scan Product</h1>
-          <p className="text-body text-muted-foreground">Take a photo of any product to reveal its ownership</p>
-        </div>
+        <AppHeader />
         
-        {/* Camera/Scan Entry Screen */}
-        <div className="space-y-6">
-          {/* Video Capture Component */}
-          <div className="relative">
-            <VideoCapture 
-              onCapture={handleCapture}
-              isScanning={isScanning}
-            />
+        <div className="mt-8 space-y-6">
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-bold text-foreground">
+              Scan Product
+            </h1>
+            <p className="text-muted-foreground">
+              Point your camera at a product to reveal its ownership
+            </p>
           </div>
           
-          {/* Manual Search Button */}
-          <div className="flex justify-center">
-            <Button
+          {/* Debug info */}
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-2">{debugMessage}</p>
+            <Button 
+              onClick={handleTestClick}
               variant="outline"
-              onClick={handleManualSearch}
-              className="text-small h-btn-primary rounded-component"
               size="sm"
+              className="mb-4"
+            >
+              Test JavaScript
+            </Button>
+          </div>
+          
+          <VideoCapture onCapture={handleCapture} isScanning={isScanning} />
+          
+          <div className="text-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.push('/manual')}
+              className="text-muted-foreground hover:text-foreground"
             >
               Search by name instead
             </Button>

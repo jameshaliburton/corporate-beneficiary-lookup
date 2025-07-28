@@ -10,6 +10,7 @@ import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
+import { generateOwnershipCopy } from '@/lib/services/copy-generator';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -806,6 +807,17 @@ export async function POST(request: NextRequest) {
       const sharedTrace = buildStructuredTrace(allStages, false, true);
       console.log('[Debug] Built shared trace with sections:', sharedTrace?.sections?.length || 0);
       
+      // Generate engaging copy using LLM
+      console.log('🎨 Generating engaging copy for brand ownership result...');
+      const generatedCopy = await generateOwnershipCopy(
+        currentProductData.brand,
+        ownershipResult.financial_beneficiary,
+        ownershipResult.beneficiary_country,
+        ownershipResult.ownership_flow || [],
+        ownershipResult.confidence_score || 0
+      );
+      console.log('✅ Generated copy:', generatedCopy);
+      
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -839,6 +851,8 @@ export async function POST(request: NextRequest) {
           reasoning: visionContext.reasoning
         } : null,
         pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
+        // LLM-generated copy for engaging storytelling
+        generated_copy: generatedCopy,
         query_id: queryId
       };
 

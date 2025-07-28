@@ -7,6 +7,7 @@ import { OwnershipChain } from "./OwnershipChain";
 import { ShareModal } from "./ShareModal";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatTraceStages } from "@/lib/utils/trace-formatter";
 
 interface ProductResultProps {
   brand: string;
@@ -20,6 +21,14 @@ interface ProductResultProps {
   analysisText?: string;
   acquisitionYear?: number;
   publicTicker?: string;
+  // LLM-generated copy for engaging storytelling
+  generatedCopy?: {
+    headline: string;
+    subheadline: string;
+    description: string;
+    socialShare: string;
+    countryFact: string;
+  };
 }
 
 interface OwnershipNode {
@@ -54,7 +63,8 @@ export function ProductResult({
   structureType,
   analysisText,
   acquisitionYear,
-  publicTicker
+  publicTicker,
+  generatedCopy
 }: ProductResultProps) {
   const [showTrace, setShowTrace] = useState(true);
   const [showMoreDetails, setShowMoreDetails] = useState(true);
@@ -89,9 +99,20 @@ export function ProductResult({
           <h2 className="text-headline text-foreground animate-reveal-slide" style={{ animationDelay: '0.1s' }}>
             {brand}
           </h2>
-          <p className="text-subheadline text-muted-foreground animate-reveal-slide" style={{ animationDelay: '0.2s' }}>
-            {owner}
-          </p>
+          {generatedCopy ? (
+            <>
+              <p className="text-subheadline text-foreground animate-reveal-slide" style={{ animationDelay: '0.2s' }}>
+                {generatedCopy.headline}
+              </p>
+              <p className="text-body text-muted-foreground animate-reveal-slide" style={{ animationDelay: '0.25s' }}>
+                {generatedCopy.subheadline}
+              </p>
+            </>
+          ) : (
+            <p className="text-subheadline text-muted-foreground animate-reveal-slide" style={{ animationDelay: '0.2s' }}>
+              {owner}
+            </p>
+          )}
         </div>
         
         {/* Confidence Badge */}
@@ -170,7 +191,12 @@ export function ProductResult({
               </div>
               
               {/* Analysis Text */}
-              {analysisText && (
+              {generatedCopy?.description && (
+                <p className="text-body text-foreground leading-[140%]">
+                  {generatedCopy.description}
+                </p>
+              )}
+              {!generatedCopy?.description && analysisText && (
                 <p className="text-body text-foreground leading-[140%]">
                   {analysisText}
                 </p>
@@ -200,8 +226,18 @@ export function ProductResult({
           
           {showTrace && (
             <CardContent className="space-y-card-gap-sm p-card-padding pt-0 animate-accordion-down">
-              {traces.map((trace, index) => (
-                <TraceSection key={index} {...trace} />
+              {formatTraceStages(traces).map((section, sectionIndex) => (
+                <div key={sectionIndex} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
+                    <span className="text-xs text-muted-foreground">{section.description}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {section.stages.map((trace, traceIndex) => (
+                      <TraceSection key={`${sectionIndex}-${traceIndex}`} {...trace} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </CardContent>
           )}
@@ -228,6 +264,7 @@ export function ProductResult({
         owner={owner}
         productImage={productImage}
         ownershipChain={ownershipChain}
+        generatedCopy={generatedCopy}
       />
     </div>
   );

@@ -54,6 +54,14 @@ export interface PipelineResult {
   };
   result_type?: string;
   user_contributed?: boolean;
+  // LLM-generated copy for engaging storytelling
+  generated_copy?: {
+    headline: string;
+    subheadline: string;
+    description: string;
+    socialShare: string;
+    countryFact: string;
+  };
 }
 
 export interface OwnershipNode {
@@ -82,6 +90,14 @@ export interface ProductResultProps {
   traces: TraceData[];
   acquisitionYear?: number;
   publicTicker?: string;
+  // LLM-generated copy for engaging storytelling
+  generatedCopy?: {
+    headline: string;
+    subheadline: string;
+    description: string;
+    socialShare: string;
+    countryFact: string;
+  };
 }
 
 export function transformPipelineData(pipelineResult: PipelineResult): ProductResultProps {
@@ -201,6 +217,8 @@ export function transformPipelineData(pipelineResult: PipelineResult): ProductRe
     structureType: pipelineResult.ownership_structure_type,
     analysisText: pipelineResult.reasoning,
     traces,
+    // LLM-generated copy for engaging storytelling
+    generatedCopy: pipelineResult.generated_copy,
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline
