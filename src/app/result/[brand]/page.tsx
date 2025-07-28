@@ -2,18 +2,18 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { ProductResult } from '@/components/ProductResult';
 import { AppHeader } from '@/components/AppHeader';
+import { ProductResult } from '@/components/ProductResult';
 import { transformPipelineData, type PipelineResult } from '@/lib/utils/pipeline-transformer';
 import Head from 'next/head';
 
 export default function ResultPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const brandSlug = params.brand as string;
   const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [productResultProps, setProductResultProps] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const hasProcessed = useRef(false);
 
   useEffect(() => {
@@ -22,73 +22,94 @@ export default function ResultPage() {
       console.log('🔄 Already processed, skipping...');
       return;
     }
-    
-    console.log('📄 Result page loaded for brand:', brandSlug);
-    console.log('🔍 Search params:', Object.fromEntries(searchParams.entries()));
-    
+
+    const brandSlug = params.brand as string;
     const success = searchParams.get('success');
     const errorParam = searchParams.get('error');
-    
+    const confidence = searchParams.get('confidence');
+
+    console.log('📄 ResultPage: Processing', { brandSlug, success, errorParam, confidence });
+
     if (success === 'false' || errorParam) {
-      console.error('❌ Error from URL params:', errorParam);
-      setError(errorParam || 'Unknown error occurred');
+      console.log('❌ Error result:', errorParam);
+      setError(errorParam || 'Scan failed');
       setIsLoading(false);
       hasProcessed.current = true;
       return;
     }
-    
-    if (success === 'true') {
-      // Check if we have stored API response in sessionStorage
-      const storedPipelineResult = sessionStorage.getItem('pipelineResult');
-      
-      if (storedPipelineResult) {
-        try {
-          console.log('📦 Found stored pipeline result in sessionStorage');
-          const parsedResult = JSON.parse(storedPipelineResult);
-          
-          console.log('✅ Retrieved stored pipeline result:', {
-            success: parsedResult.success,
-            brand: parsedResult.brand,
-            confidence: parsedResult.confidence_score,
-            hasGeneratedCopy: !!parsedResult.generated_copy,
-            generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
-          });
-          
-          // Log the actual generated_copy content
-          if (parsedResult.generated_copy) {
-            console.log('🎨 Retrieved generated copy content:', JSON.stringify(parsedResult.generated_copy, null, 2));
-          }
-          
-          setPipelineResult(parsedResult);
-          setIsLoading(false);
-          
-          // Clear the stored data to prevent reuse
-          sessionStorage.removeItem('pipelineResult');
-          hasProcessed.current = true;
-          return;
-        } catch (err) {
-          console.error('❌ Error parsing stored pipeline result:', err);
-          // Fall back to mock data
+
+    // Try to get stored pipeline result from sessionStorage
+    const storedPipelineResult = sessionStorage.getItem('pipelineResult');
+
+    if (storedPipelineResult) {
+      try {
+        console.log('📦 Found stored pipeline result in sessionStorage');
+        const parsedResult = JSON.parse(storedPipelineResult);
+        
+        console.log('✅ Retrieved stored pipeline result:', {
+          success: parsedResult.success,
+          brand: parsedResult.brand,
+          confidence: parsedResult.confidence_score,
+          hasGeneratedCopy: !!parsedResult.generated_copy,
+          generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
+        });
+        
+        // Log the actual generated_copy content
+        if (parsedResult.generated_copy) {
+          console.log('🎨 Retrieved generated copy content:', JSON.stringify(parsedResult.generated_copy, null, 2));
         }
+        
+        setPipelineResult(parsedResult);
+        
+        // Transform the data asynchronously
+        transformPipelineData(parsedResult)
+          .then(transformedProps => {
+            setProductResultProps(transformedProps);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error('❌ Error transforming pipeline data:', err);
+            setError('Failed to process results');
+            setIsLoading(false);
+          });
+        
+        // Clear the stored data to prevent reuse
+        sessionStorage.removeItem('pipelineResult');
+        hasProcessed.current = true;
+        return;
+      } catch (err) {
+        console.error('❌ Error parsing stored pipeline result:', err);
+        // Fall back to mock data
       }
-      
-      // Fall back to mock data if no stored result
-      console.log('⚠️ No stored pipeline result found, using mock data');
-      const brand = searchParams.get('brand');
-      const confidence = searchParams.get('confidence');
-      
-      console.log('✅ Success params received:', { brand, confidence });
-      
-      // Use mock data as fallback
-      simulatePipelineResult(brand || 'unknown');
-    } else {
-      console.warn('⚠️ No success parameter found in URL');
-      setError('No scan result found. Please try scanning again.');
-      setIsLoading(false);
     }
+
+    // If no stored data, use mock data
+    console.log('📦 No stored pipeline result, using mock data');
+    
+    // Call simulatePipelineResult asynchronously
+    simulatePipelineResult(brandSlug)
+      .then(mockResult => {
+        if (mockResult) {
+          setPipelineResult(mockResult);
+          
+          // Transform the mock data asynchronously
+          return transformPipelineData(mockResult);
+        } else {
+          throw new Error('Failed to generate mock data');
+        }
+      })
+      .then(transformedProps => {
+        setProductResultProps(transformedProps);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('❌ Error with mock data:', err);
+        setError('Failed to process results');
+        setIsLoading(false);
+      });
     
     hasProcessed.current = true;
-  }, [brandSlug, searchParams]);
+  }, [params.brand, searchParams]);
 
   const simulatePipelineResult = async (brand: string) => {
     try {
@@ -126,12 +147,10 @@ export default function ResultPage() {
         }
       };
       
-      setPipelineResult(mockData);
+      return mockData;
     } catch (err) {
       console.error('❌ Error simulating pipeline result:', err);
-      setError('Failed to process scan result. Please try again.');
-    } finally {
-      setIsLoading(false);
+      return null; // Return null to indicate failure
     }
   };
 
@@ -296,21 +315,22 @@ export default function ResultPage() {
   }
 
   // Transform the pipeline data to ProductResult props
-  const productResultProps = transformPipelineData(pipelineResult);
+  // This useEffect handles the transformation, so we can remove it from here.
+  // The productResultProps state will be updated by the useEffect.
 
   return (
     <>
       <Head>
-        <title>{productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`}</title>
-        <meta name="description" content={productResultProps.generatedCopy?.description || `Discover who owns ${productResultProps.brand}`} />
-        <meta property="og:title" content={productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`} />
-        <meta property="og:description" content={productResultProps.generatedCopy?.description || `Discover who owns ${productResultProps.brand}`} />
-        <meta property="og:image" content={productResultProps.productImage || '/logo.png'} />
+        <title>{productResultProps?.generatedCopy?.headline || `${productResultProps?.brand} – Owned by ${productResultProps?.owner}`}</title>
+        <meta name="description" content={productResultProps?.generatedCopy?.description || `Discover who owns ${productResultProps?.brand}`} />
+        <meta property="og:title" content={productResultProps?.generatedCopy?.headline || `${productResultProps?.brand} – Owned by ${productResultProps?.owner}`} />
+        <meta property="og:description" content={productResultProps?.generatedCopy?.description || `Discover who owns ${productResultProps?.brand}`} />
+        <meta property="og:image" content={productResultProps?.productImage || '/logo.png'} />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={productResultProps.generatedCopy?.headline || `${productResultProps.brand} – Owned by ${productResultProps.owner}`} />
-        <meta name="twitter:description" content={productResultProps.generatedCopy?.description || `Discover who owns ${productResultProps.brand}`} />
-        <meta name="twitter:image" content={productResultProps.productImage || '/logo.png'} />
+        <meta name="twitter:title" content={productResultProps?.generatedCopy?.headline || `${productResultProps?.brand} – Owned by ${productResultProps?.owner}`} />
+        <meta name="twitter:description" content={productResultProps?.generatedCopy?.description || `Discover who owns ${productResultProps?.brand}`} />
+        <meta name="twitter:image" content={productResultProps?.productImage || '/logo.png'} />
       </Head>
       <div className="min-h-screen bg-background dark-gradient">
         <AppHeader />

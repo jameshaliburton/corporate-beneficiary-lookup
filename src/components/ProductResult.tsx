@@ -5,9 +5,10 @@ import { ConfidenceBadge } from "./ConfidenceBadge";
 import { TraceSection } from "./TraceSection";
 import { OwnershipChain } from "./OwnershipChain";
 import { ShareModal } from "./ShareModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatTraceStages } from "@/lib/utils/trace-formatter";
+import { findCompanyLogoWithTimeout } from "@/lib/services/logo-finder";
 
 interface ProductResultProps {
   brand: string;
@@ -40,6 +41,7 @@ interface OwnershipNode {
   country: string;
   countryFlag: string;
   avatar: string;
+  logoUrl?: string; // Optional logo URL from authoritative sources
 }
 
 interface BrandTheme {
@@ -73,7 +75,36 @@ export function ProductResult({
   const [showTrace, setShowTrace] = useState(true);
   const [showMoreDetails, setShowMoreDetails] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [logos, setLogos] = useState<Record<string, string | null>>({});
   const router = useRouter();
+
+  // Async logo fetching with timeout
+  useEffect(() => {
+    if (ownershipChain.length === 0) return;
+
+    console.log('🔄 Starting async logo fetching for', ownershipChain.length, 'entities');
+
+    ownershipChain.forEach(async (entity) => {
+      const companyName = entity.name;
+      if (!companyName || logos[companyName] !== undefined) return;
+
+      try {
+        console.log(`🔍 Fetching logo for: ${companyName}`);
+        const logoUrl = await findCompanyLogoWithTimeout(companyName, 1000);
+        
+        if (logoUrl) {
+          console.log(`✅ Found logo for ${companyName}: ${logoUrl}`);
+        } else {
+          console.log(`⏰ Timeout or no logo found for ${companyName}`);
+        }
+
+        setLogos(prev => ({ ...prev, [companyName]: logoUrl }));
+      } catch (error) {
+        console.warn(`⚠️ Logo fetch failed for ${companyName}:`, error);
+        setLogos(prev => ({ ...prev, [companyName]: null }));
+      }
+    });
+  }, [ownershipChain, logos]);
 
   // Apply dynamic theming when brand theme is provided
   const dynamicStyle = brandTheme ? {
@@ -81,6 +112,12 @@ export function ProductResult({
     '--brand-accent': brandTheme.accent,
     '--brand-gradient': brandTheme.gradient
   } as React.CSSProperties : {};
+
+  // Create ownership chain with logos
+  const ownershipChainWithLogos = ownershipChain.map(entity => ({
+    ...entity,
+    logoUrl: logos[entity.name] || undefined
+  }));
 
   return (
     <div className="w-full max-w-md space-y-6" style={dynamicStyle}>
@@ -129,7 +166,7 @@ export function ProductResult({
       {ownershipChain.length > 0 && (
         <div className="mt-8 animate-reveal-slide" style={{ animationDelay: '0.4s' }}>
           <OwnershipChain 
-            nodes={ownershipChain} 
+            nodes={ownershipChainWithLogos} 
             brandTheme={brandTheme}
             structureType={structureType}
             acquisitionYear={acquisitionYear}
@@ -315,7 +352,7 @@ export function ProductResult({
         brand={brand}
         owner={owner}
         productImage={productImage}
-        ownershipChain={ownershipChain}
+        ownershipChain={ownershipChainWithLogos}
         generatedCopy={generatedCopy}
       />
     </div>

@@ -1,6 +1,8 @@
 // Shared utility for transforming pipeline data to ProductResult props
 // Extracted from test-simple-pipeline page for reuse across camera and manual flows
 
+import { findCompanyLogo } from '@/lib/services/logo-finder';
+
 export interface PipelineResult {
   success: boolean;
   product_name?: string;
@@ -73,6 +75,7 @@ export interface OwnershipNode {
   country: string;
   countryFlag: string;
   avatar: string;
+  logoUrl?: string; // Optional logo URL from authoritative sources
 }
 
 export interface TraceData {
@@ -108,7 +111,7 @@ export interface ProductResultProps {
   };
 }
 
-export function transformPipelineData(pipelineResult: PipelineResult): ProductResultProps {
+export async function transformPipelineData(pipelineResult: PipelineResult): Promise<ProductResultProps> {
   console.log('🔄 Transforming pipeline data:', {
     brand: pipelineResult.brand,
     financial_beneficiary: pipelineResult.financial_beneficiary,
@@ -117,29 +120,36 @@ export function transformPipelineData(pipelineResult: PipelineResult): ProductRe
     agent_execution_trace: pipelineResult.agent_execution_trace ? 'present' : 'missing'
   });
 
-  // Transform ownership_flow to OwnershipNode[]
-  const ownershipChain: OwnershipNode[] = pipelineResult.ownership_flow?.map((node, index) => {
-    console.log(`🏢 Processing ownership node ${index}:`, node);
-    
-    // Use better fallback values
-    const companyName = node.name || (index === 0 ? pipelineResult.brand : 'Parent Company');
-    const country = node.country || 'Unknown Country';
-    const flag = node.flag || '🏳️';
-    
-    return {
-      name: companyName,
-      country: country,
-      countryFlag: flag,
-      avatar: `data:image/svg+xml;base64,${btoa(`
-        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="44" height="44" rx="22" fill="${index === 0 ? '#FF6B6B' : '#4ECDC4'}"/>
-          <text x="22" y="28" text-anchor="middle" fill="white" font-family="Inter" font-size="16" font-weight="600">
-            ${companyName.charAt(0).toUpperCase()}
-          </text>
-        </svg>
-      `)}`
-    };
-  }) || [];
+  // Transform ownership_flow to OwnershipNode[] without blocking logo fetching
+  const ownershipChain: OwnershipNode[] = [];
+  
+  if (pipelineResult.ownership_flow) {
+    for (let index = 0; index < pipelineResult.ownership_flow.length; index++) {
+      const node = pipelineResult.ownership_flow[index];
+      console.log(`🏢 Processing ownership node ${index}:`, node);
+      
+      // Use better fallback values
+      const companyName = node.name || (index === 0 ? pipelineResult.brand : 'Parent Company');
+      const country = node.country || 'Unknown Country';
+      const flag = node.flag || '🏳️';
+      
+      // Don't fetch logos here - they will be fetched asynchronously in the UI
+      ownershipChain.push({
+        name: companyName,
+        country: country,
+        countryFlag: flag,
+        avatar: `data:image/svg+xml;base64,${btoa(`
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="44" height="44" rx="22" fill="${index === 0 ? '#FF6B6B' : '#4ECDC4'}"/>
+            <text x="22" y="28" text-anchor="middle" fill="white" font-family="Inter" font-size="16" font-weight="600">
+              ${companyName.charAt(0).toUpperCase()}
+            </text>
+          </svg>
+        `)}`
+        // logoUrl will be fetched asynchronously in the UI
+      });
+    }
+  }
 
   // Transform agent_execution_trace to TraceData[]
   const traces: TraceData[] = [];

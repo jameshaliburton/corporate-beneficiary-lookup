@@ -5,6 +5,7 @@ interface OwnershipNode {
   country: string;
   countryFlag: string;
   avatar: string;
+  logoUrl?: string; // Optional logo URL from authoritative sources
   type?: string; // "Brand", "Parent Company", "Subsidiary", etc.
 }
 
@@ -113,17 +114,33 @@ export function OwnershipChain({
               {/* Logo and Main Info */}
               <div className="flex items-start gap-3">
                 {/* Circular avatar - larger size */}
-                <img 
-                  src={node.avatar} 
-                  alt={`${node.name} logo`}
-                  className={`rounded-full object-cover border-2 border-border/20 flex-shrink-0 ${
-                    isLastNode ? 'h-12 w-12' : 'h-11 w-11'
-                  }`}
-                />
+                {node.logoUrl ? (
+                  <img 
+                    src={node.logoUrl} 
+                    alt={`${node.name} logo`}
+                    className={`rounded-full object-contain border-2 border-border/20 flex-shrink-0 bg-white ${
+                      isLastNode ? 'h-12 w-12' : 'h-11 w-11'
+                    }`}
+                    onError={(e) => {
+                      // Fallback to initials avatar if logo fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.src = node.avatar;
+                      target.onerror = null; // Prevent infinite loop
+                    }}
+                  />
+                ) : (
+                  <img 
+                    src={node.avatar} 
+                    alt={`${node.name} logo`}
+                    className={`rounded-full object-cover border-2 border-border/20 flex-shrink-0 ${
+                      isLastNode ? 'h-12 w-12' : 'h-11 w-11'
+                    }`}
+                  />
+                )}
                 
                 {/* Company name and type */}
                 <div className="flex-1 min-w-0 space-y-0">
-                  <h3 className="text-subheadline text-foreground truncate leading-tight">
+                  <h3 className="text-subheadline text-foreground whitespace-normal break-words leading-snug">
                     {node.name}
                   </h3>
                   <p className="text-small font-medium text-muted-foreground mt-0.5">

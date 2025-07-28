@@ -265,7 +265,7 @@ export default function EvalV4ResultRow({
         {/* Brand */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-gray-900 truncate">
+            <span className="font-medium text-gray-900 whitespace-normal break-words">
               {result.brand}
             </span>
             {result.flagged && (
@@ -277,14 +277,14 @@ export default function EvalV4ResultRow({
               </Badge>
             )}
           </div>
-          <div className="text-sm text-gray-500 truncate">
+          <div className="text-sm text-gray-500 whitespace-normal break-words">
             {result.product}
           </div>
         </div>
 
         {/* Owner */}
         <div className="flex-1 min-w-0 px-4">
-          <div className="text-sm font-medium text-gray-900 truncate">
+          <div className="text-sm font-medium text-gray-900 whitespace-normal break-words">
             {result.owner}
           </div>
         </div>
