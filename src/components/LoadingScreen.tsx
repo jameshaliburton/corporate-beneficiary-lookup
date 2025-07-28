@@ -1,23 +1,42 @@
 import { Loader2, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 
-export function LoadingScreen() {
+interface LoadingScreenProps {
+  context?: 'image' | 'manual';
+}
+
+export function LoadingScreen({ context = 'image' }: LoadingScreenProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [agentMessageIndex, setAgentMessageIndex] = useState(0);
   
-  const progressSteps = [
-    "Running vision + OCR to detect the product",
-    "Matching brand data with ownership databases", 
-    "Agents verifying ownership and confidence level"
-  ];
+  // Different progress steps based on context
+  const progressSteps = context === 'image' 
+    ? [
+        "Running vision + OCR to detect the product",
+        "Matching brand data with ownership databases", 
+        "Agents verifying ownership and confidence level"
+      ]
+    : [
+        "Analyzing your search query",
+        "Matching brand data with ownership databases", 
+        "Agents verifying ownership and confidence level"
+      ];
 
-  const agentMessages = [
-    "🤖 Our agents are piecing it together…",
-    "🔍 Cross-checking brand ownership…",
-    "📊 Verifying the final details…",
-    "🧠 AI models analyzing patterns…",
-    "🔗 Connecting the ownership dots…"
-  ];
+  const agentMessages = context === 'image'
+    ? [
+        "🤖 Our agents are piecing it together…",
+        "🔍 Cross-checking brand ownership…",
+        "📊 Verifying the final details…",
+        "🧠 AI models analyzing patterns…",
+        "🔗 Connecting the ownership dots…"
+      ]
+    : [
+        "🔍 Researching your brand query…",
+        "📊 Cross-checking ownership databases…",
+        "🤖 AI agents verifying the details…",
+        "🔗 Connecting the ownership chain…",
+        "📋 Finalizing the results…"
+      ];
 
   // Progress through steps
   useEffect(() => {
@@ -55,10 +74,16 @@ export function LoadingScreen() {
           {/* Headline */}
           <div className="space-y-4">
             <h2 className="text-[22px] font-bold text-foreground">
-              Our AI agents are on the case…
+              {context === 'image' 
+                ? "Our AI agents are on the case…"
+                : "Researching your brand…"
+              }
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-              Using computer vision and AI agents to analyze the product, detect the brand, and uncover the real owner.
+              {context === 'image'
+                ? "Using computer vision and AI agents to analyze the product, detect the brand, and uncover the real owner."
+                : "Using AI agents to research your brand, match it with ownership databases, and uncover the real owner."
+              }
             </p>
           </div>
           

@@ -1,4 +1,4 @@
-import { Building2, ArrowRight, ChevronDown, ChevronUp, Share2, Camera } from "lucide-react";
+import { Building2, ArrowRight, ChevronDown, ChevronUp, Share2, Camera, Eye, Search, Building, Check } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfidenceBadge } from "./ConfidenceBadge";
@@ -231,31 +231,46 @@ export function ProductResult({
           {showTrace && (
             <CardContent className="space-y-card-gap-sm p-card-padding pt-0 animate-accordion-down">
               {generatedCopy?.traceSummary ? (
-                // Use LLM-generated trace summaries
+                // Hybrid approach: Show original trace UI with LLM summaries
                 <div className="space-y-4">
+                  {/* Vision Analysis */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
+                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-vision">
+                        <Eye className="h-4 w-4" />
+                      </div>
                       <h4 className="text-sm font-medium text-foreground">Vision Analysis</h4>
+                      <Check className="h-3 w-3 text-success" />
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
                       {generatedCopy.traceSummary.vision}
                     </p>
                   </div>
                   
+                  {/* Data Retrieval */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
+                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-retrieval">
+                        <Search className="h-4 w-4" />
+                      </div>
                       <h4 className="text-sm font-medium text-foreground">Data Retrieval</h4>
+                      <Check className="h-3 w-3 text-success" />
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
                       {generatedCopy.traceSummary.retrieval}
                     </p>
                   </div>
                   
+                  {/* Ownership Mapping */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
+                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-ownership">
+                        <Building className="h-4 w-4" />
+                      </div>
                       <h4 className="text-sm font-medium text-foreground">Ownership Mapping</h4>
+                      <Check className="h-3 w-3 text-success" />
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
                       {generatedCopy.traceSummary.mapping}
                     </p>
                   </div>

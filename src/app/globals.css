@@ -364,7 +364,8 @@
   
   .neo-glow::before {
     content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 opacity-0 transition-opacity duration-500;
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500;
+    background: linear-gradient(to right, hsl(var(--primary) / 0.2), transparent, hsl(var(--primary) / 0.2));
     border-radius: inherit;
   }
   

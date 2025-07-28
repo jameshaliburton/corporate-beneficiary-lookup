@@ -28,6 +28,8 @@ function cleanPipelineResult(result: any) {
     reasoning: result.reasoning,
     result_type: result.result_type,
     user_contributed: result.user_contributed,
+    // Include the LLM-generated copy
+    generated_copy: result.generated_copy,
     // Simplify the agent_execution_trace to avoid circular references
     agent_execution_trace: result.agent_execution_trace ? {
       sections: result.agent_execution_trace.sections?.map((section: any) => ({
@@ -49,14 +51,7 @@ function cleanPipelineResult(result: any) {
 
 export default function CameraPage() {
   const [isScanning, setIsScanning] = useState(false);
-  const [debugMessage, setDebugMessage] = useState('Page loaded');
   const router = useRouter();
-
-  const handleTestClick = () => {
-    console.log('🎯 Test button clicked!');
-    setDebugMessage('Test button works!');
-    alert('JavaScript is working!');
-  };
 
   const handleCapture = async (imageData?: string) => {
     if (!imageData) {
@@ -110,7 +105,8 @@ export default function CameraPage() {
       console.log('🧹 Cleaned pipeline result:', {
         success: cleanResult.success,
         brand: cleanResult.brand,
-        confidence: cleanResult.confidence_score
+        confidence: cleanResult.confidence_score,
+        hasGeneratedCopy: !!rawPipelineResult.generated_copy
       });
 
       // Test JSON serializability
@@ -122,6 +118,28 @@ export default function CameraPage() {
       }
 
       if (cleanResult.success) {
+        // Store the full API response in sessionStorage for the results page
+        console.log('💾 Storing full API response in sessionStorage:', {
+          hasGeneratedCopy: !!cleanResult.generated_copy,
+          generatedCopyKeys: cleanResult.generated_copy ? Object.keys(cleanResult.generated_copy) : [],
+          brand: cleanResult.brand,
+          confidence: cleanResult.confidence_score
+        });
+        
+        // Log the actual generated_copy content
+        if (cleanResult.generated_copy) {
+          console.log('🎨 Generated copy content:', JSON.stringify(cleanResult.generated_copy, null, 2));
+        }
+        
+        const sessionData = JSON.stringify(cleanResult);
+        console.log('💾 Session data size:', sessionData.length, 'characters');
+        
+        sessionStorage.setItem('pipelineResult', sessionData);
+        
+        // Verify it was stored correctly
+        const storedData = sessionStorage.getItem('pipelineResult');
+        console.log('✅ Verification - stored data has generated_copy:', storedData ? JSON.parse(storedData).generated_copy ? 'YES' : 'NO' : 'NO DATA');
+        
         const searchParams = new URLSearchParams({
           success: 'true',
           brand: cleanResult.brand || 'unknown',
@@ -166,7 +184,7 @@ export default function CameraPage() {
     return (
       <div className="min-h-screen bg-background dark-gradient flex items-center justify-center">
         <div className="container mx-auto max-w-md px-4">
-          <LoadingScreen />
+          <LoadingScreen context="image" />
         </div>
       </div>
     );
@@ -174,9 +192,9 @@ export default function CameraPage() {
 
   return (
     <div className="min-h-screen bg-background dark-gradient">
+      <AppHeader />
+      
       <div className="container mx-auto max-w-md px-4 pt-4">
-        <AppHeader />
-        
         <div className="mt-8 space-y-6">
           <div className="text-center space-y-4">
             <h1 className="text-2xl font-bold text-foreground">
@@ -185,19 +203,6 @@ export default function CameraPage() {
             <p className="text-muted-foreground">
               Point your camera at a product to reveal its ownership
             </p>
-          </div>
-          
-          {/* Debug info */}
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-2">{debugMessage}</p>
-            <Button 
-              onClick={handleTestClick}
-              variant="outline"
-              size="sm"
-              className="mb-4"
-            >
-              Test JavaScript
-            </Button>
           </div>
           
           <VideoCapture onCapture={handleCapture} isScanning={isScanning} />

@@ -120,15 +120,21 @@ export function transformPipelineData(pipelineResult: PipelineResult): ProductRe
   // Transform ownership_flow to OwnershipNode[]
   const ownershipChain: OwnershipNode[] = pipelineResult.ownership_flow?.map((node, index) => {
     console.log(`🏢 Processing ownership node ${index}:`, node);
+    
+    // Use better fallback values
+    const companyName = node.name || (index === 0 ? pipelineResult.brand : 'Parent Company');
+    const country = node.country || 'Unknown Country';
+    const flag = node.flag || '🏳️';
+    
     return {
-      name: node.name,
-      country: node.country || 'Unknown',
-      countryFlag: node.flag || '🏳️',
+      name: companyName,
+      country: country,
+      countryFlag: flag,
       avatar: `data:image/svg+xml;base64,${btoa(`
         <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="44" height="44" rx="22" fill="${index === 0 ? '#FF6B6B' : '#4ECDC4'}"/>
           <text x="22" y="28" text-anchor="middle" fill="white" font-family="Inter" font-size="16" font-weight="600">
-            ${node.name.charAt(0).toUpperCase()}
+            ${companyName.charAt(0).toUpperCase()}
           </text>
         </svg>
       `)}`
@@ -210,7 +216,7 @@ export function transformPipelineData(pipelineResult: PipelineResult): ProductRe
   }
 
   const transformedData: ProductResultProps = {
-    brand: pipelineResult.brand || 'Unknown Brand',
+    brand: pipelineResult.brand ? pipelineResult.brand.charAt(0).toUpperCase() + pipelineResult.brand.slice(1) : 'Unknown Brand',
     owner: pipelineResult.financial_beneficiary || 'Unknown Owner',
     confidence: pipelineResult.confidence_score || 0,
     productImage: `data:image/svg+xml;base64,${btoa(`

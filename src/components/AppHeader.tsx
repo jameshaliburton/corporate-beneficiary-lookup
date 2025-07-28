@@ -17,9 +17,16 @@ export function AppHeader({ onInfoClick }: AppHeaderProps) {
     }
   };
 
+  const handleLogoClick = () => {
+    router.push('/');
+  };
+
   return (
     <header className="flex items-center justify-between p-4 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-      <div className="flex items-center gap-3">
+      <button
+        onClick={handleLogoClick}
+        className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+      >
         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
           <span className="text-primary-foreground font-bold text-sm">O</span>
         </div>
@@ -29,7 +36,7 @@ export function AppHeader({ onInfoClick }: AppHeaderProps) {
             Beta
           </span>
         </div>
-      </div>
+      </button>
       
       <Button
         variant="ghost"

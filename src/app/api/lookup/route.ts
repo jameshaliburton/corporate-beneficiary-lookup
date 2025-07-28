@@ -587,12 +587,6 @@ export async function POST(request: NextRequest) {
           beneficiary: cachedResult.financial_beneficiary,
           confidence: cachedResult.confidence_score
         });
-        
-        // Return cached result immediately - skip all LLM/research stages
-        console.log('🚫 [LLM] Skipped: Cache hit');
-        await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'cache_hit_skipped' });
-        await emitProgress(queryId, 'database_save', 'completed', { reason: 'cache_hit_skipped' });
-        
         // Build structured trace for cache hit
         const cacheHitStages = [
           {
@@ -617,10 +611,22 @@ export async function POST(request: NextRequest) {
             duration: 87
           }
         ];
-        
         const structuredTrace = buildStructuredTrace(cacheHitStages, false, true);
-        
-        return NextResponse.json({
+        // --- NEW: Always call copy generator ---
+        console.log('🎨 Calling copy generator...');
+        const generatedCopy = await generateOwnershipCopy({
+          brand: cachedResult.brand,
+          ultimateOwner: cachedResult.financial_beneficiary,
+          ultimateCountry: cachedResult.beneficiary_country,
+          ownershipChain: cachedResult.ownership_flow || [],
+          confidence: cachedResult.confidence_score || 0,
+          ownershipStructureType: cachedResult.ownership_structure_type,
+          sources: cachedResult.sources || [],
+          reasoning: cachedResult.reasoning,
+          beneficiaryFlag: cachedResult.beneficiary_flag
+        });
+        console.log('✅ Generated copy:', generatedCopy);
+        const mergedResult = {
           success: true,
           product_name: cachedResult.product_name,
           brand: cachedResult.brand,
@@ -630,15 +636,21 @@ export async function POST(request: NextRequest) {
           beneficiary_flag: cachedResult.beneficiary_flag,
           confidence_score: cachedResult.confidence_score,
           ownership_structure_type: cachedResult.ownership_structure_type,
-          ownership_flow: cachedResult.ownership_flow,
+          ownership_flow: Array.isArray(cachedResult.ownership_flow) 
+            ? cachedResult.ownership_flow.map(item => 
+                typeof item === 'string' ? JSON.parse(item) : item
+              )
+            : cachedResult.ownership_flow,
           sources: cachedResult.sources,
           reasoning: cachedResult.reasoning,
           result_type: 'cache_hit',
           user_contributed: !!(product_name || brand),
           agent_execution_trace: structuredTrace,
           pipeline_type: 'cache_hit',
-          query_id: queryId
-        });
+          query_id: queryId,
+          generated_copy: generatedCopy
+        };
+        return NextResponse.json(mergedResult);
       } else {
         console.log('🧠 [Cache] MISS → Proceeding to ownership research');
         await emitProgress(queryId, 'cache_check', 'completed', { 
@@ -809,6 +821,7 @@ export async function POST(request: NextRequest) {
       
       // Generate engaging copy using LLM
       console.log('🎨 Generating engaging copy for brand ownership result...');
+      console.log('🎨 TEST: This line should appear in logs');
       
       // Build ownership data object for LLM analysis
       const ownershipData = {
@@ -823,8 +836,10 @@ export async function POST(request: NextRequest) {
         beneficiaryFlag: ownershipResult.beneficiary_flag
       };
       
+      console.log('🎨 Starting copy generation...');
+      console.log('🎨 Ownership data:', JSON.stringify(ownershipData, null, 2));
       const generatedCopy = await generateOwnershipCopy(ownershipData);
-      console.log('✅ Generated copy:', generatedCopy);
+      console.log('✅ Generated copy:', JSON.stringify(generatedCopy, null, 2));
       
       const mergedResult = {
         success: true,
@@ -840,7 +855,11 @@ export async function POST(request: NextRequest) {
         confidence_breakdown: ownershipResult.confidence_breakdown,
         confidence_reasoning: ownershipResult.confidence_reasoning,
         ownership_structure_type: ownershipResult.ownership_structure_type,
-        ownership_flow: ownershipResult.ownership_flow,
+        ownership_flow: Array.isArray(ownershipResult.ownership_flow) 
+          ? ownershipResult.ownership_flow.map(item => 
+              typeof item === 'string' ? JSON.parse(item) : item
+            )
+          : ownershipResult.ownership_flow,
         sources: ownershipResult.sources,
         reasoning: ownershipResult.reasoning,
         result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
