@@ -364,7 +364,11 @@
   
   .neo-glow::before {
     content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-500;
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s;
+    /* Use direct CSS gradient with HSL and alpha for primary color */
     background: linear-gradient(to right, hsl(var(--primary) / 0.2), transparent, hsl(var(--primary) / 0.2));
     border-radius: inherit;
   }
