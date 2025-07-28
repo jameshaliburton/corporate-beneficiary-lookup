@@ -5,12 +5,15 @@
  * This allows us to test prompt changes without breaking the existing system.
  */
 
+// Import prompt builders
+import { buildResearchPromptV1_2 } from './prompts/ownership-research-v1.2.js'
+
 // Current prompt versions
 export const PROMPT_VERSIONS = {
   OWNERSHIP_RESEARCH: {
     'v1.0': 'current', // Current production version
     'v1.1': 'testing', // New improved version
-    'v1.2': 'development' // Future version
+    'v1.2': 'current' // New version with current ownership focus
   },
   QUERY_BUILDER: {
     'v1.0': 'current',
@@ -111,6 +114,8 @@ function getOwnershipResearchPrompt(version) {
       return buildResearchPromptV1_0
     case 'v1.1':
       return buildResearchPromptV1_1
+    case 'v1.2':
+      return buildResearchPromptV1_2
     default:
       throw new Error(`Unknown ownership research prompt version: ${version}`)
   }
