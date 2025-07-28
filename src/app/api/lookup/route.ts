@@ -18,7 +18,12 @@ const forceFullTrace = shouldForceFullTrace();
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
 
-
+// 🧠 NORMALIZED CACHE KEY FUNCTION
+function makeCacheKey(brand: string, product?: string): string {
+  const b = brand.trim().toLowerCase();
+  const p = product ? product.trim().toLowerCase() : "";
+  return p ? `${b}::${p}` : b;
+}
 
 // 🧠 AGENT PIPELINE OPTIMIZATION LOGGING
 // Global counters for agent usage tracking
@@ -550,8 +555,8 @@ export async function POST(request: NextRequest) {
       // Cache check enforcement - must run before any LLM/lookup stages
       console.log('✅ [Pipeline] Cache check enforced - running before ownership research');
       
-      // Perform actual cache lookup
-      const cacheKey = `${currentProductData.brand?.toLowerCase().trim() || ''} / ${currentProductData.product_name?.toLowerCase().trim() || ''}`;
+      // Perform actual cache lookup with normalized keys
+      const cacheKey = makeCacheKey(currentProductData.brand || '', currentProductData.product_name);
       console.log('🧠 [Cache] Looking up key:', cacheKey);
       
       const cachedResult = await logAgentExecution('CacheLookup', async () => {
@@ -559,35 +564,66 @@ export async function POST(request: NextRequest) {
         const normalizedBrand = currentProductData.brand?.toLowerCase().trim();
         const normalizedProductName = currentProductData.product_name?.toLowerCase().trim();
         
-        if (!normalizedBrand || !normalizedProductName) {
-          console.log('🧠 [Cache] SKIP → Missing brand or product name');
+        if (!normalizedBrand) {
+          console.log('🧠 [Cache] SKIP → Missing brand name');
           return null;
         }
         
-        const { data, error } = await supabase
+        // Try brand + product name first
+        if (normalizedProductName) {
+          const { data: brandProductData, error: brandProductError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('brand', normalizedBrand)
+            .eq('product_name', normalizedProductName)
+            .limit(1);
+          
+          if (brandProductError) {
+            console.error('[Cache] Database error:', brandProductError);
+          } else if (brandProductData && brandProductData.length > 0) {
+            console.log('🧠 [Cache] HIT → Brand + Product:', normalizedBrand, '+', normalizedProductName);
+            return brandProductData[0];
+          }
+        }
+        
+        // Fallback to brand-only lookup
+        const { data: brandData, error: brandError } = await supabase
           .from('products')
           .select('*')
           .eq('brand', normalizedBrand)
-          .eq('product_name', normalizedProductName)
           .limit(1);
         
-        if (error) {
-          console.error('[Cache] Database error:', error);
+        if (brandError) {
+          console.error('[Cache] Database error:', brandError);
           return null;
         }
         
-        return data && data.length > 0 ? data[0] : null;
+        if (brandData && brandData.length > 0) {
+          console.log('🧠 [Cache] HIT → Brand only:', normalizedBrand);
+          return brandData[0];
+        }
+        
+        console.log('🧠 [Cache] MISS → No cached data found');
+        return null;
       });
       
       if (cachedResult && cachedResult.financial_beneficiary && cachedResult.financial_beneficiary !== 'Unknown') {
-        console.log('🧠 [Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
+        console.log('✅ [Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
         await emitProgress(queryId, 'cache_check', 'completed', { 
           success: true,
           hit: true,
           beneficiary: cachedResult.financial_beneficiary,
           confidence: cachedResult.confidence_score
         });
-        // Build structured trace for cache hit
+        
+        // 🚫 SKIP OWNERSHIP RESEARCH AGENTS ON CACHE HIT
+        console.log('🚫 [Cache] Skipping ownership research agents - using cached data');
+        await emitProgress(queryId, 'ownership_research', 'completed', { 
+          reason: 'cache_hit_skipped',
+          beneficiary: cachedResult.financial_beneficiary
+        });
+        
+        // Build structured trace for cache hit (only vision + cache stages)
         const cacheHitStages = [
           {
             stage: 'image_processing',
@@ -612,8 +648,9 @@ export async function POST(request: NextRequest) {
           }
         ];
         const structuredTrace = buildStructuredTrace(cacheHitStages, false, true);
-        // --- NEW: Always call copy generator ---
-        console.log('🎨 Calling copy generator...');
+        
+        // 🎨 ALWAYS GENERATE FRESH COPY (even on cache hit)
+        console.log('🎨 [Cache] Generating fresh copy for cached ownership data...');
         const generatedCopy = await generateOwnershipCopy({
           brand: cachedResult.brand,
           ultimateOwner: cachedResult.financial_beneficiary,
@@ -625,7 +662,8 @@ export async function POST(request: NextRequest) {
           reasoning: cachedResult.reasoning,
           beneficiaryFlag: cachedResult.beneficiary_flag
         });
-        console.log('✅ Generated copy:', generatedCopy);
+        console.log('✅ [Cache] Generated fresh copy:', generatedCopy);
+        
         const mergedResult = {
           success: true,
           product_name: cachedResult.product_name,
@@ -650,9 +688,11 @@ export async function POST(request: NextRequest) {
           query_id: queryId,
           generated_copy: generatedCopy
         };
+        
+        console.log('💾 [Cache] Returning cached result with fresh copy');
         return NextResponse.json(mergedResult);
       } else {
-        console.log('🧠 [Cache] MISS → Proceeding to ownership research');
+        console.log('❌ [Cache] MISS → Proceeding to ownership research');
         await emitProgress(queryId, 'cache_check', 'completed', { 
           success: true,
           hit: false,
@@ -712,6 +752,67 @@ export async function POST(request: NextRequest) {
         });
         
         console.log('✅ [Pipeline] Database save confirmed - ownership result persisted');
+        
+        // 💾 CACHE SAVING - Save successful ownership results to cache
+        try {
+          const cacheKey = makeCacheKey(currentProductData.brand || '', currentProductData.product_name);
+          console.log('💾 [Cache] Saving to cache with key:', cacheKey);
+          
+          // Save brand + product name entry
+          if (currentProductData.product_name) {
+            const { error: saveError } = await supabase
+              .from('products')
+              .upsert({
+                brand: currentProductData.brand?.toLowerCase().trim(),
+                product_name: currentProductData.product_name?.toLowerCase().trim(),
+                financial_beneficiary: ownershipResult.financial_beneficiary,
+                beneficiary_country: ownershipResult.beneficiary_country,
+                beneficiary_flag: ownershipResult.beneficiary_flag,
+                confidence_score: ownershipResult.confidence_score,
+                ownership_structure_type: ownershipResult.ownership_structure_type,
+                ownership_flow: ownershipResult.ownership_flow,
+                sources: ownershipResult.sources,
+                reasoning: ownershipResult.reasoning,
+                updated_at: new Date().toISOString()
+              });
+            
+            if (saveError) {
+              console.error('💾 [Cache] Error saving brand+product entry:', saveError);
+            } else {
+              console.log('💾 [Cache] Saved brand+product entry:', cacheKey);
+            }
+          }
+          
+          // Also save brand-only entry for broader matching
+          const brandKey = makeCacheKey(currentProductData.brand || '');
+          console.log('💾 [Cache] Saving brand-only entry:', brandKey);
+          
+          const { error: brandSaveError } = await supabase
+            .from('products')
+            .upsert({
+              brand: currentProductData.brand?.toLowerCase().trim(),
+              product_name: null, // Brand-only entry
+              financial_beneficiary: ownershipResult.financial_beneficiary,
+              beneficiary_country: ownershipResult.beneficiary_country,
+              beneficiary_flag: ownershipResult.beneficiary_flag,
+              confidence_score: ownershipResult.confidence_score,
+              ownership_structure_type: ownershipResult.ownership_structure_type,
+              ownership_flow: ownershipResult.ownership_flow,
+              sources: ownershipResult.sources,
+              reasoning: ownershipResult.reasoning,
+              updated_at: new Date().toISOString()
+            });
+          
+          if (brandSaveError) {
+            console.error('💾 [Cache] Error saving brand-only entry:', brandSaveError);
+          } else {
+            console.log('💾 [Cache] Saved brand-only entry:', brandKey);
+          }
+          
+        } catch (cacheError) {
+          console.error('💾 [Cache] Error during cache save:', cacheError);
+        }
+        
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
@@ -786,7 +887,7 @@ export async function POST(request: NextRequest) {
         {
           stage: 'cache_check',
           status: 'completed',
-          variables: { cacheKey: `${currentProductData.brand?.toLowerCase().trim() || ''} / ${currentProductData.product_name?.toLowerCase().trim() || ''}` },
+          variables: { cacheKey: makeCacheKey(currentProductData.brand || '', currentProductData.product_name) },
           output: { success: true, hit: false },
           duration: 87
         },
