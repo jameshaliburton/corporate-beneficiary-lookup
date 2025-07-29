@@ -849,7 +849,7 @@ export async function POST(request: NextRequest) {
           enableEvaluation: evaluation_mode,
           imageProcessingTrace: (currentProductData as any).image_processing_trace || (currentProductData as any).vision_trace || null,
           followUpContext
-        })
+        } as any)
       );
       
       // Reset evaluation logging
