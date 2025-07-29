@@ -72,6 +72,7 @@ export function ProductResult({
   publicTicker,
   generatedCopy
 }: ProductResultProps) {
+
   const [showTrace, setShowTrace] = useState(true);
   const [showMoreDetails, setShowMoreDetails] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -201,7 +202,9 @@ export function ProductResult({
               onClick={() => setShowMoreDetails(!showMoreDetails)}
               className="flex items-center justify-between w-full p-0 h-auto hover:bg-transparent"
             >
-              <span className="text-small font-medium">More Details</span>
+              <span className="text-small font-medium">
+                The Story of {ownershipChain.length > 0 ? ownershipChain[ownershipChain.length - 1]?.name : 'This Company'}
+              </span>
               {showMoreDetails ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -267,66 +270,66 @@ export function ProductResult({
           
           {showTrace && (
             <CardContent className="space-y-card-gap-sm p-card-padding pt-0 animate-accordion-down">
-              {generatedCopy?.traceSummary ? (
-                // Hybrid approach: Show original trace UI with LLM summaries
-                <div className="space-y-4">
-                  {/* Vision Analysis */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-vision">
-                        <Eye className="h-4 w-4" />
+              {/* Only show real execution trace - no static fallback */}
+              {traces && traces.length > 0 ? (
+                // Show actual execution trace using exact Lovable styling from TraceSection.tsx
+                <div className="space-y-3">
+                  {formatTraceStages(traces).map((section, sectionIndex) => {
+                    const getStageConfig = (title: string) => {
+                      switch (title) {
+                        case "Vision Analysis":
+                          return {
+                            icon: Eye,
+                            color: "trace-vision"
+                          };
+                        case "Data Retrieval":
+                          return {
+                            icon: Search,
+                            color: "trace-retrieval"
+                          };
+                        case "Ownership Mapping":
+                          return {
+                            icon: Building,
+                            color: "trace-ownership"
+                          };
+                        default:
+                          return {
+                            icon: Search,
+                            color: "trace-retrieval"
+                          };
+                      }
+                    };
+
+                    const config = getStageConfig(section.title);
+                    const StageIcon = config.icon;
+
+                    return (
+                      <div key={sectionIndex} className="flex gap-3 p-3 rounded-lg bg-muted/30">
+                        <div className={`flex-shrink-0 p-2 rounded-full bg-muted ${config.color}`}>
+                          <StageIcon className="h-4 w-4" />
+                        </div>
+                        
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-medium">{section.title}</h4>
+                              <Check className="h-3 w-3 text-success" />
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {section.description}
+                          </p>
+                        </div>
                       </div>
-                      <h4 className="text-sm font-medium text-foreground">Vision Analysis</h4>
-                      <Check className="h-3 w-3 text-success" />
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
-                      {generatedCopy.traceSummary.vision}
-                    </p>
-                  </div>
-                  
-                  {/* Data Retrieval */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-retrieval">
-                        <Search className="h-4 w-4" />
-                      </div>
-                      <h4 className="text-sm font-medium text-foreground">Data Retrieval</h4>
-                      <Check className="h-3 w-3 text-success" />
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
-                      {generatedCopy.traceSummary.retrieval}
-                    </p>
-                  </div>
-                  
-                  {/* Ownership Mapping */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-shrink-0 p-2 rounded-full bg-muted trace-ownership">
-                        <Building className="h-4 w-4" />
-                      </div>
-                      <h4 className="text-sm font-medium text-foreground">Ownership Mapping</h4>
-                      <Check className="h-3 w-3 text-success" />
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed ml-12">
-                      {generatedCopy.traceSummary.mapping}
-                    </p>
-                  </div>
+                    );
+                  })}
                 </div>
               ) : (
-                // Fallback to original trace formatting
-                formatTraceStages(traces).map((section, sectionIndex) => (
-                  <div key={sectionIndex} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-medium text-foreground">{section.title}</h4>
-                      <span className="text-xs text-muted-foreground">{section.description}</span>
-                    </div>
-                    <div className="space-y-2">
-                      {section.stages.map((trace, traceIndex) => (
-                        <TraceSection key={`${sectionIndex}-${traceIndex}`} {...trace} />
-                      ))}
-                    </div>
-                  </div>
-                ))
+                // No trace data available
+                <div className="text-sm text-muted-foreground">
+                  No trace information available for this search.
+                </div>
               )}
             </CardContent>
           )}
@@ -334,7 +337,7 @@ export function ProductResult({
       )}
 
       {/* Scan Another Product Button */}
-      <div className="pt-card-gap animate-reveal-slide" style={{ animationDelay: '0.8s' }}>
+      <div className="pt-card-gap pb-6 animate-reveal-slide" style={{ animationDelay: '0.8s' }}>
         <Button 
           onClick={() => router.push('/')}
           variant="outline"

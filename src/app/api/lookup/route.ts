@@ -181,10 +181,189 @@ function isProductDataMeaningful(productData: any): boolean {
   return hasQualityData;
 }
 
+// 🧠 SHARED CACHING FUNCTION FOR BOTH IMAGE AND MANUAL ENTRY
+async function lookupWithCache(brand: string, productName?: string, queryId?: string) {
+  const cacheKey = makeCacheKey(brand, productName);
+  console.log('🧠 [Shared Cache] Looking up key:', cacheKey);
+  
+  const cachedResult = await logAgentExecution('CacheLookup', async () => {
+    const normalizedBrand = brand?.toLowerCase().trim();
+    const normalizedProductName = productName?.toLowerCase().trim();
+    
+    if (!normalizedBrand) {
+      console.log('🧠 [Shared Cache] SKIP → Missing brand name');
+      return null;
+    }
+    
+    // Try brand + product name first
+    if (normalizedProductName) {
+      const { data: brandProductData, error: brandProductError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('brand', normalizedBrand)
+        .eq('product_name', normalizedProductName)
+        .limit(1);
+      
+      if (brandProductError) {
+        console.error('[Shared Cache] Database error:', brandProductError);
+      } else if (brandProductData && brandProductData.length > 0) {
+        console.log('🧠 [Shared Cache] HIT → Brand + Product:', normalizedBrand, '+', normalizedProductName);
+        return brandProductData[0];
+      }
+    }
+    
+    // Fallback to brand-only lookup
+    const { data: brandData, error: brandError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('brand', normalizedBrand)
+      .limit(1);
+    
+    if (brandError) {
+      console.error('[Shared Cache] Database error:', brandError);
+      return null;
+    }
+    
+    if (brandData && brandData.length > 0) {
+      console.log('🧠 [Shared Cache] HIT → Brand only:', normalizedBrand);
+      return brandData[0];
+    }
+    
+    console.log('🧠 [Shared Cache] MISS → No cached data found');
+    return null;
+  });
+  
+  if (cachedResult && cachedResult.financial_beneficiary && cachedResult.financial_beneficiary !== 'Unknown') {
+    console.log('✅ [Shared Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
+    
+    if (queryId) {
+      await emitProgress(queryId, 'cache_check', 'completed', { 
+        success: true,
+        hit: true,
+        beneficiary: cachedResult.financial_beneficiary,
+        confidence: cachedResult.confidence_score
+      });
+    }
+    
+    // 🎨 ALWAYS GENERATE FRESH COPY (even on cache hit)
+    console.log('🎨 [Shared Cache] Generating fresh copy for cached ownership data...');
+    const generatedCopy = await generateOwnershipCopy({
+      brand: cachedResult.brand,
+      ultimateOwner: cachedResult.financial_beneficiary,
+      ultimateCountry: cachedResult.beneficiary_country,
+      ownershipChain: cachedResult.ownership_flow || [],
+      confidence: cachedResult.confidence_score || 0,
+      ownershipStructureType: cachedResult.ownership_structure_type,
+      sources: cachedResult.sources || [],
+      reasoning: cachedResult.reasoning,
+      beneficiaryFlag: cachedResult.beneficiary_flag
+    });
+    console.log('✅ [Shared Cache] Generated fresh copy:', generatedCopy);
+    
+    return {
+      success: true,
+      product_name: cachedResult.product_name,
+      brand: cachedResult.brand,
+      financial_beneficiary: cachedResult.financial_beneficiary,
+      beneficiary_country: cachedResult.beneficiary_country,
+      beneficiary_flag: cachedResult.beneficiary_flag,
+      confidence_score: cachedResult.confidence_score,
+      ownership_structure_type: cachedResult.ownership_structure_type,
+              ownership_flow: Array.isArray(cachedResult.ownership_flow) 
+          ? cachedResult.ownership_flow.map(item => 
+              typeof item === 'string' ? JSON.parse(item) : item
+            )
+          : cachedResult.ownership_flow,
+      sources: cachedResult.sources,
+      reasoning: cachedResult.reasoning,
+      result_type: 'cache_hit',
+      pipeline_type: 'cache_hit',
+      generated_copy: generatedCopy,
+      cache_hit: true
+    };
+  } else {
+    console.log('❌ [Shared Cache] MISS → Proceeding to ownership research');
+    
+    if (queryId) {
+      await emitProgress(queryId, 'cache_check', 'completed', { 
+        success: true,
+        hit: false,
+        reason: cachedResult ? 'no_valid_beneficiary' : 'not_found'
+      });
+    }
+    
+    return null; // Cache miss, need to run full pipeline
+  }
+}
+
+// 🧠 SHARED CACHE SAVING FUNCTION
+async function saveToCache(brand: string, productName: string, ownershipResult: any) {
+  if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
+    try {
+      const cacheKey = makeCacheKey(brand, productName);
+      console.log('💾 [Shared Cache] Saving to cache with key:', cacheKey);
+
+      // Save brand + product name entry
+      if (productName) {
+        const { error: saveError } = await supabase
+          .from('products')
+          .upsert({
+            brand: brand?.toLowerCase().trim(),
+            product_name: productName?.toLowerCase().trim(),
+            financial_beneficiary: ownershipResult.financial_beneficiary,
+            beneficiary_country: ownershipResult.beneficiary_country,
+            beneficiary_flag: ownershipResult.beneficiary_flag,
+            confidence_score: ownershipResult.confidence_score,
+            ownership_structure_type: ownershipResult.ownership_structure_type,
+            ownership_flow: ownershipResult.ownership_flow,
+            sources: ownershipResult.sources,
+            reasoning: ownershipResult.reasoning,
+            updated_at: new Date().toISOString()
+          });
+
+        if (saveError) {
+          console.error('💾 [Shared Cache] Error saving brand+product entry:', saveError);
+        } else {
+          console.log('💾 [Shared Cache] Saved brand+product entry:', cacheKey);
+        }
+      }
+
+      // Also save brand-only entry for broader matching
+      const brandKey = makeCacheKey(brand);
+      console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
+
+      const { error: brandSaveError } = await supabase
+        .from('products')
+        .upsert({
+          brand: brand?.toLowerCase().trim(),
+          product_name: null, // Brand-only entry
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          beneficiary_country: ownershipResult.beneficiary_country,
+          beneficiary_flag: ownershipResult.beneficiary_flag,
+          confidence_score: ownershipResult.confidence_score,
+          ownership_structure_type: ownershipResult.ownership_structure_type,
+          ownership_flow: ownershipResult.ownership_flow,
+          sources: ownershipResult.sources,
+          reasoning: ownershipResult.reasoning,
+          updated_at: new Date().toISOString()
+        });
+
+      if (brandSaveError) {
+        console.error('💾 [Shared Cache] Error saving brand-only entry:', brandSaveError);
+      } else {
+        console.log('💾 [Shared Cache] Saved brand-only entry:', brandKey);
+      }
+
+    } catch (cacheError) {
+      console.error('💾 [Shared Cache] Error during cache save:', cacheError);
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null } = body;
+    const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null } = body;
     
     // 🧠 FEATURE FLAG LOGGING
     logFeatureFlags();
@@ -229,6 +408,45 @@ export async function POST(request: NextRequest) {
     try {
       let currentProductData = null;
       let visionContext = null;
+      
+      // 🧠 EARLY CACHE CHECK FOR BOTH IMAGE AND MANUAL ENTRY
+      // Check cache immediately if we have brand/product data from manual entry
+      if (brand || product_name) {
+        console.log('🔍 [Early Cache] Checking cache for manual entry data:', { brand, product_name });
+        await emitProgress(queryId, 'cache_check', 'started', { 
+          brand, 
+          product_name,
+          barcode: identifier
+        });
+        
+        const cachedResult = await lookupWithCache(brand || '', product_name, queryId);
+        
+        if (cachedResult && cachedResult.cache_hit) {
+          console.log('✅ [Early Cache] HIT → Returning cached result for manual entry');
+          
+          // Build structured trace for early cache hit
+          const earlyCacheHitStages = [
+            {
+              stage: 'cache_check',
+              status: 'completed',
+              variables: { brand, product_name, hit: true },
+              output: { success: true, hit: true, beneficiary: cachedResult.financial_beneficiary },
+              duration: 87
+            }
+          ];
+          const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
+          
+          return NextResponse.json({
+            ...cachedResult,
+            barcode: identifier,
+            user_contributed: !!(product_name || brand),
+            agent_execution_trace: structuredTrace,
+            query_id: queryId
+          });
+        } else {
+          console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for manual entry');
+        }
+      }
       
       // 🧠 VISION-FIRST PIPELINE LOGIC
       // Step 1: Vision Analysis (if image provided)
@@ -494,6 +712,61 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // 🧠 EARLY CACHE CHECK FOR IMAGE-BASED REQUESTS
+      // After quality assessment, check cache for image-extracted data
+      if (currentProductData && (currentProductData.brand || currentProductData.product_name)) {
+        console.log('🔍 [Early Cache] Checking cache for image-extracted data:', { 
+          brand: currentProductData.brand, 
+          product_name: currentProductData.product_name 
+        });
+        
+        const cachedResult = await lookupWithCache(
+          currentProductData.brand || '', 
+          currentProductData.product_name, 
+          queryId
+        );
+        
+        if (cachedResult && cachedResult.cache_hit) {
+          console.log('✅ [Early Cache] HIT → Returning cached result for image-extracted data');
+          
+          // Build structured trace for early cache hit with vision stages
+          const earlyCacheHitStages = [
+            {
+              stage: 'image_processing',
+              status: 'completed',
+              variables: { hasImage: !!image_base64 },
+              output: { success: true },
+              duration: 50
+            },
+            {
+              stage: 'ocr_extraction',
+              status: 'completed',
+              variables: { hasImage: !!image_base64, hasProductData: !!(currentProductData.product_name || currentProductData.brand) },
+              output: { success: true, extractedText: currentProductData.product_name || currentProductData.brand || 'No text extracted' },
+              duration: 100
+            },
+            {
+              stage: 'cache_check',
+              status: 'completed',
+              variables: { brand: currentProductData.brand, product_name: currentProductData.product_name, hit: true },
+              output: { success: true, hit: true, beneficiary: cachedResult.financial_beneficiary },
+              duration: 87
+            }
+          ];
+          const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
+          
+          return NextResponse.json({
+            ...cachedResult,
+            barcode: identifier,
+            user_contributed: !!(product_name || brand),
+            agent_execution_trace: structuredTrace,
+            query_id: queryId
+          });
+        } else {
+          console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for image-extracted data');
+        }
+      }
+
       // 🧠 VISION-FIRST PIPELINE: Vision analysis is now handled in Step 1 above
       // Legacy vision analysis section removed - vision is now processed first
 
@@ -544,161 +817,9 @@ export async function POST(request: NextRequest) {
       });
       console.log('✅ [Stage] ocr_extraction DONE in 100ms');
       
-      // Step 6: Cache Check (ALWAYS EXECUTE)
-      console.log('🔍 [Pipeline] Running cache check for:', { brand: currentProductData.brand, product_name: currentProductData.product_name });
-      await emitProgress(queryId, 'cache_check', 'started', { 
-        brand: currentProductData.brand, 
-        product_name: currentProductData.product_name,
-        barcode: identifier
-      });
-      
-      // Cache check enforcement - must run before any LLM/lookup stages
-      console.log('✅ [Pipeline] Cache check enforced - running before ownership research');
-      
-      // Perform actual cache lookup with normalized keys
-      const cacheKey = makeCacheKey(currentProductData.brand || '', currentProductData.product_name);
-      console.log('🧠 [Cache] Looking up key:', cacheKey);
-      
-      const cachedResult = await logAgentExecution('CacheLookup', async () => {
-        // Direct cache lookup with normalized keys
-        const normalizedBrand = currentProductData.brand?.toLowerCase().trim();
-        const normalizedProductName = currentProductData.product_name?.toLowerCase().trim();
-        
-        if (!normalizedBrand) {
-          console.log('🧠 [Cache] SKIP → Missing brand name');
-          return null;
-        }
-        
-        // Try brand + product name first
-        if (normalizedProductName) {
-          const { data: brandProductData, error: brandProductError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('brand', normalizedBrand)
-            .eq('product_name', normalizedProductName)
-            .limit(1);
-          
-          if (brandProductError) {
-            console.error('[Cache] Database error:', brandProductError);
-          } else if (brandProductData && brandProductData.length > 0) {
-            console.log('🧠 [Cache] HIT → Brand + Product:', normalizedBrand, '+', normalizedProductName);
-            return brandProductData[0];
-          }
-        }
-        
-        // Fallback to brand-only lookup
-        const { data: brandData, error: brandError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('brand', normalizedBrand)
-          .limit(1);
-        
-        if (brandError) {
-          console.error('[Cache] Database error:', brandError);
-          return null;
-        }
-        
-        if (brandData && brandData.length > 0) {
-          console.log('🧠 [Cache] HIT → Brand only:', normalizedBrand);
-          return brandData[0];
-        }
-        
-        console.log('🧠 [Cache] MISS → No cached data found');
-        return null;
-      });
-      
-      if (cachedResult && cachedResult.financial_beneficiary && cachedResult.financial_beneficiary !== 'Unknown') {
-        console.log('✅ [Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
-        await emitProgress(queryId, 'cache_check', 'completed', { 
-          success: true,
-          hit: true,
-          beneficiary: cachedResult.financial_beneficiary,
-          confidence: cachedResult.confidence_score
-        });
-        
-        // 🚫 SKIP OWNERSHIP RESEARCH AGENTS ON CACHE HIT
-        console.log('🚫 [Cache] Skipping ownership research agents - using cached data');
-        await emitProgress(queryId, 'ownership_research', 'completed', { 
-          reason: 'cache_hit_skipped',
-          beneficiary: cachedResult.financial_beneficiary
-        });
-        
-        // Build structured trace for cache hit (only vision + cache stages)
-        const cacheHitStages = [
-          {
-            stage: 'image_processing',
-            status: 'completed',
-            variables: { hasImage: !!image_base64 },
-            output: { success: true },
-            duration: 50
-          },
-          {
-            stage: 'ocr_extraction',
-            status: 'completed',
-            variables: { hasImage: !!image_base64, hasProductData: !!(currentProductData.product_name || currentProductData.brand) },
-            output: { success: true, extractedText: currentProductData.product_name || currentProductData.brand || 'No text extracted' },
-            duration: 100
-          },
-          {
-            stage: 'cache_check',
-            status: 'completed',
-            variables: { cacheKey, hit: true, beneficiary: cachedResult.financial_beneficiary },
-            output: { success: true, hit: true, beneficiary: cachedResult.financial_beneficiary },
-            duration: 87
-          }
-        ];
-        const structuredTrace = buildStructuredTrace(cacheHitStages, false, true);
-        
-        // 🎨 ALWAYS GENERATE FRESH COPY (even on cache hit)
-        console.log('🎨 [Cache] Generating fresh copy for cached ownership data...');
-        const generatedCopy = await generateOwnershipCopy({
-          brand: cachedResult.brand,
-          ultimateOwner: cachedResult.financial_beneficiary,
-          ultimateCountry: cachedResult.beneficiary_country,
-          ownershipChain: cachedResult.ownership_flow || [],
-          confidence: cachedResult.confidence_score || 0,
-          ownershipStructureType: cachedResult.ownership_structure_type,
-          sources: cachedResult.sources || [],
-          reasoning: cachedResult.reasoning,
-          beneficiaryFlag: cachedResult.beneficiary_flag
-        });
-        console.log('✅ [Cache] Generated fresh copy:', generatedCopy);
-        
-        const mergedResult = {
-          success: true,
-          product_name: cachedResult.product_name,
-          brand: cachedResult.brand,
-          barcode: identifier,
-          financial_beneficiary: cachedResult.financial_beneficiary,
-          beneficiary_country: cachedResult.beneficiary_country,
-          beneficiary_flag: cachedResult.beneficiary_flag,
-          confidence_score: cachedResult.confidence_score,
-          ownership_structure_type: cachedResult.ownership_structure_type,
-          ownership_flow: Array.isArray(cachedResult.ownership_flow) 
-            ? cachedResult.ownership_flow.map(item => 
-                typeof item === 'string' ? JSON.parse(item) : item
-              )
-            : cachedResult.ownership_flow,
-          sources: cachedResult.sources,
-          reasoning: cachedResult.reasoning,
-          result_type: 'cache_hit',
-          user_contributed: !!(product_name || brand),
-          agent_execution_trace: structuredTrace,
-          pipeline_type: 'cache_hit',
-          query_id: queryId,
-          generated_copy: generatedCopy
-        };
-        
-        console.log('💾 [Cache] Returning cached result with fresh copy');
-        return NextResponse.json(mergedResult);
-      } else {
-        console.log('❌ [Cache] MISS → Proceeding to ownership research');
-        await emitProgress(queryId, 'cache_check', 'completed', { 
-          success: true,
-          hit: false,
-          reason: cachedResult ? 'no_valid_beneficiary' : 'not_found'
-        });
-      }
+      // Step 6: Cache Check (ALREADY DONE EARLIER)
+      console.log('🔍 [Pipeline] Cache check already completed earlier in pipeline');
+      console.log('✅ [Pipeline] Proceeding to ownership research (cache was MISS)');
       
       // Step 7: Enhanced Ownership Research (Vision-First Pipeline) - ONLY if cache miss
       await emitProgress(queryId, 'ownership_research', 'started', { 
@@ -726,7 +847,8 @@ export async function POST(request: NextRequest) {
           brand: currentProductData.brand,
           hints: researchHints,
           enableEvaluation: evaluation_mode,
-          imageProcessingTrace: (currentProductData as any).image_processing_trace || (currentProductData as any).vision_trace || null
+          imageProcessingTrace: (currentProductData as any).image_processing_trace || (currentProductData as any).vision_trace || null,
+          followUpContext
         })
       );
       
@@ -753,65 +875,8 @@ export async function POST(request: NextRequest) {
         
         console.log('✅ [Pipeline] Database save confirmed - ownership result persisted');
         
-        // 💾 CACHE SAVING - Save successful ownership results to cache
-        try {
-          const cacheKey = makeCacheKey(currentProductData.brand || '', currentProductData.product_name);
-          console.log('💾 [Cache] Saving to cache with key:', cacheKey);
-          
-          // Save brand + product name entry
-          if (currentProductData.product_name) {
-            const { error: saveError } = await supabase
-              .from('products')
-              .upsert({
-                brand: currentProductData.brand?.toLowerCase().trim(),
-                product_name: currentProductData.product_name?.toLowerCase().trim(),
-                financial_beneficiary: ownershipResult.financial_beneficiary,
-                beneficiary_country: ownershipResult.beneficiary_country,
-                beneficiary_flag: ownershipResult.beneficiary_flag,
-                confidence_score: ownershipResult.confidence_score,
-                ownership_structure_type: ownershipResult.ownership_structure_type,
-                ownership_flow: ownershipResult.ownership_flow,
-                sources: ownershipResult.sources,
-                reasoning: ownershipResult.reasoning,
-                updated_at: new Date().toISOString()
-              });
-            
-            if (saveError) {
-              console.error('💾 [Cache] Error saving brand+product entry:', saveError);
-            } else {
-              console.log('💾 [Cache] Saved brand+product entry:', cacheKey);
-            }
-          }
-          
-          // Also save brand-only entry for broader matching
-          const brandKey = makeCacheKey(currentProductData.brand || '');
-          console.log('💾 [Cache] Saving brand-only entry:', brandKey);
-          
-          const { error: brandSaveError } = await supabase
-            .from('products')
-            .upsert({
-              brand: currentProductData.brand?.toLowerCase().trim(),
-              product_name: null, // Brand-only entry
-              financial_beneficiary: ownershipResult.financial_beneficiary,
-              beneficiary_country: ownershipResult.beneficiary_country,
-              beneficiary_flag: ownershipResult.beneficiary_flag,
-              confidence_score: ownershipResult.confidence_score,
-              ownership_structure_type: ownershipResult.ownership_structure_type,
-              ownership_flow: ownershipResult.ownership_flow,
-              sources: ownershipResult.sources,
-              reasoning: ownershipResult.reasoning,
-              updated_at: new Date().toISOString()
-            });
-          
-          if (brandSaveError) {
-            console.error('💾 [Cache] Error saving brand-only entry:', brandSaveError);
-          } else {
-            console.log('💾 [Cache] Saved brand-only entry:', brandKey);
-          }
-          
-        } catch (cacheError) {
-          console.error('💾 [Cache] Error during cache save:', cacheError);
-        }
+        // 💾 SHARED CACHE SAVING - Save successful ownership results to cache
+        await saveToCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
         
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
@@ -1035,31 +1100,6 @@ function buildStructuredTrace(
     type: typeof s 
   })));
   
-  // Define all possible stages and their sections
-  const stageDefinitions = {
-    // Vision section - only include if there are actual vision stages
-    ...(executedStages.some(s => s?.stage === 'image_processing' || s?.stage === 'ocr_extraction') ? {
-      image_processing: { section: 'vision', label: 'Image Processing' },
-      ocr_extraction: { section: 'vision', label: 'OCR Extraction' }
-    } : {}),
-    
-    // Retrieval section
-    cache_check: { section: 'retrieval', label: 'Cache Check' },
-    sheets_mapping: { section: 'retrieval', label: 'Sheets Mapping' },
-    static_mapping: { section: 'retrieval', label: 'Static Mapping' },
-    rag_retrieval: { section: 'retrieval', label: 'RAG Retrieval' },
-    query_builder: { section: 'retrieval', label: 'Query Builder' },
-    
-    // Ownership section
-    llm_first_analysis: { section: 'ownership', label: 'LLM First Analysis' },
-    ownership_analysis: { section: 'ownership', label: 'Ownership Analysis' },
-    web_research: { section: 'ownership', label: 'Web Research' },
-    validation: { section: 'ownership', label: 'Validation' },
-    
-    // Persistence section
-    database_save: { section: 'persistence', label: 'Database Save' }
-  };
-  
   // Get executed stage IDs with robust null checks
   const executedStageIds = new Set(
     executedStages
@@ -1069,92 +1109,101 @@ function buildStructuredTrace(
   
   console.log('[Trace] Valid executed stage IDs:', Array.from(executedStageIds));
   
-  // Build sections
-  const sections = ['vision', 'retrieval', 'ownership', 'persistence'].map(sectionId => {
+  // Define stage definitions based on what actually ran
+  const stageDefinitions = {
+    // Vision section - only include if there are actual vision stages
+    ...(executedStageIds.has('image_processing') || executedStageIds.has('ocr_extraction') ? {
+      image_processing: { section: 'vision', label: 'Image Processing' },
+      ocr_extraction: { section: 'vision', label: 'OCR Extraction' }
+    } : {}),
+    
+    // Retrieval section - only include stages that actually ran
+    ...(executedStageIds.has('cache_check') ? { cache_check: { section: 'retrieval', label: 'Cache Check' } } : {}),
+    ...(executedStageIds.has('sheets_mapping') ? { sheets_mapping: { section: 'retrieval', label: 'Sheets Mapping' } } : {}),
+    ...(executedStageIds.has('static_mapping') ? { static_mapping: { section: 'retrieval', label: 'Static Mapping' } } : {}),
+    ...(executedStageIds.has('rag_retrieval') ? { rag_retrieval: { section: 'retrieval', label: 'RAG Retrieval' } } : {}),
+    ...(executedStageIds.has('query_builder') ? { query_builder: { section: 'retrieval', label: 'Query Builder' } } : {}),
+    
+    // Ownership section - only include stages that actually ran
+    ...(executedStageIds.has('llm_first_analysis') ? { llm_first_analysis: { section: 'ownership', label: 'LLM First Analysis' } } : {}),
+    ...(executedStageIds.has('ownership_analysis') ? { ownership_analysis: { section: 'ownership', label: 'Ownership Analysis' } } : {}),
+    ...(executedStageIds.has('web_research') ? { web_research: { section: 'ownership', label: 'Web Research' } } : {}),
+    ...(executedStageIds.has('validation') ? { validation: { section: 'ownership', label: 'Validation' } } : {}),
+    
+    // Persistence section - only include stages that actually ran
+    ...(executedStageIds.has('database_save') ? { database_save: { section: 'persistence', label: 'Database Save' } } : {})
+  };
+  
+  // Build sections - only include sections that have stages
+  const sections = [];
+  const sectionIds = ['vision', 'retrieval', 'ownership', 'persistence'];
+  
+  for (const sectionId of sectionIds) {
     const sectionStages = [];
     
     // Find all stages that belong to this section
     for (const [stageId, definition] of Object.entries(stageDefinitions)) {
       if (definition.section === sectionId) {
-        const wasExecuted = executedStageIds.has(stageId);
-        
-        // Always include stages, but mark skipped ones appropriately
-        const stageData = wasExecuted 
-          ? executedStages.find(s => s && s.stage === stageId) || {}
-          : { stage: stageId };
+        const stageData = executedStages.find(s => s && s.stage === stageId) || {};
         
         const stage = {
           id: stageId,
           label: definition.label,
-          ...(wasExecuted ? {
-            inputVariables: stageData.variables || {},
-            outputVariables: stageData.output || {},
-            intermediateVariables: stageData.intermediate || {},
-            durationMs: stageData.duration || 0,
-            model: stageData.model,
-            promptTemplate: stageData.promptTemplate,
-            completionSample: stageData.completionSample,
-            notes: stageData.notes,
-            // Add prompt information for dashboard compatibility
-            prompt: stageData.prompt || (() => {
-              // For vision stages, use actual vision prompts
-              if (sectionId === 'vision') {
-                console.log(`[Trace] 🔍 Generating prompt for vision stage: ${stageId}`);
-                const { getPromptBuilder } = require('@/lib/agents/prompt-registry.js');
-                try {
-                  const promptBuilder = getPromptBuilder('VISION_AGENT', 'v1.0');
-                  const visionPrompt = promptBuilder({ 
-                    barcode: stageData.variables?.barcode,
-                    partialData: stageData.variables?.partialData 
-                  });
-                  console.log(`[Trace] ✅ Generated vision prompt for ${stageId}:`, {
-                    hasSystem: !!visionPrompt.system_prompt,
-                    hasUser: !!visionPrompt.user_prompt
-                  });
-                  return {
-                    system: visionPrompt.system_prompt,
-                    user: visionPrompt.user_prompt
-                  };
-                } catch (error) {
-                  console.warn('[Trace] ❌ Could not get vision prompt:', error.message);
-                }
+          inputVariables: stageData.variables || {},
+          outputVariables: stageData.output || {},
+          intermediateVariables: stageData.intermediate || {},
+          durationMs: stageData.duration || 0,
+          model: stageData.model,
+          promptTemplate: stageData.promptTemplate,
+          completionSample: stageData.completionSample,
+          notes: stageData.notes,
+          // Add prompt information for dashboard compatibility
+          prompt: stageData.prompt || (() => {
+            // For vision stages, use actual vision prompts
+            if (sectionId === 'vision') {
+              console.log(`[Trace] 🔍 Generating prompt for vision stage: ${stageId}`);
+              const { getPromptBuilder } = require('@/lib/agents/prompt-registry.js');
+              try {
+                const promptBuilder = getPromptBuilder('VISION_AGENT', 'v1.0');
+                const visionPrompt = promptBuilder({ 
+                  barcode: stageData.variables?.barcode,
+                  partialData: stageData.variables?.partialData 
+                });
+                console.log(`[Trace] ✅ Generated vision prompt for ${stageId}:`, {
+                  hasSystem: !!visionPrompt.system_prompt,
+                  hasUser: !!visionPrompt.user_prompt
+                });
+                return {
+                  system: visionPrompt.system_prompt,
+                  user: visionPrompt.user_prompt
+                };
+              } catch (error) {
+                console.warn('[Trace] ❌ Could not get vision prompt:', error.message);
               }
-              
-              // Fallback to generic prompt
-              console.log(`[Trace] 🔄 Using fallback prompt for stage: ${stageId}`);
-              return {
-                system: 'You are an ownership research specialist',
-                user: `Determine the owner of brand: ${stageData.variables?.brand || 'Unknown'}`
-              };
-            })(),
-          } : {}),
-          ...(markSkippedStages && !wasExecuted ? { skipped: true } : {})
+            }
+            
+            // Fallback to generic prompt
+            console.log(`[Trace] 🔄 Using fallback prompt for stage: ${stageId}`);
+            return {
+              system: 'You are an AI assistant helping with corporate ownership research.',
+              user: `Process the ${stageId} stage for ownership analysis.`
+            };
+          })()
         };
         
         sectionStages.push(stage);
-        
-        // Log stage status
-        if (wasExecuted) {
-          console.log(`[Trace] ✅ Ran stage: ${stageId}`);
-        } else {
-          console.log(`[Trace] ⚠️ Skipped stage: ${stageId}`);
-        }
       }
     }
     
-    // Only include section if it has stages
+    // Only include sections that have stages
     if (sectionStages.length > 0) {
-      console.log(`[Trace] ✅ Including section: ${sectionId} with ${sectionStages.length} stages`);
-      return {
+      sections.push({
         id: sectionId,
         label: sectionId.charAt(0).toUpperCase() + sectionId.slice(1),
         stages: sectionStages
-      };
+      });
     }
-    
-    console.log(`[Trace] ⚠️ Skipping empty section: ${sectionId}`);
-    return null;
-  }).filter(Boolean);
+  }
   
   return {
     sections,

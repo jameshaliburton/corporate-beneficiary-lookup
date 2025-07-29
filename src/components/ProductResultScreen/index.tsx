@@ -98,6 +98,13 @@ interface ProductResult {
     flag?: string;
     ultimate?: boolean;
   }>;
+  ownership_chain?: Array<{
+    name: string;
+    country?: string;
+    role?: string;
+    confidence?: number;
+    sources?: string[];
+  }>;
   lookup_trace?: {
     barcode: string;
     start_time: string;
@@ -117,6 +124,22 @@ interface ProductResult {
     brand?: string;
     product_name?: string;
     barcode?: string;
+    // New format with sections
+    sections?: Array<{
+      id: string;
+      label: string;
+      stages: Array<{
+        id?: string;
+        label?: string;
+        status?: string;
+        skipped?: boolean;
+        description?: string;
+        durationMs?: number;
+        outputVariables?: any;
+        error?: string;
+      }>;
+    }>;
+    // Old format with stages array
     stages?: Array<{
       stage_id?: string;
       stage?: string;
@@ -172,6 +195,14 @@ interface ProductResult {
       factors: Record<string, any>;
     }>;
   };
+  alternatives?: Array<{
+    name: string;
+    type: string;
+    country: string;
+    confidence: number;
+    reason: string;
+    sources: string[];
+  }>;
   contextual_clues?: {
     step: string;
     step_name: string;
@@ -257,26 +288,26 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
 
   // Ownership trail: always show at least brand and unknown owner if no parent found
   const ownershipTrailData = result ? (
-    result.ownership_flow && result.ownership_flow.length > 0 ? 
-      result.ownership_flow.map((company, index) => ({
+    (result.ownership_flow && result.ownership_flow.length > 0) || (result.ownership_chain && result.ownership_chain.length > 0) ? 
+      (result.ownership_flow || result.ownership_chain).map((company: any, index: number) => ({
         name: company.name,
-        country: company.country || 'Unknown',
-        type: company.type || 'Unknown',
-        flag: company.flag || getFlag(company.country),
-        ultimate: company.ultimate || index === result.ownership_flow!.length - 1,
+        country: company.country || result.beneficiary_country || 'Unknown',
+        type: company.type || company.role || 'Unknown',
+        flag: company.flag || getFlag(company.country || result.beneficiary_country),
+        ultimate: company.ultimate || index === (result.ownership_flow || result.ownership_chain)!.length - 1,
       })) : [
         {
           name: result.brand || 'Unknown Brand',
-          country: 'Unknown',
+          country: result.beneficiary_country || 'Unknown',
           type: 'Brand',
-          flag: '🏳️',
+          flag: result.beneficiary_flag || getFlag(result.beneficiary_country),
           ultimate: false,
         },
         {
-          name: 'Unknown Owner',
-          country: 'Unknown',
+          name: result.financial_beneficiary || 'Unknown Owner',
+          country: result.beneficiary_country || 'Unknown',
           type: 'Ultimate Owner',
-          flag: '❓',
+          flag: result.beneficiary_flag || getFlag(result.beneficiary_country),
           ultimate: true,
         }
       ]
@@ -284,14 +315,20 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
 
   const confidenceData = result ? {
     confidence: (() => {
-      if (!result.confidence_score) return 'Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
-      if (result.confidence_score >= 90) return 'Very High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
-      if (result.confidence_score >= 80) return 'High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
-      if (result.confidence_score >= 60) return 'Medium' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
-      if (result.confidence_score >= 30) return 'Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      const score = result.confidence_score || 0;
+      // Handle both decimal (0.92) and percentage (92) formats
+      const normalizedScore = score <= 1 ? score * 100 : score;
+      if (normalizedScore >= 90) return 'Very High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (normalizedScore >= 80) return 'High' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (normalizedScore >= 60) return 'Medium' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
+      if (normalizedScore >= 30) return 'Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
       return 'Very Low' as 'Very High' | 'High' | 'Medium' | 'Low' | 'Very Low';
     })(),
-    attribution: result.confidence_score || 0,
+    attribution: (() => {
+      const score = result.confidence_score || 0;
+      // Convert to percentage if in decimal format
+      return score <= 1 ? score * 100 : score;
+    })(),
     sources: result.sources?.length || 0,
     // Enhanced confidence data
     factors: result.confidence_factors,
@@ -308,24 +345,58 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     sources: mockData.sources,
   };
 
-  // Trace: map backend fields correctly
-  const traceData = result?.agent_execution_trace?.stages ? 
-    result.agent_execution_trace.stages.map((stage: any) => {
-      let status: 'success' | 'error' | 'in_progress' | 'pending' = 'pending';
-      if (stage.result === 'success') status = 'success';
-      else if (stage.result === 'error') status = 'error';
-      else if (stage.result === 'in_progress') status = 'in_progress';
-      else if (stage.result === 'hit') status = 'success';
-      else if (stage.result === 'miss') status = 'error';
-      else if (stage.result === 'not_available') status = 'pending';
-      return {
-        step: stage.stage || 'Unknown Step',
-        description: stage.description || 'No description available',
-        status,
-        duration: stage.duration_ms || 0,
-        details: stage.data ? JSON.stringify(stage.data) : (stage.error || 'No details available'),
-      };
-    }) : mockData.trace;
+  // Trace: map backend fields correctly - handle both old and new trace formats
+  const traceData = result?.agent_execution_trace ? 
+    (() => {
+      // New format with sections
+      if (result.agent_execution_trace.sections) {
+        const allStages: any[] = [];
+        result.agent_execution_trace.sections.forEach((section: any) => {
+          if (section.stages) {
+            section.stages.forEach((stage: any) => {
+              if (!stage.skipped) {
+                let status: 'success' | 'error' | 'in_progress' | 'pending' = 'pending';
+                if (stage.status === 'success' || stage.status === 'completed') status = 'success';
+                else if (stage.status === 'error' || stage.status === 'failed') status = 'error';
+                else if (stage.status === 'in_progress') status = 'in_progress';
+                else if (stage.status === 'hit') status = 'success';
+                else if (stage.status === 'miss') status = 'error';
+                else if (stage.status === 'not_available') status = 'pending';
+                
+                allStages.push({
+                  step: stage.id || stage.label || 'Unknown Step',
+                  description: stage.description || 'No description available',
+                  status,
+                  duration: stage.durationMs || 0,
+                  details: stage.outputVariables ? JSON.stringify(stage.outputVariables) : (stage.error || 'No details available'),
+                });
+              }
+            });
+          }
+        });
+        return allStages;
+      }
+      // Old format with stages array
+      else if (result.agent_execution_trace.stages) {
+        return result.agent_execution_trace.stages.map((stage: any) => {
+          let status: 'success' | 'error' | 'in_progress' | 'pending' = 'pending';
+          if (stage.result === 'success') status = 'success';
+          else if (stage.result === 'error') status = 'error';
+          else if (stage.result === 'in_progress') status = 'in_progress';
+          else if (stage.result === 'hit') status = 'success';
+          else if (stage.result === 'miss') status = 'error';
+          else if (stage.result === 'not_available') status = 'pending';
+          return {
+            step: stage.stage || 'Unknown Step',
+            description: stage.description || 'No description available',
+            status,
+            duration: stage.duration_ms || 0,
+            details: stage.data ? JSON.stringify(stage.data) : (stage.error || 'No details available'),
+          };
+        });
+      }
+      return mockData.trace;
+    })() : mockData.trace;
 
   // Helper function to check if we have enhanced trace data
   const hasEnhancedTrace = (trace: any): boolean => {
@@ -377,6 +448,36 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       )}
       
       <OwnershipTrail steps={ownershipTrailData} />
+      
+      {/* Show alternatives if available */}
+      {result?.alternatives && result.alternatives.length > 0 && (
+        <div className="mb-6">
+          <div className="font-semibold text-lg mb-2 flex items-center gap-2">
+            <span role="img" aria-label="alternatives">🔄</span>
+            Alternatives
+          </div>
+          <div className="space-y-3">
+            {result.alternatives.map((alternative, index) => (
+              <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-base">{alternative.name}</div>
+                  <div className="text-sm font-medium text-gray-600">
+                    {alternative.confidence}%
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 mb-2">
+                  <span className="font-medium">Type:</span> {alternative.type} • 
+                  <span className="font-medium ml-2">Country:</span> {alternative.country}
+                </div>
+                <div className="text-sm text-gray-700">
+                  <span className="font-medium">Reason:</span> {alternative.reason}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <EnhancedConfidenceAttribution 
         confidence={confidenceData.confidence} 
         score={confidenceData.attribution}
