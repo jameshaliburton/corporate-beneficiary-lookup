@@ -1,0 +1,1632 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ProductResultScreen E2E Tests > LLM Copy Timing > renders LLM copy only once after results are finalized 1`] = `
+<div>
+  <div
+    class="max-w-lg mx-auto p-4 pb-24"
+  >
+    <div
+      class="flex flex-col items-start gap-1 mb-4"
+    >
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex items-center justify-center w-8 h-8"
+        >
+          <div
+            class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600"
+          >
+            O
+          </div>
+        </div>
+        <div
+          class="text-xs text-gray-500"
+        >
+          OK Snacks A/S
+        </div>
+      </div>
+      <div
+        class="text-lg font-bold leading-tight"
+      >
+        Pork Rinds
+      </div>
+      <div
+        class="text-xs text-gray-400"
+      >
+        Barcode: 
+        1234567890123
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="font-semibold text-lg mb-2 flex items-center gap-2"
+      >
+        <span
+          aria-label="ownership"
+          role="img"
+        >
+          🧬
+        </span>
+         Ownership
+      </div>
+      <div
+        class="flex overflow-x-auto gap-3 pb-2"
+      >
+        <div
+          class="min-w-[120px] max-w-[180px] bg-yellow-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-yellow-300"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="text-2xl"
+            >
+              🇩🇰
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            OK Snacks A/S
+          </div>
+          <div
+            class="text-xs font-medium text-yellow-800 bg-white rounded px-2 py-0.5 mb-1 border border-yellow-300"
+            style="letter-spacing: 0.2px;"
+          >
+            Brand
+          </div>
+        </div>
+        <div
+          class="flex items-center self-center"
+        >
+          <span
+            class="text-2xl text-gray-300 mx-1"
+          >
+            →
+          </span>
+        </div>
+        <div
+          class="min-w-[120px] max-w-[180px] bg-gray-100 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-gray-200"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="text-2xl"
+            >
+              🇩🇰
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Kims A/S
+          </div>
+          <div
+            class="text-xs font-medium text-gray-500 bg-white rounded px-2 py-0.5 mb-1 border border-gray-200"
+            style="letter-spacing: 0.2px;"
+          >
+            Parent
+          </div>
+        </div>
+        <div
+          class="flex items-center self-center"
+        >
+          <span
+            class="text-2xl text-gray-300 mx-1"
+          >
+            →
+          </span>
+        </div>
+        <div
+          class="min-w-[120px] max-w-[180px] bg-blue-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-2 border-blue-500"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="text-2xl"
+            >
+              🇳🇴
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Orkla ASA
+          </div>
+          <div
+            class="text-xs font-medium text-blue-800 bg-white rounded px-2 py-0.5 mb-1 border border-blue-400"
+            style="letter-spacing: 0.2px;"
+          >
+            Ultimate Owner
+          </div>
+          <div
+            class="text-sm text-blue-700 font-bold mt-1 flex items-center gap-1"
+          >
+            🎯 Ultimate Owner
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mb-4"
+    >
+      <div
+        class="flex items-center gap-2 "
+      >
+        <div
+          class="rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 flex items-center gap-1.5 font-medium bg-green-100 text-green-800 border-green-200"
+        >
+          <span
+            class="text-green-600"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-check h-3 w-3"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M20 6 9 17l-5-5"
+              />
+            </svg>
+          </span>
+          Verified
+        </div>
+      </div>
+    </div>
+    <div
+      style="background: rgb(255, 255, 255); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.25rem 1rem; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto;"
+    >
+      <div
+        style="font-weight: 600; font-size: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"
+      >
+        <span
+          aria-label="confidence"
+          role="img"
+        >
+          📊
+        </span>
+         Confidence Assessment
+      </div>
+      <div
+        style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;"
+      >
+        <span
+          style="background: rgb(220, 252, 231); color: rgb(22, 101, 52); font-weight: 600; font-size: 15px; border-radius: 8px; padding: 4px 14px; display: inline-block;"
+        >
+          Very High
+           
+          (92%)
+        </span>
+        <button
+          style="font-size: 13px; color: rgb(37, 99, 235); text-decoration: underline; cursor: pointer; background: none; padding: 0px;"
+        >
+          Show details
+        </button>
+      </div>
+      <div
+        style="margin-top: 12px; display: flex; gap: 8px;"
+      >
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(220, 252, 231); color: rgb(22, 101, 52); border: 1px solid rgb(187, 247, 208); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          🙋 Confirm Result
+        </button>
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(254, 226, 226); color: rgb(220, 38, 38); border: 1px solid rgb(254, 202, 202); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          ❗ Flag Issue
+        </button>
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="space-y-2 "
+      >
+        <h4
+          class="text-sm font-medium text-foreground"
+        >
+          Sources
+        </h4>
+        <div
+          class="space-y-2"
+        >
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  www.ok-snacks.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://www.ok-snacks.com/uk/about-ok-snacks.aspx
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://www.ok-snacks.com/uk/about-ok-snacks.aspx"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  www.kims.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://www.kims.com/about-us
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://www.kims.com/about-us"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  www.orkla.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://www.orkla.com/our-business
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://www.orkla.com/our-business"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm mb-4 p-4"
+    >
+      <div
+        class="flex items-center justify-between cursor-pointer"
+      >
+        <h3
+          class="text-lg font-semibold text-blue-900"
+        >
+          🤔 How did we get this result?
+        </h3>
+        <button
+          aria-controls="process-trace-content"
+          aria-expanded="false"
+          class="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded-md transition-colors"
+        >
+          Show
+        </button>
+      </div>
+    </div>
+    <div
+      class="flex justify-center my-4"
+    >
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+      >
+        📝 Manual Entry
+      </button>
+    </div>
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-3"
+    >
+      <div
+        class="max-w-lg mx-auto"
+      >
+        <div
+          class="flex gap-2"
+        >
+          <button
+            class="flex-1 px-3 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1 border border-green-200"
+          >
+            📤 Share
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mt-8 text-center"
+    >
+      <span
+        class="text-xs font-mono text-gray-500 text-gray-400"
+      >
+        ABC123
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ProductResultScreen E2E Tests > Snapshot Tests > matches snapshot for ambiguous result 1`] = `
+<div>
+  <div
+    class="max-w-lg mx-auto p-4 pb-24"
+  >
+    <div
+      class="flex flex-col items-start gap-1 mb-4"
+    >
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex items-center justify-center w-8 h-8"
+        >
+          <div
+            class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+          />
+        </div>
+        <div
+          class="text-xs text-gray-500"
+        >
+          OK Snacks A/S
+        </div>
+      </div>
+      <div
+        class="text-lg font-bold leading-tight"
+      >
+        Pork Rinds
+      </div>
+      <div
+        class="text-xs text-gray-400"
+      >
+        Barcode: 
+        1234567890123
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="font-semibold text-lg mb-2 flex items-center gap-2"
+      >
+        <span
+          aria-label="ownership"
+          role="img"
+        >
+          🧬
+        </span>
+         Ownership
+      </div>
+      <div
+        class="flex overflow-x-auto gap-3 pb-2"
+      >
+        <div
+          class="min-w-[120px] max-w-[180px] bg-yellow-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-2 border-blue-500"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            OK Snacks A/S
+          </div>
+          <div
+            class="text-xs font-medium text-yellow-800 bg-white rounded px-2 py-0.5 mb-1 border border-yellow-300"
+            style="letter-spacing: 0.2px;"
+          >
+            Brand
+          </div>
+          <div
+            class="text-sm text-blue-700 font-bold mt-1 flex items-center gap-1"
+          >
+            🎯 Ultimate Owner
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="font-semibold text-lg mb-2 flex items-center gap-2"
+      >
+        <span
+          aria-label="alternatives"
+          role="img"
+        >
+          🔄
+        </span>
+        Alternatives
+      </div>
+      <div
+        class="space-y-3"
+      >
+        <div
+          class="bg-gray-50 rounded-lg p-4 border border-gray-200"
+        >
+          <div
+            class="flex items-center justify-between mb-2"
+          >
+            <div
+              class="font-semibold text-base"
+            >
+              OK Benzin A/S
+            </div>
+            <div
+              class="text-sm font-medium text-gray-600"
+            >
+              60
+              %
+            </div>
+          </div>
+          <div
+            class="text-sm text-gray-600 mb-2"
+          >
+            <span
+              class="font-medium"
+            >
+              Type:
+            </span>
+             
+            Brand
+             •
+            <span
+              class="font-medium ml-2"
+            >
+              Country:
+            </span>
+             
+            Denmark
+          </div>
+          <div
+            class="text-sm text-gray-700"
+          >
+            <span
+              class="font-medium"
+            >
+              Reason:
+            </span>
+             
+            Same country, different industry (fuel)
+          </div>
+        </div>
+        <div
+          class="bg-gray-50 rounded-lg p-4 border border-gray-200"
+        >
+          <div
+            class="flex items-center justify-between mb-2"
+          >
+            <div
+              class="font-semibold text-base"
+            >
+              OK Foods
+            </div>
+            <div
+              class="text-sm font-medium text-gray-600"
+            >
+              40
+              %
+            </div>
+          </div>
+          <div
+            class="text-sm text-gray-600 mb-2"
+          >
+            <span
+              class="font-medium"
+            >
+              Type:
+            </span>
+             
+            Brand
+             •
+            <span
+              class="font-medium ml-2"
+            >
+              Country:
+            </span>
+             
+            United States
+          </div>
+          <div
+            class="text-sm text-gray-700"
+          >
+            <span
+              class="font-medium"
+            >
+              Reason:
+            </span>
+             
+            Different country and industry (poultry)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mb-4"
+    >
+      <div
+        class="flex items-center gap-2 "
+      >
+        <div
+          class="rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5 font-medium bg-yellow-100 text-yellow-800 border-yellow-200"
+        >
+          <span
+            class="text-yellow-600"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-triangle-alert h-3 w-3"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+              />
+              <path
+                d="M12 9v4"
+              />
+              <path
+                d="M12 17h.01"
+              />
+            </svg>
+          </span>
+          Unverified
+        </div>
+      </div>
+    </div>
+    <div
+      style="background: rgb(255, 255, 255); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.25rem 1rem; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto;"
+    >
+      <div
+        style="font-weight: 600; font-size: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"
+      >
+        <span
+          aria-label="confidence"
+          role="img"
+        >
+          📊
+        </span>
+         Confidence Assessment
+      </div>
+      <div
+        style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;"
+      >
+        <span
+          style="background: rgb(220, 252, 231); color: rgb(22, 101, 52); font-weight: 600; font-size: 15px; border-radius: 8px; padding: 4px 14px; display: inline-block;"
+        >
+          Very High
+           
+          (92%)
+        </span>
+        <button
+          style="font-size: 13px; color: rgb(37, 99, 235); text-decoration: underline; cursor: pointer; background: none; padding: 0px;"
+        >
+          Show details
+        </button>
+      </div>
+      <div
+        style="margin-top: 12px; display: flex; gap: 8px;"
+      >
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(220, 252, 231); color: rgb(22, 101, 52); border: 1px solid rgb(187, 247, 208); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          🙋 Confirm Result
+        </button>
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(254, 226, 226); color: rgb(220, 38, 38); border: 1px solid rgb(254, 202, 202); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          ❗ Flag Issue
+        </button>
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="space-y-2 "
+      >
+        <h4
+          class="text-sm font-medium text-foreground"
+        >
+          Sources
+        </h4>
+        <div
+          class="space-y-2"
+        >
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  www.ok-snacks.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://www.ok-snacks.com/uk/about-ok-snacks.aspx
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://www.ok-snacks.com/uk/about-ok-snacks.aspx"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm mb-4 p-4"
+    >
+      <div
+        class="flex items-center justify-between cursor-pointer"
+      >
+        <h3
+          class="text-lg font-semibold text-blue-900"
+        >
+          🤔 How did we get this result?
+        </h3>
+        <button
+          aria-controls="process-trace-content"
+          aria-expanded="false"
+          class="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded-md transition-colors"
+        >
+          Show
+        </button>
+      </div>
+    </div>
+    <div
+      class="flex justify-center my-4"
+    >
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+      >
+        📝 Manual Entry
+      </button>
+    </div>
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-3"
+    >
+      <div
+        class="max-w-lg mx-auto"
+      >
+        <div
+          class="flex gap-2"
+        >
+          <button
+            class="flex-1 px-3 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1 border border-green-200"
+          >
+            📤 Share
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mt-8 text-center"
+    >
+      <span
+        class="text-xs font-mono text-gray-500 text-gray-400"
+      >
+        ABC123
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ProductResultScreen E2E Tests > Snapshot Tests > matches snapshot for unknown result 1`] = `
+<div>
+  <div
+    class="max-w-lg mx-auto p-4 pb-24"
+  >
+    <div
+      class="flex flex-col items-start gap-1 mb-4"
+    >
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex items-center justify-center w-8 h-8"
+        >
+          <div
+            class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+          />
+        </div>
+        <div
+          class="text-xs text-gray-500"
+        >
+          Unknown Brand
+        </div>
+      </div>
+      <div
+        class="text-lg font-bold leading-tight"
+      >
+        Unknown Product
+      </div>
+      <div
+        class="text-xs text-gray-400"
+      >
+        Barcode: 
+        Unknown Barcode
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="font-semibold text-lg mb-2 flex items-center gap-2"
+      >
+        <span
+          aria-label="ownership"
+          role="img"
+        >
+          🧬
+        </span>
+         Ownership
+      </div>
+      <div
+        class="flex overflow-x-auto gap-3 pb-2"
+      >
+        <div
+          class="min-w-[120px] max-w-[180px] bg-yellow-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-yellow-300"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Unknown Brand
+          </div>
+          <div
+            class="text-xs font-medium text-yellow-800 bg-white rounded px-2 py-0.5 mb-1 border border-yellow-300"
+            style="letter-spacing: 0.2px;"
+          >
+            Brand
+          </div>
+        </div>
+        <div
+          class="flex items-center self-center"
+        >
+          <span
+            class="text-2xl text-gray-300 mx-1"
+          >
+            →
+          </span>
+        </div>
+        <div
+          class="min-w-[120px] max-w-[180px] bg-blue-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-2 border-blue-500"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Unknown Owner
+          </div>
+          <div
+            class="text-xs font-medium text-blue-800 bg-white rounded px-2 py-0.5 mb-1 border border-blue-400"
+            style="letter-spacing: 0.2px;"
+          >
+            Ultimate Owner
+          </div>
+          <div
+            class="text-sm text-blue-700 font-bold mt-1 flex items-center gap-1"
+          >
+            🎯 Ultimate Owner
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mb-4"
+    >
+      <div
+        class="flex items-center gap-2 "
+      >
+        <div
+          class="rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5 font-medium bg-yellow-100 text-yellow-800 border-yellow-200"
+        >
+          <span
+            class="text-yellow-600"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-triangle-alert h-3 w-3"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+              />
+              <path
+                d="M12 9v4"
+              />
+              <path
+                d="M12 17h.01"
+              />
+            </svg>
+          </span>
+          Unverified
+        </div>
+      </div>
+    </div>
+    <div
+      style="background: rgb(255, 255, 255); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.25rem 1rem; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto;"
+    >
+      <div
+        style="font-weight: 600; font-size: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"
+      >
+        <span
+          aria-label="confidence"
+          role="img"
+        >
+          📊
+        </span>
+         Confidence Assessment
+      </div>
+      <div
+        style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;"
+      >
+        <span
+          style="background: rgb(254, 226, 226); color: rgb(220, 38, 38); font-weight: 600; font-size: 15px; border-radius: 8px; padding: 4px 14px; display: inline-block;"
+        >
+          Very Low
+           
+          (0%)
+        </span>
+        <button
+          style="font-size: 13px; color: rgb(37, 99, 235); text-decoration: underline; cursor: pointer; background: none; padding: 0px;"
+        >
+          Show details
+        </button>
+      </div>
+      <div
+        style="margin-top: 12px; display: flex; gap: 8px;"
+      >
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(220, 252, 231); color: rgb(22, 101, 52); border: 1px solid rgb(187, 247, 208); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          🙋 Confirm Result
+        </button>
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(254, 226, 226); color: rgb(220, 38, 38); border: 1px solid rgb(254, 202, 202); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          ❗ Flag Issue
+        </button>
+      </div>
+    </div>
+    <div
+      class="bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm mb-4 p-4"
+    >
+      <div
+        class="flex items-center justify-between cursor-pointer"
+      >
+        <h3
+          class="text-lg font-semibold text-blue-900"
+        >
+          🤔 How did we get this result?
+        </h3>
+        <button
+          aria-controls="process-trace-content"
+          aria-expanded="false"
+          class="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded-md transition-colors"
+        >
+          Show
+        </button>
+      </div>
+    </div>
+    <div
+      class="flex justify-center my-4"
+    >
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+      >
+        📝 Manual Entry
+      </button>
+    </div>
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-3"
+    >
+      <div
+        class="max-w-lg mx-auto"
+      >
+        <div
+          class="flex gap-2"
+        >
+          <button
+            class="flex-1 px-3 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1 border border-green-200"
+          >
+            📤 Share
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mt-8 text-center"
+    >
+      <span
+        class="text-xs font-mono text-gray-500 text-gray-400"
+      >
+        ABC123
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ProductResultScreen E2E Tests > Snapshot Tests > matches snapshot for verified result 1`] = `
+<div>
+  <div
+    class="max-w-lg mx-auto p-4 pb-24"
+  >
+    <div
+      class="flex flex-col items-start gap-1 mb-4"
+    >
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex items-center justify-center w-8 h-8"
+        >
+          <div
+            class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+          />
+        </div>
+        <div
+          class="text-xs text-gray-500"
+        >
+          OK Snacks A/S
+        </div>
+      </div>
+      <div
+        class="text-lg font-bold leading-tight"
+      >
+        Pork Rinds
+      </div>
+      <div
+        class="text-xs text-gray-400"
+      >
+        Barcode: 
+        1234567890123
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="font-semibold text-lg mb-2 flex items-center gap-2"
+      >
+        <span
+          aria-label="ownership"
+          role="img"
+        >
+          🧬
+        </span>
+         Ownership
+      </div>
+      <div
+        class="flex overflow-x-auto gap-3 pb-2"
+      >
+        <div
+          class="min-w-[120px] max-w-[180px] bg-yellow-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-yellow-300"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            OK Snacks A/S
+          </div>
+          <div
+            class="text-xs font-medium text-yellow-800 bg-white rounded px-2 py-0.5 mb-1 border border-yellow-300"
+            style="letter-spacing: 0.2px;"
+          >
+            Brand
+          </div>
+        </div>
+        <div
+          class="flex items-center self-center"
+        >
+          <span
+            class="text-2xl text-gray-300 mx-1"
+          >
+            →
+          </span>
+        </div>
+        <div
+          class="min-w-[120px] max-w-[180px] bg-gray-100 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-gray-200"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Kims A/S
+          </div>
+          <div
+            class="text-xs font-medium text-gray-500 bg-white rounded px-2 py-0.5 mb-1 border border-gray-200"
+            style="letter-spacing: 0.2px;"
+          >
+            Parent
+          </div>
+        </div>
+        <div
+          class="flex items-center self-center"
+        >
+          <span
+            class="text-2xl text-gray-300 mx-1"
+          >
+            →
+          </span>
+        </div>
+        <div
+          class="min-w-[120px] max-w-[180px] bg-blue-50 rounded-xl shadow-sm p-3 flex flex-col items-center relative border border-2 border-blue-500"
+        >
+          <div
+            class="mb-1 flex items-center justify-center"
+          >
+            <div
+              class="w-8 h-8 flex items-center justify-center"
+            >
+              <div
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"
+              />
+            </div>
+          </div>
+          <div
+            class="font-semibold text-base mb-1 text-center"
+          >
+            Orkla ASA
+          </div>
+          <div
+            class="text-xs font-medium text-blue-800 bg-white rounded px-2 py-0.5 mb-1 border border-blue-400"
+            style="letter-spacing: 0.2px;"
+          >
+            Ultimate Owner
+          </div>
+          <div
+            class="text-sm text-blue-700 font-bold mt-1 flex items-center gap-1"
+          >
+            🎯 Ultimate Owner
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mb-4"
+    >
+      <div
+        class="flex items-center gap-2 "
+      >
+        <div
+          class="rounded-full border px-2.5 py-0.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-primary/80 flex items-center gap-1.5 font-medium bg-green-100 text-green-800 border-green-200"
+        >
+          <span
+            class="text-green-600"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-check h-3 w-3"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M20 6 9 17l-5-5"
+              />
+            </svg>
+          </span>
+          Verified
+        </div>
+      </div>
+    </div>
+    <div
+      style="background: rgb(255, 255, 255); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.25rem 1rem; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto;"
+    >
+      <div
+        style="font-weight: 600; font-size: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"
+      >
+        <span
+          aria-label="confidence"
+          role="img"
+        >
+          📊
+        </span>
+         Confidence Assessment
+      </div>
+      <div
+        style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;"
+      >
+        <span
+          style="background: rgb(220, 252, 231); color: rgb(22, 101, 52); font-weight: 600; font-size: 15px; border-radius: 8px; padding: 4px 14px; display: inline-block;"
+        >
+          High
+           
+          (88%)
+        </span>
+        <button
+          style="font-size: 13px; color: rgb(37, 99, 235); text-decoration: underline; cursor: pointer; background: none; padding: 0px;"
+        >
+          Show details
+        </button>
+      </div>
+      <div
+        style="margin-top: 12px; display: flex; gap: 8px;"
+      >
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(220, 252, 231); color: rgb(22, 101, 52); border: 1px solid rgb(187, 247, 208); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          🙋 Confirm Result
+        </button>
+        <button
+          style="flex: 1 1 0%; padding: 8px 12px; background: rgb(254, 226, 226); color: rgb(220, 38, 38); border: 1px solid rgb(254, 202, 202); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;"
+        >
+          ❗ Flag Issue
+        </button>
+      </div>
+    </div>
+    <div
+      class="mb-6"
+    >
+      <div
+        class="space-y-2 "
+      >
+        <h4
+          class="text-sm font-medium text-foreground"
+        >
+          Sources
+        </h4>
+        <div
+          class="space-y-2"
+        >
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  registry.example.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://registry.example.com
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://registry.example.com"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  www.ok-snacks.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://www.ok-snacks.com
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://www.ok-snacks.com"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+          <div
+            class="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
+          >
+            <div
+              class="flex items-center gap-2 flex-1 min-w-0"
+            >
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-medium truncate"
+                >
+                  corporate.example.com
+                </div>
+                <div
+                  class="text-xs text-muted-foreground truncate"
+                >
+                  https://corporate.example.com
+                </div>
+              </div>
+            </div>
+            <a
+              class="text-muted-foreground hover:text-foreground transition-colors"
+              href="https://corporate.example.com"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                aria-hidden="true"
+                class="lucide lucide-external-link h-4 w-4"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm mb-4 p-4"
+    >
+      <div
+        class="flex items-center justify-between cursor-pointer"
+      >
+        <h3
+          class="text-lg font-semibold text-blue-900"
+        >
+          🤔 How did we get this result?
+        </h3>
+        <button
+          aria-controls="process-trace-content"
+          aria-expanded="false"
+          class="px-3 py-1 text-sm font-medium text-blue-700 hover:text-blue-900 hover:bg-blue-100 rounded-md transition-colors"
+        >
+          Show
+        </button>
+      </div>
+    </div>
+    <div
+      class="bg-green-50 rounded-lg border-2 border-green-200 shadow-sm mb-4 p-4"
+    >
+      <div
+        class="flex items-center justify-between cursor-pointer"
+      >
+        <h3
+          class="text-lg font-semibold text-green-900"
+        >
+          🔍 Trace
+        </h3>
+        <button
+          aria-controls="trace-content"
+          aria-expanded="false"
+          class="px-3 py-1 text-sm font-medium text-green-700 hover:text-green-900 hover:bg-green-100 rounded-md transition-colors"
+        >
+          Show Steps
+        </button>
+      </div>
+    </div>
+    <div
+      class="flex justify-center my-4"
+    >
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+      >
+        📝 Manual Entry
+      </button>
+    </div>
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-3"
+    >
+      <div
+        class="max-w-lg mx-auto"
+      >
+        <div
+          class="flex gap-2"
+        >
+          <button
+            class="flex-1 px-3 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1 border border-green-200"
+          >
+            📤 Share
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      class="mt-8 text-center"
+    >
+      <span
+        class="text-xs font-mono text-gray-500 text-gray-400"
+      >
+        ABC123
+      </span>
+    </div>
+  </div>
+</div>
+`;

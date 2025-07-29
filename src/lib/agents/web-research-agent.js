@@ -855,11 +855,11 @@ function compileResearchResults(searchResults, scrapedData, businessData) {
 
 /**
  * Helper function to check if web research is available
- * DISABLED: Web research temporarily disabled to speed up pipeline
+ * ENABLED: Web research enabled for enhanced agent timeout/retry testing
  */
 export function isWebResearchAvailable() {
-  console.log('[WebResearchAgent] Web research DISABLED for performance')
-  return false
+  console.log('[WebResearchAgent] Web research ENABLED for enhanced agent timeout/retry testing')
+  return true
 }
 
 /**

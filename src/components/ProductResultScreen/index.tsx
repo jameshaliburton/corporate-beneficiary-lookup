@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductHeader from './ProductHeader';
 import OwnershipTrail from './OwnershipTrail';
 import EnhancedConfidenceAttribution from './EnhancedConfidenceAttribution';
@@ -11,6 +11,10 @@ import StickyActionBar from './StickyActionBar';
 import LookupTrace from './LookupTrace';
 import { ContextualCluesDisplay } from './ContextualCluesDisplay';
 import { InlineBuildInfo } from '@/components/BuildInfo';
+import { VerificationPill } from '@/components/VerificationPill';
+import { SourcesDisplay } from '@/components/SourcesDisplay';
+import { ShareModal } from '../ShareModal';
+import ResearchSummary from './ResearchSummary';
 
 // Mock data for demo
 const mockData = {
@@ -79,7 +83,11 @@ interface ProductResult {
   beneficiary_flag?: string;
   confidence?: number;
   verification_status?: string;
+  verification_reasoning?: string;
   sources?: string[];
+  trusted_sources?: string[];
+  verified_sources?: string[];
+  highly_likely_sources?: string[];
   reasoning?: string;
   result_type?: string;
   error?: string;
@@ -195,6 +203,28 @@ interface ProductResult {
       factors: Record<string, any>;
     }>;
   };
+  agent_results?: {
+    query_builder?: {
+      success: boolean;
+      data?: any;
+      reasoning?: string;
+    };
+    web_research?: {
+      success: boolean;
+      data?: any;
+      reasoning?: string;
+    };
+    ownership_analysis?: {
+      success: boolean;
+      data?: any;
+      reasoning?: string;
+    };
+    llm_first_analysis?: {
+      success: boolean;
+      data?: any;
+      reasoning?: string;
+    };
+  };
   alternatives?: Array<{
     name: string;
     type: string;
@@ -248,6 +278,17 @@ interface ProductResultScreenProps {
 }
 
 const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother, result }) => {
+  // Debug logging
+  console.log('[ProductResultScreen] Component rendered with result:', {
+    hasResult: !!result,
+    brand: result?.brand,
+    productName: result?.product_name,
+    confidenceScore: result?.confidence_score,
+    resultType: result?.result_type,
+    agentResults: !!result?.agent_results,
+    agentExecutionTrace: !!result?.agent_execution_trace
+  });
+
   // Use real result data if provided, otherwise use mock data for demo
   const data = result || mockData;
   
@@ -433,6 +474,8 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
     }
   };
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
       <ProductHeader product={productData} />
@@ -478,6 +521,16 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
         </div>
       )}
       
+      {/* Verification Status */}
+      {result?.verification_status && (
+        <div className="mb-4">
+          <VerificationPill 
+            status={result.verification_status as 'verified' | 'highly_likely' | 'unverified'}
+            reasoning={result.verification_reasoning}
+          />
+        </div>
+      )}
+      
       <EnhancedConfidenceAttribution 
         confidence={confidenceData.confidence} 
         score={confidenceData.attribution}
@@ -485,7 +538,33 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
         breakdown={confidenceData.breakdown}
         reasoning={confidenceData.reasoning}
       />
+      
+      {/* Sources Display */}
+      {result?.sources && result.sources.length > 0 && (
+        <div className="mb-6">
+          <SourcesDisplay 
+            sources={result.sources}
+            trustedSources={result.trusted_sources || []}
+            verifiedSources={result.verified_sources || []}
+            highlyLikelySources={result.highly_likely_sources || []}
+          />
+        </div>
+      )}
       <ProcessTrace reasoning={result?.reasoning || data.reasoning || 'No reasoning available'} />
+      
+      {/* Research Summary Section */}
+      <ResearchSummary
+        brand={productData.brand}
+        productName={productData.name}
+        confidence={confidenceData.attribution}
+        confidenceLevel={confidenceData.confidence}
+        reasoning={result?.reasoning}
+        resultType={result?.result_type}
+        sources={result?.sources}
+        agentResults={result?.agent_results}
+        agentExecutionTrace={result?.agent_execution_trace}
+      />
+      
       {result?.agent_execution_trace && hasEnhancedTrace(result.agent_execution_trace) ? (
         <EnhancedTraceViewer trace={result.agent_execution_trace as any} />
       ) : result?.agent_execution_trace ? (
@@ -502,12 +581,26 @@ const ProductResultScreen: React.FC<ProductResultScreenProps> = ({ onScanAnother
       {manualLoading && <div className="text-center text-blue-600 mt-2">Looking up ownership...</div>}
       {manualError && <div className="text-center text-red-600 mt-2">{manualError}</div>}
       {manualResult && <div className="text-center text-green-600 mt-2">Ownership found: {JSON.stringify(manualResult)}</div>}
-      <StickyActionBar onScanAnother={onScanAnother} />
+      <StickyActionBar onScanAnother={onScanAnother} onShare={() => setIsShareModalOpen(true)} />
       
       {/* Build info for version tracking */}
       <div className="mt-8 text-center">
         <InlineBuildInfo variant="compact" className="text-gray-400" />
       </div>
+
+      {/* Share Modal */}
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)}
+        brand={productData.brand}
+        owner={ownershipTrailData[ownershipTrailData.length - 1]?.name || 'Unknown'}
+        ownershipChain={ownershipTrailData.map((step, index) => ({
+          name: step.name,
+          country: step.country || 'Unknown',
+          countryFlag: step.flag || '🏳️',
+          avatar: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' fill='%23${index === 0 ? 'FF6B6B' : index === 1 ? '4ECDC4' : '45B7D1'}%3E/%3Ctext x='22' y='22' font-family='Arial' font-size='10' fill='white' text-anchor='middle' dy='.3em'%3E${step.name.substring(0, 6)}%3C/text%3E%3C/svg%3E`
+        }))}
+      />
     </div>
   );
 };

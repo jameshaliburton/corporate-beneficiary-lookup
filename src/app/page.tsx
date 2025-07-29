@@ -59,7 +59,11 @@ export default function CameraPage() {
       return; // Don't proceed if no image was captured
     }
 
+    // Immediately set scanning to true to hide camera
     setIsScanning(true);
+    
+    // Add a small delay to ensure the state update is processed
+    await new Promise(resolve => setTimeout(resolve, 50));
     
     try {
       console.log('📸 Camera capture triggered, calling real pipeline API...');
@@ -174,12 +178,10 @@ export default function CameraPage() {
       console.log('❌ Navigating to error page:', resultUrl);
       
       router.push(resultUrl);
-    } finally {
-      setIsScanning(false);
     }
   };
 
-  // Show loading screen when scanning
+  // Show loading screen when scanning - completely separate from camera page
   if (isScanning) {
     return (
       <div className="min-h-screen bg-background dark-gradient flex items-center justify-center">
@@ -205,17 +207,21 @@ export default function CameraPage() {
             </p>
           </div>
           
-          <VideoCapture onCapture={handleCapture} isScanning={isScanning} />
+          {!isScanning && (
+            <VideoCapture onCapture={handleCapture} isScanning={isScanning} />
+          )}
           
-          <div className="text-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => router.push('/manual')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Search by name instead
-            </Button>
-          </div>
+          {!isScanning && (
+            <div className="text-center">
+              <Button 
+                variant="ghost" 
+                onClick={() => router.push('/manual')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Search by name instead
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

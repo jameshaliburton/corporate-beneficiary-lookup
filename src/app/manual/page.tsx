@@ -50,8 +50,8 @@ export default function ManualPage() {
       const rawPipelineResult = await response.json();
       console.log('📦 Raw pipeline result:', rawPipelineResult);
 
-      // Check if the search was successful (confidence > 50)
-      if (rawPipelineResult.success && rawPipelineResult.brand && rawPipelineResult.confidence_score > 50) {
+      // Check if the search was successful (confidence > 30)
+      if (rawPipelineResult.success && rawPipelineResult.brand && rawPipelineResult.confidence_score > 30) {
         // Successful search - proceed to results
         const pipelineResult = cleanPipelineResult(rawPipelineResult);
         

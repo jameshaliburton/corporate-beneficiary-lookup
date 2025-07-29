@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { formatTraceStages } from "@/lib/utils/trace-formatter";
 import { findCompanyLogoWithTimeout } from "@/lib/services/logo-finder";
+import ResearchSummary from "./ProductResultScreen/ResearchSummary";
 
 interface ProductResultProps {
   brand: string;
@@ -22,6 +23,11 @@ interface ProductResultProps {
   analysisText?: string;
   acquisitionYear?: number;
   publicTicker?: string;
+  // Agent results and execution trace for ResearchSummary
+  agentResults?: any;
+  agentExecutionTrace?: any;
+  resultType?: string;
+  sources?: string[];
   // LLM-generated copy for engaging storytelling
   generatedCopy?: {
     headline: string;
@@ -70,6 +76,10 @@ export function ProductResult({
   analysisText,
   acquisitionYear,
   publicTicker,
+  agentResults,
+  agentExecutionTrace,
+  resultType,
+  sources,
   generatedCopy
 }: ProductResultProps) {
 
@@ -335,6 +345,19 @@ export function ProductResult({
           )}
         </Card>
       )}
+
+      {/* How We Found These Results Section */}
+      <ResearchSummary
+        brand={brand}
+        productName={brand}
+        confidence={confidence}
+        confidenceLevel={confidence >= 90 ? 'Very High' : confidence >= 75 ? 'High' : confidence >= 50 ? 'Medium' : 'Low'}
+        reasoning={analysisText}
+        resultType={resultType || "ai_research"}
+        sources={sources || []}
+        agentResults={agentResults}
+        agentExecutionTrace={agentExecutionTrace}
+      />
 
       {/* Scan Another Product Button */}
       <div className="pt-card-gap pb-6 animate-reveal-slide" style={{ animationDelay: '0.8s' }}>

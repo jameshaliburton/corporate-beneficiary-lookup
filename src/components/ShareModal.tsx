@@ -1,7 +1,7 @@
+import React, { useState } from 'react';
 import { X, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 
 interface ShareModalProps {

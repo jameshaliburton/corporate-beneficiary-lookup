@@ -276,7 +276,9 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
           : cachedResult.ownership_flow,
       sources: cachedResult.sources,
       reasoning: cachedResult.reasoning,
-      result_type: 'cache_hit',
+      agent_results: cachedResult.agent_results,
+      agent_execution_trace: cachedResult.agent_execution_trace,
+      result_type: cachedResult.result_type || 'cache_hit',
       pipeline_type: 'cache_hit',
       generated_copy: generatedCopy,
       cache_hit: true
@@ -318,6 +320,8 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             ownership_flow: ownershipResult.ownership_flow,
             sources: ownershipResult.sources,
             reasoning: ownershipResult.reasoning,
+            agent_results: ownershipResult.agent_results,
+            result_type: ownershipResult.result_type,
             updated_at: new Date().toISOString()
           });
 
@@ -345,6 +349,8 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           ownership_flow: ownershipResult.ownership_flow,
           sources: ownershipResult.sources,
           reasoning: ownershipResult.reasoning,
+          agent_results: ownershipResult.agent_results,
+          result_type: ownershipResult.result_type,
           updated_at: new Date().toISOString()
         });
 
@@ -1028,6 +1034,7 @@ export async function POST(request: NextRequest) {
           : ownershipResult.ownership_flow,
         sources: ownershipResult.sources,
         reasoning: ownershipResult.reasoning,
+        agent_results: ownershipResult.agent_results,
         result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
         user_contributed: !!(product_name || brand),
         agent_execution_trace: sharedTrace,

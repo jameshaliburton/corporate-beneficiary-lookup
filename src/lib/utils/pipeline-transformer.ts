@@ -26,6 +26,7 @@ export interface PipelineResult {
   }>;
   sources?: string[];
   reasoning?: string;
+  agent_results?: any;
   agent_execution_trace?: {
     sections?: Array<{
       id?: string;
@@ -97,6 +98,11 @@ export interface ProductResultProps {
   traces: TraceData[];
   acquisitionYear?: number;
   publicTicker?: string;
+  // Agent results and execution trace for ResearchSummary
+  agentResults?: any;
+  agentExecutionTrace?: any;
+  resultType?: string;
+  sources?: string[];
   // LLM-generated copy for engaging storytelling
   generatedCopy?: {
     headline: string;
@@ -241,6 +247,11 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     structureType: pipelineResult.ownership_structure_type,
     analysisText: pipelineResult.reasoning,
     traces,
+    // Agent results and execution trace for ResearchSummary
+    agentResults: pipelineResult.agent_results,
+    agentExecutionTrace: pipelineResult.agent_execution_trace,
+    resultType: pipelineResult.result_type,
+    sources: pipelineResult.sources,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
     // Optional props

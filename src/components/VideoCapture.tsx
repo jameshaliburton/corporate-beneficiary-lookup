@@ -23,6 +23,14 @@ export function VideoCapture({ onCapture, isScanning = false }: VideoCaptureProp
     };
   }, []);
 
+  // Stop camera when scanning starts - immediate cleanup
+  useEffect(() => {
+    if (isScanning) {
+      console.log('📹 Stopping camera due to scanning state');
+      stopCamera();
+    }
+  }, [isScanning]);
+
   const startCamera = async () => {
     try {
       setError(null);
@@ -63,6 +71,12 @@ export function VideoCapture({ onCapture, isScanning = false }: VideoCaptureProp
     }
     setIsCameraActive(false);
   };
+
+  // Immediately hide camera when scanning starts
+  const shouldShowCamera = isCameraActive && !isScanning;
+  
+  // Add immediate visual feedback when scanning starts
+  const isTransitioning = isScanning && isCameraActive;
 
   const captureImage = async () => {
     if (!videoRef.current || !isCameraActive) {
@@ -120,14 +134,14 @@ export function VideoCapture({ onCapture, isScanning = false }: VideoCaptureProp
       <button
         onClick={handleCaptureClick}
         disabled={isScanning || isInitializing || !isCameraActive}
-        className={`relative aspect-[9/16] w-full glass rounded-3xl border border-glass-border overflow-hidden transition-all duration-500 hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-primary/30 ${isScanning ? 'ring-4 ring-primary-glow/50 animate-pulse' : ''} ${isInitializing ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`relative aspect-[9/16] w-full glass rounded-3xl border border-glass-border overflow-hidden transition-all duration-500 hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-primary/30 ${isScanning ? 'ring-4 ring-primary-glow/50 animate-pulse' : ''} ${isInitializing ? 'opacity-50 cursor-not-allowed' : ''} ${isTransitioning ? 'opacity-0 scale-95' : ''}`}
       >
         
         {/* Video preview area */}
         <div className="absolute inset-0 bg-gradient-to-br from-background/10 via-transparent to-primary/5">
           
           {/* Live video feed */}
-          {isCameraActive && (
+          {shouldShowCamera && (
             <video
               ref={videoRef}
               autoPlay
@@ -138,7 +152,7 @@ export function VideoCapture({ onCapture, isScanning = false }: VideoCaptureProp
           )}
           
           {/* Camera icon overlay - only show when not scanning and camera not active */}
-          {!isScanning && !isCameraActive && (
+          {!isScanning && !shouldShowCamera && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className={`w-20 h-20 rounded-full glass border border-glass-border flex items-center justify-center transition-all duration-300 ${isScanning ? 'scale-110 animate-pulse bg-primary/20' : 'hover:scale-105'}`}>
                 <Camera className={`h-8 w-8 text-primary-glow transition-all duration-300 ${isScanning ? 'animate-pulse' : ''}`} />
@@ -165,11 +179,11 @@ export function VideoCapture({ onCapture, isScanning = false }: VideoCaptureProp
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-foreground">
                     {isInitializing ? 'Initializing camera...' : 
-                     isCameraActive ? 'Position product in frame' : 'Camera not available'}
+                     shouldShowCamera ? 'Position product in frame' : 'Camera not available'}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {isInitializing ? 'Please wait...' :
-                     isCameraActive ? 'Tap to capture and analyze' : 'Using fallback mode'}
+                     shouldShowCamera ? 'Tap to capture and analyze' : 'Using fallback mode'}
                   </p>
                 </div>
               )}
