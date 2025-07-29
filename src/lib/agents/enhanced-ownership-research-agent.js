@@ -6,6 +6,9 @@
 import dotenv from 'dotenv'
 import Anthropic from '@anthropic-ai/sdk'
 import { WebResearchAgent, isWebResearchAvailable } from './web-research-agent.js'
+import { WebSearchOwnershipAgent, isWebSearchOwnershipAvailable } from './web-search-ownership-agent.js'
+import { EnhancedWebSearchOwnershipAgent, isEnhancedWebSearchOwnershipAvailable } from './enhanced-web-search-ownership-agent.js'
+import { extractFollowUpContext } from '../services/context-parser.js'
 import { QueryBuilderAgent, isQueryBuilderAvailable } from './query-builder-agent.js'
 import { supabase } from '../supabase.ts'
 import { lookupOwnershipMapping, mappingToResult } from '../database/ownership-mappings.js'
@@ -24,6 +27,7 @@ import {
   REASONING_TYPES 
 } from './enhanced-trace-logging.js'
 import { ragKnowledgeBase } from './rag-knowledge-base.js'
+import { repairJSON, extractJSONFromMarkdown } from '../utils/json-repair.js'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -54,7 +58,8 @@ export async function EnhancedAgentOwnershipResearch({
   brand,
   hints = {},
   enableEvaluation = false,
-  imageProcessingTrace = null
+  imageProcessingTrace = null,
+  followUpContext = null
 }) {
   const startTime = Date.now()
   const queryId = generateQueryId()
@@ -95,43 +100,56 @@ export async function EnhancedAgentOwnershipResearch({
     }
     
     if (existingProduct && existingProduct.financial_beneficiary && existingProduct.financial_beneficiary !== 'Unknown') {
-      cacheStage.reason(`Found cached result for ${brand}: ${existingProduct.financial_beneficiary}`, REASONING_TYPES.INFO)
-      cacheStage.decide('Use cached result', ['Perform fresh research'], 'Cached result available with valid ownership data')
-      
-      const cachedResult = {
-        financial_beneficiary: existingProduct.financial_beneficiary,
-        beneficiary_country: existingProduct.beneficiary_country,
-        beneficiary_flag: existingProduct.beneficiary_flag,
-        ownership_structure_type: existingProduct.ownership_structure_type,
-        confidence_score: existingProduct.confidence_score,
-        ownership_flow: existingProduct.ownership_flow || [],
-        sources: existingProduct.sources || ['Cached result'],
-        reasoning: existingProduct.reasoning || 'Previously researched and cached',
-        web_research_used: existingProduct.web_research_used,
-        web_sources_count: existingProduct.web_sources_count || 0,
-        query_analysis_used: existingProduct.query_analysis_used,
-        static_mapping_used: existingProduct.static_mapping_used,
-        result_type: existingProduct.result_type,
-        user_contributed: existingProduct.user_contributed,
-        inferred: existingProduct.inferred,
-        cached: true,
-        product_id: existingProduct.id,
-        agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
-        initial_llm_confidence: existingProduct.initial_llm_confidence,
-        agent_results: existingProduct.agent_results,
-        fallback_reason: existingProduct.fallback_reason
+      // Check if followUpContext is provided - if so, re-run research ignoring cache
+      if (followUpContext) {
+        cacheStage.reason(`Found cached result but followUpContext provided: "${followUpContext}" - re-running research with enhanced context`, REASONING_TYPES.INFO)
+        cacheStage.decide('Re-run research with context', ['Use cached result'], 'Follow-up context requires fresh research with enhanced queries')
+        
+        console.log('[EnhancedAgentOwnershipResearch] 🔄 Re-running research due to followUpContext:', followUpContext)
+        await emitProgress(queryId, 'cache_check', 'context_override', { 
+          cached_result: existingProduct.financial_beneficiary,
+          followUpContext 
+        })
+        
+      } else {
+        cacheStage.reason(`Found cached result for ${brand}: ${existingProduct.financial_beneficiary}`, REASONING_TYPES.INFO)
+        cacheStage.decide('Use cached result', ['Perform fresh research'], 'Cached result available with valid ownership data')
+        
+        const cachedResult = {
+          financial_beneficiary: existingProduct.financial_beneficiary,
+          beneficiary_country: existingProduct.beneficiary_country,
+          beneficiary_flag: existingProduct.beneficiary_flag,
+          ownership_structure_type: existingProduct.ownership_structure_type,
+          confidence_score: existingProduct.confidence_score,
+          ownership_flow: existingProduct.ownership_flow || [],
+          sources: existingProduct.sources || ['Cached result'],
+          reasoning: existingProduct.reasoning || 'Previously researched and cached',
+          web_research_used: existingProduct.web_research_used,
+          web_sources_count: existingProduct.web_sources_count || 0,
+          query_analysis_used: existingProduct.query_analysis_used,
+          static_mapping_used: existingProduct.static_mapping_used,
+          result_type: existingProduct.result_type,
+          user_contributed: existingProduct.user_contributed,
+          inferred: existingProduct.inferred,
+          cached: true,
+          product_id: existingProduct.id,
+          agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
+          initial_llm_confidence: existingProduct.initial_llm_confidence,
+          agent_results: existingProduct.agent_results,
+          fallback_reason: existingProduct.fallback_reason
+        }
+        
+        cacheStage.success({
+          financial_beneficiary: existingProduct.financial_beneficiary,
+          confidence_score: existingProduct.confidence_score,
+          result_type: existingProduct.result_type
+        }, ['Cached result found and returned'])
+        
+        await emitProgress(queryId, 'cache_check', 'success', cacheStage.stage.data)
+        traceLogger.setFinalResult('cached')
+        
+        return cachedResult
       }
-      
-      cacheStage.success({
-        financial_beneficiary: existingProduct.financial_beneficiary,
-        confidence_score: existingProduct.confidence_score,
-        result_type: existingProduct.result_type
-      }, ['Cached result found and returned'])
-      
-      await emitProgress(queryId, 'cache_check', 'success', cacheStage.stage.data)
-      traceLogger.setFinalResult('cached')
-      
-      return cachedResult
     }
     
     cacheStage.reason('No cached result found, proceeding with research', REASONING_TYPES.INFO)
@@ -605,55 +623,76 @@ Respond in valid JSON format:
       await emitProgress(queryId, 'query_builder', 'completed', { result: 'not_available' })
     }
     
-    // Step 6: Web Research
-    const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web research for ownership information')
-    await emitProgress(queryId, 'web_research', 'started', { brand, hasQueryAnalysis: !!queryAnalysis })
-    
-    // Set enhanced trace data for web research stage
-    webStage.setConfig({
-      model: 'serpapi_web_search',
-      temperature: null,
-      maxTokens: null,
-      stopSequences: null
-    })
-    
-    webStage.setVariables({
-      inputVariables: {
-        brand,
-        product_name: product_name || 'Unknown product',
-        hints: JSON.stringify(hints),
-        query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null
-      },
-      outputVariables: {},
-      intermediateVariables: {
-        web_research_available: isWebResearchAvailable()
-      }
+    // Step 6: Web-Search-Powered Ownership Research
+    const webStage = new EnhancedStageTracker(traceLogger, 'web_research', 'Performing web-search-powered ownership research')
+    await emitProgress(queryId, 'web_research', 'started', { 
+      brand, 
+      product_name,
+      hasQueryAnalysis: !!queryAnalysis
     })
     
     webStage.setPrompts(
-      'Web research using SERP API with optimized queries',
-      'Perform web research for {{brand}} using {{query_analysis}} to find ownership information'
+      'Web-search-powered ownership research with structured confidence scoring',
+      'Perform comprehensive web search for {{brand}} using multi-language queries and LLM-led analysis'
     )
     
     let webResearchData = null
-    if (isWebResearchAvailable()) {
+    let ownershipChain = null
+    
+    if (isEnhancedWebSearchOwnershipAvailable()) {
       try {
-        webStage.reason('Web research available, performing comprehensive search', REASONING_TYPES.INFO)
-        webResearchData = await WebResearchAgent({
+        webStage.reason('Enhanced web-search-powered ownership research available, performing comprehensive analysis', REASONING_TYPES.INFO)
+        
+        const webSearchResult = await EnhancedWebSearchOwnershipAgent({
           brand,
           product_name,
           hints,
-          queryAnalysis
+          queryId,
+          followUpContext
         })
         
-        if (webResearchData.success) {
-          webStage.reason(`Web research successful: ${webResearchData.total_sources} sources, ${webResearchData.findings?.length || 0} findings`, REASONING_TYPES.EVIDENCE)
+        // Handle null return (timeout/failure) from enhanced agent
+        if (webSearchResult === null) {
+          webStage.reason('Enhanced web-search-powered research failed (timeout/retry exhaustion) - falling back to next agent', REASONING_TYPES.WARNING)
+          webResearchData = { success: false, findings: [], fallback_reason: 'enhanced_agent_timeout_or_failure' }
+          webStage.partial({
+            success: false,
+            total_sources: 0,
+            ownership_chain_length: 0,
+            fallback_reason: 'enhanced_agent_timeout_or_failure'
+          }, ['Enhanced web-search-powered research failed - proceeding to fallback'])
           
-          // Track evidence found
-          if (webResearchData.findings) {
-            for (const finding of webResearchData.findings) {
-              if (finding.owner) {
-                evidenceTracker.trackEvidence('web_research', finding.owner, finding.source, finding.confidence || 50, 'ownership')
+          await emitProgress(queryId, 'web_research', 'fallback', { reason: 'enhanced_agent_timeout_or_failure' })
+          
+        } else if (webSearchResult.success) {
+          webStage.reason(`Web-search-powered research successful: ${webSearchResult.sources?.length || 0} sources, confidence: ${webSearchResult.final_confidence}`, REASONING_TYPES.EVIDENCE)
+          
+          // Extract ownership chain and sources
+          ownershipChain = webSearchResult.ownership_chain
+          webResearchData = {
+            success: true,
+            total_sources: webSearchResult.sources?.length || 0,
+            search_results_count: webSearchResult.web_research_data?.search_results_count || 0,
+            scraped_sites_count: webSearchResult.web_research_data?.scraped_sites_count || 0,
+            findings: webSearchResult.sources || [],
+            final_confidence: webSearchResult.final_confidence,
+            notes: webSearchResult.notes,
+            research_method: 'web_search_powered',
+            // Add verification status from enhanced web search
+            verification_status: webSearchResult.verification_status || 'unverified',
+            verification_reasoning: webSearchResult.verification_reasoning || 'No verification data available',
+            trusted_sources: webSearchResult.trusted_sources || [],
+            verified_sources: webSearchResult.verified_sources || [],
+            highly_likely_sources: webSearchResult.highly_likely_sources || []
+          }
+          
+          // Track evidence from ownership chain
+          if (ownershipChain) {
+            for (const entity of ownershipChain) {
+              if (entity.sources) {
+                for (const source of entity.sources) {
+                  evidenceTracker.trackEvidence('web_search_ownership', entity.name, source.url, source.confidence * 100, 'ownership')
+                }
               }
             }
           }
@@ -667,87 +706,208 @@ Respond in valid JSON format:
               query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null
             },
             outputVariables: {
-              success: webResearchData.success,
-              total_sources: webResearchData.total_sources,
-              search_results_count: webResearchData.search_results_count,
-              scraped_sites_count: webResearchData.scraped_sites_count,
-              findings_count: webResearchData.findings?.length || 0,
-              findings: webResearchData.findings || []
+              success: webSearchResult.success,
+              total_sources: webSearchResult.sources?.length || 0,
+              ownership_chain_length: ownershipChain?.length || 0,
+              final_confidence: webSearchResult.final_confidence,
+              research_method: 'web_search_powered',
+              notes: webSearchResult.notes
             },
             intermediateVariables: {
-              web_research_available: isWebResearchAvailable(),
-              evidence_tracked: webResearchData.findings?.length || 0
+              web_search_ownership_available: isWebSearchOwnershipAvailable(),
+              evidence_tracked: webSearchResult.sources?.length || 0
             }
           })
           
           webStage.success({
-            success: webResearchData.success,
-            total_sources: webResearchData.total_sources,
-            search_results_count: webResearchData.search_results_count,
-            scraped_sites_count: webResearchData.scraped_sites_count,
-            findings_count: webResearchData.findings?.length || 0
-          }, ['Web research completed successfully'])
+            success: webSearchResult.success,
+            total_sources: webSearchResult.sources?.length || 0,
+            ownership_chain_length: ownershipChain?.length || 0,
+            final_confidence: webSearchResult.final_confidence,
+            research_method: 'web_search_powered'
+          }, ['Web-search-powered research completed successfully'])
           
         } else {
-          webStage.reason('Web research completed but no findings', REASONING_TYPES.WARNING)
+          webStage.reason('Web-search-powered research completed but no findings', REASONING_TYPES.WARNING)
           webStage.partial({
             success: false,
             total_sources: 0,
-            findings_count: 0
-          }, ['Web research completed but no relevant findings'])
+            ownership_chain_length: 0
+          }, ['Web-search-powered research completed but no relevant findings'])
         }
         
         await emitProgress(queryId, 'web_research', 'success', webStage.stage.data)
         
       } catch (error) {
-        webStage.reason(`Web research failed: ${error.message}`, REASONING_TYPES.ERROR)
+        webStage.reason(`Web-search-powered research failed: ${error.message}`, REASONING_TYPES.ERROR)
         webResearchData = { success: false, findings: [] }
-        webStage.error(error, {}, ['Web research encountered an error'])
+        webStage.error(error, {}, ['Web-search-powered research encountered an error'])
+        await emitProgress(queryId, 'web_research', 'error', null, error.message)
+      }
+    } else if (isWebSearchOwnershipAvailable()) {
+      // Fallback to original web-search-powered agent if enhanced is not available
+      webStage.reason('Enhanced web-search-powered research not available, falling back to original web-search-powered research', REASONING_TYPES.WARNING)
+      
+      try {
+        const webSearchResult = await WebSearchOwnershipAgent({
+          brand,
+          product_name,
+          hints,
+          queryId
+        })
+        
+        if (webSearchResult.success) {
+          webStage.reason(`Original web-search-powered research successful: ${webSearchResult.sources?.length || 0} sources, confidence: ${webSearchResult.final_confidence}`, REASONING_TYPES.EVIDENCE)
+          
+          // Extract ownership chain and sources
+          ownershipChain = webSearchResult.ownership_chain
+          webResearchData = {
+            success: true,
+            total_sources: webSearchResult.sources?.length || 0,
+            search_results_count: webSearchResult.web_research_data?.search_results_count || 0,
+            scraped_sites_count: webSearchResult.web_research_data?.scraped_sites_count || 0,
+            findings: webSearchResult.sources || [],
+            final_confidence: webSearchResult.final_confidence,
+            notes: webSearchResult.notes,
+            research_method: 'original_web_search_powered'
+          }
+          
+          webStage.success({
+            success: webSearchResult.success,
+            total_sources: webSearchResult.sources?.length || 0,
+            ownership_chain_length: ownershipChain?.length || 0,
+            final_confidence: webSearchResult.final_confidence,
+            research_method: 'original_web_search_powered'
+          }, ['Original web-search-powered research completed successfully'])
+          
+        } else {
+          webStage.reason('Original web-search-powered research completed but no findings', REASONING_TYPES.WARNING)
+          webStage.partial({
+            success: false,
+            total_sources: 0,
+            ownership_chain_length: 0
+          }, ['Original web-search-powered research completed but no relevant findings'])
+        }
+        
+        await emitProgress(queryId, 'web_research', 'success', webStage.stage.data)
+        
+      } catch (error) {
+        webStage.reason(`Original web-search-powered research failed: ${error.message}`, REASONING_TYPES.ERROR)
+        webResearchData = { success: false, findings: [] }
+        webStage.error(error, {}, ['Original web-search-powered research encountered an error'])
         await emitProgress(queryId, 'web_research', 'error', null, error.message)
       }
     } else {
-      webStage.reason('Web research not available, using knowledge agent only', REASONING_TYPES.WARNING)
-      webStage.success({ result: 'not_available' }, ['Web research not available'])
-      await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
+      // Fallback to legacy web research if no web-search-powered agents are available
+      webStage.reason('Web-search-powered research not available, falling back to legacy web research', REASONING_TYPES.WARNING)
+      
+      if (isWebResearchAvailable()) {
+        try {
+          webResearchData = await WebResearchAgent({
+            brand,
+            product_name,
+            hints,
+            queryAnalysis
+          })
+          
+          if (webResearchData.success) {
+            webStage.reason(`Legacy web research successful: ${webResearchData.total_sources} sources, ${webResearchData.findings?.length || 0} findings`, REASONING_TYPES.EVIDENCE)
+            
+            // Track evidence found
+            if (webResearchData.findings) {
+              for (const finding of webResearchData.findings) {
+                if (finding.owner) {
+                  evidenceTracker.trackEvidence('web_research', finding.owner, finding.source, finding.confidence || 50, 'ownership')
+                }
+              }
+            }
+            
+            webStage.success({
+              success: webResearchData.success,
+              total_sources: webResearchData.total_sources,
+              search_results_count: webResearchData.search_results_count,
+              scraped_sites_count: webResearchData.scraped_sites_count,
+              findings_count: webResearchData.findings?.length || 0,
+              research_method: 'legacy_web_research'
+            }, ['Legacy web research completed successfully'])
+            
+          } else {
+            webStage.reason('Legacy web research completed but no findings', REASONING_TYPES.WARNING)
+            webStage.partial({
+              success: false,
+              total_sources: 0,
+              findings_count: 0
+            }, ['Legacy web research completed but no relevant findings'])
+          }
+          
+          await emitProgress(queryId, 'web_research', 'success', webStage.stage.data)
+          
+        } catch (error) {
+          webStage.reason(`Legacy web research failed: ${error.message}`, REASONING_TYPES.ERROR)
+          webResearchData = { success: false, findings: [] }
+          webStage.error(error, {}, ['Legacy web research encountered an error'])
+          await emitProgress(queryId, 'web_research', 'error', null, error.message)
+        }
+      } else {
+        webStage.reason('No web research available, using knowledge agent only', REASONING_TYPES.WARNING)
+        webStage.success({ result: 'not_available' }, ['No web research available'])
+        await emitProgress(queryId, 'web_research', 'completed', { result: 'not_available' })
+      }
     }
     
     // Step 7: Ownership Analysis
-    const analysisStage = new EnhancedStageTracker(traceLogger, 'ownership_analysis', 'Performing LLM-based ownership analysis')
+    const analysisStage = new EnhancedStageTracker(traceLogger, 'ownership_analysis', 'Processing ownership analysis results')
     await emitProgress(queryId, 'ownership_analysis', 'started', { 
       hasWebResearch: !!webResearchData?.success,
-      sourcesCount: webResearchData?.total_sources || 0
+      sourcesCount: webResearchData?.total_sources || 0,
+      hasOwnershipChain: !!ownershipChain
     })
     
-    // Get current prompt version and build prompt using registry
-    const promptVersion = getCurrentPromptVersion('OWNERSHIP_RESEARCH')
-    const promptBuilder = getPromptBuilder('OWNERSHIP_RESEARCH', promptVersion)
-    const researchPrompt = promptBuilder(product_name, brand, hints, webResearchData, queryAnalysis)
+    let ownership = null
     
-    // Set enhanced trace data for ownership analysis stage
-    analysisStage.setConfig({
-      model: 'claude-3-5-sonnet-20241022',
-      temperature: 0.1,
-      maxTokens: 1500,
-      stopSequences: null
-    })
-    
-    analysisStage.setVariables({
-      inputVariables: {
-        brand,
-        product_name: product_name || 'Unknown product',
-        hints: JSON.stringify(hints),
-        web_research_data: webResearchData ? JSON.stringify(webResearchData) : null,
-        query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null,
-        prompt_version: promptVersion
-      },
-      outputVariables: {},
-      intermediateVariables: {
-        web_research_success: webResearchData?.success || false,
-        sources_count: webResearchData?.total_sources || 0
-      }
-    })
-    
-    analysisStage.setPrompts(researchPrompt, `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner).
+    // If we have a structured ownership chain from web-search-powered research, use it directly
+    if (ownershipChain && ownershipChain.length > 0) {
+      analysisStage.reason('Using structured ownership chain from web-search-powered research', REASONING_TYPES.INFO)
+      
+      // Convert structured ownership chain to the expected format
+      ownership = convertStructuredOwnershipChain(ownershipChain, brand, webResearchData)
+      
+      analysisStage.reason(`Converted ownership chain with ${ownershipChain.length} entities`, REASONING_TYPES.SUCCESS)
+      
+    } else {
+      // Fallback to LLM-based analysis for legacy web research or when no structured chain is available
+      analysisStage.reason('No structured ownership chain available, performing LLM-based analysis', REASONING_TYPES.INFO)
+      
+      // Get current prompt version and build prompt using registry
+      const promptVersion = getCurrentPromptVersion('OWNERSHIP_RESEARCH')
+      const promptBuilder = getPromptBuilder('OWNERSHIP_RESEARCH', promptVersion)
+      const researchPrompt = promptBuilder(product_name, brand, hints, webResearchData, queryAnalysis)
+      
+      // Set enhanced trace data for ownership analysis stage
+      analysisStage.setConfig({
+        model: 'claude-3-5-sonnet-20241022',
+        temperature: 0.1,
+        maxTokens: 1500,
+        stopSequences: null
+      })
+      
+      analysisStage.setVariables({
+        inputVariables: {
+          brand,
+          product_name: product_name || 'Unknown product',
+          hints: JSON.stringify(hints),
+          web_research_data: webResearchData ? JSON.stringify(webResearchData) : null,
+          query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null,
+          prompt_version: promptVersion
+        },
+        outputVariables: {},
+        intermediateVariables: {
+          web_research_success: webResearchData?.success || false,
+          sources_count: webResearchData?.total_sources || 0
+        }
+      })
+      
+      analysisStage.setPrompts(researchPrompt, `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner).
 
 Brand: {{brand}}
 Product: {{product_name}}
@@ -764,11 +924,12 @@ Based on the provided information, determine:
 6. **Country**: The country of the ultimate financial beneficiary
 
 Respond in valid JSON format.`)
-    
-    analysisStage.reason(`Using prompt version: ${promptVersion}`, REASONING_TYPES.INFO)
-    analysisStage.reason(`Analyzing ownership with ${webResearchData?.total_sources || 0} sources`, REASONING_TYPES.ANALYSIS)
-    
-    const ownership = await performOwnershipAnalysis(researchPrompt, product_name, brand, webResearchData)
+      
+      analysisStage.reason(`Using prompt version: ${promptVersion}`, REASONING_TYPES.INFO)
+      analysisStage.reason(`Analyzing ownership with ${webResearchData?.total_sources || 0} sources`, REASONING_TYPES.ANALYSIS)
+      
+      ownership = await performOwnershipAnalysis(researchPrompt, product_name, brand, webResearchData)
+    }
     
     // Update output variables with ownership analysis results
     analysisStage.setVariables({
@@ -778,7 +939,7 @@ Respond in valid JSON format.`)
         hints: JSON.stringify(hints),
         web_research_data: webResearchData ? JSON.stringify(webResearchData) : null,
         query_analysis: queryAnalysis ? JSON.stringify(queryAnalysis) : null,
-        prompt_version: promptVersion
+        has_structured_chain: !!ownershipChain
       },
       outputVariables: {
         financial_beneficiary: ownership.financial_beneficiary,
@@ -787,12 +948,14 @@ Respond in valid JSON format.`)
         confidence_score: ownership.confidence_score,
         reasoning: ownership.reasoning,
         ownership_flow: ownership.ownership_flow,
-        sources: ownership.sources
+        sources: ownership.sources,
+        research_method: webResearchData?.research_method || 'unknown'
       },
       intermediateVariables: {
         web_research_success: webResearchData?.success || false,
         sources_count: webResearchData?.total_sources || 0,
-        analysis_duration_ms: Date.now() - analysisStage.startTime
+        analysis_duration_ms: Date.now() - analysisStage.startTime,
+        used_structured_chain: !!ownershipChain
       }
     })
     
@@ -1066,6 +1229,118 @@ Respond in valid JSON format.`)
   }
 }
 
+/**
+ * Convert structured ownership chain to the expected format
+ */
+function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData) {
+  if (!ownershipChain || ownershipChain.length === 0) {
+    return createFallbackResponse(brand, 'No ownership chain available')
+  }
+  
+  // Find the ultimate owner (last entity in chain)
+  const ultimateOwner = ownershipChain[ownershipChain.length - 1]
+  const brandEntity = ownershipChain[0]
+  
+  // Calculate average confidence from all sources
+  const allSources = ownershipChain.flatMap(entity => entity.sources || [])
+  const averageConfidence = allSources.length > 0 
+    ? allSources.reduce((sum, source) => sum + source.confidence, 0) / allSources.length
+    : 0.5
+  
+  // Build ownership flow
+  const ownershipFlow = ownershipChain.map(entity => ({
+    name: entity.name,
+    type: entity.role,
+    country: entity.country || 'Unknown',
+    source: 'web_search_analysis'
+  }))
+  
+  // Extract sources for the result
+  const sources = allSources.map(source => source.url).filter(Boolean)
+  
+  return {
+    financial_beneficiary: ultimateOwner.name,
+    beneficiary_country: ultimateOwner.country || 'Unknown',
+    beneficiary_flag: getCountryFlag(ultimateOwner.country),
+    ownership_structure_type: determineOwnershipStructureType(ownershipChain),
+    ownership_flow: ownershipFlow,
+    confidence_score: Math.round(averageConfidence * 100),
+    confidence_level: getConfidenceLabel(averageConfidence * 100),
+    confidence_factors: {
+      source_authority: calculateSourceAuthorityScore(allSources),
+      source_recency: calculateSourceRecencyScore(allSources),
+      source_count: allSources.length,
+      chain_completeness: ownershipChain.length
+    },
+    confidence_breakdown: {
+      tier_1_sources: allSources.filter(s => s.tier === 1).length,
+      tier_2_sources: allSources.filter(s => s.tier === 2).length,
+      tier_3_sources: allSources.filter(s => s.tier === 3).length,
+      tier_4_sources: allSources.filter(s => s.tier === 4).length
+    },
+    confidence_reasoning: `Based on ${allSources.length} sources across ${ownershipChain.length} ownership levels`,
+    sources: sources,
+    reasoning: webResearchData?.notes || `Ownership chain determined through web search analysis`,
+    // Add verification status from web research data
+    verification_status: webResearchData?.verification_status || 'unverified',
+    verification_reasoning: webResearchData?.verification_reasoning || 'No verification data available',
+    trusted_sources: webResearchData?.trusted_sources || [],
+    verified_sources: webResearchData?.verified_sources || [],
+    highly_likely_sources: webResearchData?.highly_likely_sources || [],
+    agent_results: {
+      web_research_data: webResearchData,
+      ownership_chain: ownershipChain
+    }
+  }
+}
+
+/**
+ * Determine ownership structure type based on chain
+ */
+function determineOwnershipStructureType(ownershipChain) {
+  if (!ownershipChain || ownershipChain.length === 0) return 'Unknown'
+  
+  const ultimateOwner = ownershipChain[ownershipChain.length - 1]
+  
+  if (ownershipChain.length === 1) {
+    return 'Independent Brand'
+  } else if (ownershipChain.length === 2) {
+    return 'Subsidiary'
+  } else {
+    return 'Complex Ownership'
+  }
+}
+
+/**
+ * Calculate source authority score
+ */
+function calculateSourceAuthorityScore(sources) {
+  if (!sources || sources.length === 0) return 0
+  
+  const tierWeights = { 1: 1.0, 2: 0.8, 3: 0.6, 4: 0.4 }
+  const weightedSum = sources.reduce((sum, source) => {
+    return sum + (tierWeights[source.tier] || 0.4) * source.confidence
+  }, 0)
+  
+  return Math.round((weightedSum / sources.length) * 100)
+}
+
+/**
+ * Calculate source recency score
+ */
+function calculateSourceRecencyScore(sources) {
+  if (!sources || sources.length === 0) return 0
+  
+  const currentYear = new Date().getFullYear()
+  const recentSources = sources.filter(source => {
+    if (!source.date) return false
+    const sourceYear = new Date(source.date).getFullYear()
+    return sourceYear >= currentYear - 1
+  })
+  
+  return Math.round((recentSources.length / sources.length) * 100)
+}
+
 // Helper functions
 function generateQueryId() {
   return `query_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -1095,7 +1370,7 @@ function getCountryFlag(country) {
     'Italy': '🇮🇹',
     'Spain': '🇪🇸',
     'Belgium': '🇧🇪',
-    'Austria': '🇦🇹',
+    'Austria': '��🇹',
     'Ireland': '🇮🇪',
     'Luxembourg': '🇱🇺',
     'Singapore': '🇸🇬',
@@ -1172,9 +1447,27 @@ async function performOwnershipAnalysis(researchPrompt, product_name, brand, web
 
 async function parseJSONResponse(text, attempt) {
   try {
-    return JSON.parse(text)
+    // First try to extract JSON from markdown if present
+    const extractedJSON = extractJSONFromMarkdown(text)
+    const jsonToParse = extractedJSON || text
+    
+    // Try to parse directly first
+    return JSON.parse(jsonToParse)
   } catch (error) {
     console.error(`[EnhancedAgentOwnershipResearch] JSON parse attempt ${attempt} failed:`, error)
+    
+    // Try to repair the JSON
+    try {
+      const repaired = repairJSON(text)
+      if (repaired) {
+        console.log(`[EnhancedAgentOwnershipResearch] JSON repair successful on attempt ${attempt}`)
+        return repaired
+      }
+    } catch (repairError) {
+      console.error(`[EnhancedAgentOwnershipResearch] JSON repair failed on attempt ${attempt}:`, repairError.message)
+    }
+    
+    // If all else fails, return fallback
     return createFallbackResponse('Unknown', 'JSON parsing failed')
   }
 }
