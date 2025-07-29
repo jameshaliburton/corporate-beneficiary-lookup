@@ -1741,7 +1741,15 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     },
     ownership_analysis: {
       success: true,
-      data: ownership,
+      data: {
+        financial_beneficiary: ownership.financial_beneficiary,
+        beneficiary_country: ownership.beneficiary_country,
+        ownership_structure_type: ownership.ownership_structure_type,
+        confidence_score: ownership.confidence_score,
+        ownership_flow: ownership.ownership_flow,
+        sources: ownership.sources,
+        reasoning: ownership.reasoning
+      },
       reasoning: 'Ownership analysis completed using LLM research results'
     }
   }
