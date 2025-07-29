@@ -91,7 +91,7 @@
     "msw": "^2.10.4",
     "nock": "^14.0.7",
     "node-fetch": "^3.3.2",
-    "postcss": "^8.4.35",
+    "postcss": "8.5.6",
     "postcss-js": "^4.0.1",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.20.3",
