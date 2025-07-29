@@ -5,7 +5,15 @@ const progressStore = new Map<string, any>()
 
 export async function POST(request: NextRequest) {
   try {
-    const { queryId, stage, status, data, error } = await request.json()
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('Error parsing progress request:', parseError);
+      return NextResponse.json({ error: 'Invalid JSON format' }, { status: 400 });
+    }
+    
+    const { queryId, stage, status, data, error } = body;
     
     if (!queryId) {
       return NextResponse.json({ error: 'Query ID is required' }, { status: 400 })
