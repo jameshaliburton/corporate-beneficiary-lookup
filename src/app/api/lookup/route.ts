@@ -376,7 +376,18 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('Error parsing request:', parseError);
+      return NextResponse.json({
+        success: false,
+        result_type: 'error',
+        error: 'Invalid JSON format'
+      }, { status: 400 });
+    }
+    
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null } = body;
     
     // 🧠 FEATURE FLAG LOGGING
