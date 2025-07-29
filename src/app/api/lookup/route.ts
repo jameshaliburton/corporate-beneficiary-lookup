@@ -270,9 +270,17 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       confidence_score: cachedResult.confidence_score,
       ownership_structure_type: cachedResult.ownership_structure_type,
               ownership_flow: Array.isArray(cachedResult.ownership_flow) 
-          ? cachedResult.ownership_flow.map(item => 
-              typeof item === 'string' ? JSON.parse(item) : item
-            )
+          ? cachedResult.ownership_flow.map(item => {
+              if (typeof item === 'string') {
+                try {
+                  return JSON.parse(item);
+                } catch (parseError) {
+                  // If it's not valid JSON, treat it as a plain string
+                  return item;
+                }
+              }
+              return item;
+            })
           : cachedResult.ownership_flow,
       sources: cachedResult.sources,
       reasoning: cachedResult.reasoning,
