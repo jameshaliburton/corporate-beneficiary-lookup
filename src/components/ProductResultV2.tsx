@@ -80,12 +80,12 @@ export default function ProductResultV2({
           <div className="space-y-4">
             {/* Headline */}
             <h2 className="text-2xl font-bold text-blue-600">
-              {narrative.headline}
+              {narrative?.headline || 'Ownership Analysis'}
             </h2>
             
             {/* Tagline */}
             <p className="text-lg text-gray-700 italic">
-              {narrative.tagline}
+              {narrative?.tagline || 'Discovering the ownership structure...'}
             </p>
             
             {/* Story */}
@@ -94,7 +94,7 @@ export default function ProductResultV2({
                 The story of {result.brand_name || 'this brand'}
               </h3>
               <p className="text-gray-700 leading-relaxed">
-                {narrative.story}
+                {narrative?.story || 'Analyzing ownership data...'}
               </p>
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function ProductResultV2({
       </Card>
 
       {/* Ownership Notes */}
-      {narrative.ownership_notes.length > 0 && (
+      {narrative?.ownership_notes && narrative.ownership_notes.length > 0 && (
         <Card>
           <CardHeader>
             <h3 className="text-xl font-semibold">Ownership Notes</h3>
@@ -171,7 +171,7 @@ export default function ProductResultV2({
       )}
 
       {/* Behind the Scenes */}
-      {narrative.behind_the_scenes.length > 0 && (
+      {narrative?.behind_the_scenes && narrative.behind_the_scenes.length > 0 && (
         <Card>
           <CardHeader>
             <Button
@@ -231,7 +231,7 @@ export default function ProductResultV2({
           </CardHeader>
           <CardContent>
             <div className="text-xs text-gray-500 space-y-1">
-              <p>Template Used: {narrative.template_used}</p>
+              <p>Template Used: {narrative?.template_used || 'fallback'}</p>
               <p>Confidence: {confidence}%</p>
               <p>Brand Country: {brandCountry || 'Unknown'}</p>
               <p>Owner Country: {ownerCountry || 'Unknown'}</p>
