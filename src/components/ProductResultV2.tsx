@@ -41,10 +41,10 @@ export default function ProductResultV2({
 
   // Get confidence badge color
   const getConfidenceColor = (confidence?: number): string => {
-    if (!confidence) return 'bg-gray-100 text-gray-800';
-    if (confidence >= 80) return 'bg-green-100 text-green-800';
-    if (confidence >= 60) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
+    if (!confidence) return 'bg-muted/30 text-muted-foreground';
+    if (confidence >= 80) return 'bg-primary-glow/20 text-primary-glow';
+    if (confidence >= 60) return 'bg-muted/30 text-muted-foreground';
+    return 'bg-muted/30 text-muted-foreground';
   };
 
   const confidence = result.confidence || result.confidence_score || 0;
@@ -165,8 +165,8 @@ export default function ProductResultV2({
             <ul className="space-y-2">
               {narrative.ownership_notes.map((note, index) => (
                 <li key={index} className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-1">•</span>
-                  <span className="text-gray-700">{note}</span>
+                  <span className="text-primary-glow mt-1">•</span>
+                  <span className="text-muted-foreground">{note}</span>
                 </li>
               ))}
             </ul>
@@ -195,11 +195,11 @@ export default function ProductResultV2({
             <CardContent>
               <div className="space-y-3">
                 {narrative.behind_the_scenes.map((step, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-blue-600">{index + 1}</span>
+                  <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-component">
+                    <div className="w-6 h-6 bg-primary-glow/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-medium text-primary-glow">{index + 1}</span>
                     </div>
-                    <p className="text-gray-700">{step}</p>
+                    <p className="text-muted-foreground">{step}</p>
                   </div>
                 ))}
               </div>
@@ -231,10 +231,10 @@ export default function ProductResultV2({
       {process.env.NODE_ENV === 'development' && (
         <Card className="border-dashed">
           <CardHeader>
-            <h3 className="text-sm font-medium text-gray-500">Debug Info</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Debug Info</h3>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               <p>Template Used: {narrative?.template_used || 'fallback'}</p>
               <p>Confidence: {confidence}%</p>
               <p>Brand Country: {brandCountry || 'Unknown'}</p>
