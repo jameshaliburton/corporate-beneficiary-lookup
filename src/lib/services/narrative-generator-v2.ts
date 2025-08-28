@@ -159,7 +159,12 @@ function selectNarrativeTemplate(result: OwnershipResult): string {
     return 'VISION_ENHANCED';
   }
 
-  // Priority 5: Family/Private ownership
+  // Priority 5: Same country (local) - check this before family/private
+  if (brand_country === ownerCountry && effectiveConfidence > 70) {
+    return 'LOCAL_INDEPENDENT';
+  }
+
+  // Priority 6: Family/Private ownership
   if (ownership_type?.includes('Family') || ownership_structure_type?.includes('Family') ||
       ownership_type?.includes('Private') || ownership_structure_type?.includes('Private')) {
     return 'FAMILY_HERITAGE';
@@ -171,12 +176,7 @@ function selectNarrativeTemplate(result: OwnershipResult): string {
     return 'CORPORATE_EMPIRE';
   }
 
-  // Priority 7: Same country (local)
-  if (brand_country === ownerCountry && effectiveConfidence > 70) {
-    return 'LOCAL_INDEPENDENT';
-  }
-
-  // Priority 8: Different country (global)
+  // Priority 7: Different country (global)
   if (brand_country !== ownerCountry && effectiveConfidence > 70) {
     return 'HIDDEN_GLOBAL_OWNER';
   }

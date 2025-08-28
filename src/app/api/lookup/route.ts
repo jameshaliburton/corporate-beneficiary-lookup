@@ -10,7 +10,7 @@ import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
-import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v2';
+import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
