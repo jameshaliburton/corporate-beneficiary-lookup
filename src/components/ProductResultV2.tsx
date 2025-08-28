@@ -6,25 +6,24 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Share2, Camera, ChevronDown, ChevronUp, Building2, MapPin, TrendingUp } from "lucide-react";
-import { generateNarrativeFromResult, OwnershipResult, NarrativeFields } from '@/lib/services/narrative-generator-v2';
+import { OwnershipResult, NarrativeFields } from '@/lib/services/narrative-generator-v3';
 
 interface ProductResultV2Props {
   result: OwnershipResult;
+  narrative?: NarrativeFields;
   onScanAnother?: () => void;
   onShare?: () => void;
 }
 
 export default function ProductResultV2({ 
   result, 
+  narrative,
   onScanAnother,
   onShare 
 }: ProductResultV2Props) {
   const [showFullStory, setShowFullStory] = useState(false);
   const [showBehindTheScenes, setShowBehindTheScenes] = useState(false);
   const router = useRouter();
-
-  // Generate narrative content
-  const narrative: NarrativeFields = generateNarrativeFromResult(result);
 
   // Get country flag emoji
   const getCountryFlag = (country?: string): string => {

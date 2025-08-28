@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "brand": "Red Rose",
+  "financial_beneficiary": "Red Rose Inc.",
+  "beneficiary_country": "United States",
+  "confidence_score": 85,
+  "ownership_flow": [
+    {
+      "name": "Red Rose",
+      "type": "Brand/Product",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": false
+    },
+    {
+      "name": "Red Rose Inc.",
+      "type": "Ultimate Owner",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": true
+    }
+  ],
+  "narrative": {
+    "headline": "Red Rose owned by Red Rose Inc. in United States",
+    "what_we_found": "Red Rose is owned by Red Rose Inc., a US-based company.",
+    "how_we_figured_it_out": "AI analysis was used to determine the ownership structure.",
+    "tldr": "Red Rose is owned by its parent company Red Rose Inc.",
+    "stage_labels": [
+      "AI analysis"
+    ],
+    "emoji": "🧠",
+    "risk_flags": [
+      "Unverified"
+    ],
+    "story": "The story of Red Rose: This iconic brand is part of the Red Rose family, created by the American company Red Rose Inc. From their headquarters in the United States, they've been building their brand presence and market share.",
+    "used_sources": [],
+    "safety_flags": {
+      "truncated": false,
+      "removed_unverifiable": false
+    }
+  },
+  "trace": {
+    "trace_id": "mock-trace-id",
+    "start_time": "2025-08-11T09:14:05.959Z",
+    "stages": [
+      {
+        "name": "cache_check",
+        "status": "success"
+      },
+      {
+        "name": "llm_first_analysis",
+        "status": "success"
+      }
+    ],
+    "result_type": "llm_first_analysis",
+    "cache_hit": false
+  }
+}

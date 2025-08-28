@@ -1,0 +1,94 @@
+{
+  "brands": [
+    { 
+      "brand": "Nike", 
+      "entity_id": "nike-inc", 
+      "owner": "Nike, Inc.", 
+      "country": "US", 
+      "categories": ["apparel"],
+      "truth": { "id": "nike-inc", "name": "Nike, Inc.", "country": "US" },
+      "ocr_examples": ["Beaverton, Oregon", "Just Do It®"]
+    },
+    { 
+      "brand": "Adidas", 
+      "entity_id": "adidas-ag", 
+      "owner": "adidas AG", 
+      "country": "DE", 
+      "categories": ["apparel"],
+      "truth": { "id": "adidas-ag", "name": "adidas AG", "country": "DE" },
+      "ocr_examples": ["Herzogenaurach, Germany", "Impossible is Nothing®"]
+    },
+    { 
+      "brand": "IKEA", 
+      "entity_id": "inter-ikea", 
+      "owner": "Inter IKEA Systems B.V.", 
+      "country": "NL", 
+      "categories": ["home"],
+      "truth": { "id": "inter-ikea", "name": "Inter IKEA Systems B.V.", "country": "NL" },
+      "ocr_examples": ["Älmhult, Sweden", "IKEA®"]
+    },
+    { 
+      "brand": "Pepsi", 
+      "entity_id": "pepsico", 
+      "owner": "PepsiCo, Inc.", 
+      "country": "US", 
+      "categories": ["beverage"],
+      "truth": { "id": "pepsico", "name": "PepsiCo, Inc.", "country": "US" },
+      "ocr_examples": ["Purchase, New York", "Pepsi®"]
+    },
+    { 
+      "brand": "Apple", 
+      "entity_id": "apple-inc", 
+      "owner": "Apple Inc.", 
+      "country": "US", 
+      "categories": ["electronics"],
+      "truth": { "id": "apple-inc", "name": "Apple Inc.", "country": "US" },
+      "ocr_examples": ["Cupertino, California", "Think Different®"]
+    },
+    { 
+      "brand": "Samsung", 
+      "entity_id": "samsung-electronics", 
+      "owner": "Samsung Electronics", 
+      "country": "KR", 
+      "categories": ["electronics"],
+      "truth": { "id": "samsung-electronics", "name": "Samsung Electronics", "country": "KR" },
+      "ocr_examples": ["Seoul, South Korea", "Samsung®"]
+    },
+    { 
+      "brand": "Unilever", 
+      "entity_id": "unilever-plc", 
+      "owner": "Unilever PLC", 
+      "country": "GB", 
+      "categories": ["consumer goods"],
+      "truth": { "id": "unilever-plc", "name": "Unilever PLC", "country": "GB" },
+      "ocr_examples": ["London, United Kingdom", "Unilever®"]
+    },
+    { 
+      "brand": "H&M", 
+      "entity_id": "hm-hennes-mauritz", 
+      "owner": "H & M Hennes & Mauritz AB", 
+      "country": "SE", 
+      "categories": ["apparel"],
+      "truth": { "id": "hm-hennes-mauritz", "name": "H & M Hennes & Mauritz AB", "country": "SE" },
+      "ocr_examples": ["Stockholm, Sweden", "H&M®"]
+    },
+    { 
+      "brand": "Iittala", 
+      "entity_id": "iittala", 
+      "owner": "Fiskars Group", 
+      "country": "FI", 
+      "categories": ["home"],
+      "truth": { "id": "iittala", "name": "Fiskars Group", "country": "FI" },
+      "ocr_examples": ["Helsinki, Finland", "Iittala®"]
+    },
+    { 
+      "brand": "Johnny's", 
+      "entity_id": "johnnys-mustard-fi", 
+      "owner": "Auran (Turun Sinappi lineage, FI)", 
+      "country": "FI", 
+      "categories": ["condiments"],
+      "truth": { "id": "johnnys-mustard-fi", "name": "Auran (Turun Sinappi lineage, FI)", "country": "FI" },
+      "ocr_examples": ["Turku, Finland", "Johnny's®"]
+    }
+  ]
+}

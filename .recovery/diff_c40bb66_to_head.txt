@@ -1,0 +1,7 @@
+A	V2_PIPELINE_CONFORMANCE_REPORT.md
+A	V2_SNAPSHOT_EXPORT.md
+A	conformance-checker.js
+M	src/app/api/lookup/route.ts
+A	src/lib/pipeline/orchestrator.ts
+A	src/lib/pipeline/ownershipPipelineV2.ts
+A	src/types/agents.ts

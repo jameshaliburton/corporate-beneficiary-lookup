@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
-import { ProductResult } from '@/components/ProductResult';
+import ProductResultV2 from '@/components/ProductResultV2';
 import { transformPipelineData, type PipelineResult } from '@/lib/utils/pipeline-transformer';
 import Head from 'next/head';
 
@@ -335,7 +335,30 @@ export default function ResultPage() {
       <div className="min-h-screen bg-background dark-gradient">
         <AppHeader />
         <div className="container mx-auto max-w-md px-4 pt-4">
-          <ProductResult {...productResultProps} />
+          <ProductResultV2
+            result={{
+              brand_name: productResultProps?.brand,
+              brand_country: productResultProps?.brandCountry,
+              ultimate_owner: productResultProps?.owner,
+              ultimate_owner_country: productResultProps?.ownerCountry,
+              financial_beneficiary: productResultProps?.owner,
+              financial_beneficiary_country: productResultProps?.ownerCountry,
+              ownership_type: productResultProps?.structureType,
+              confidence: productResultProps?.confidence,
+              ownership_notes: productResultProps?.ownership_notes,
+              behind_the_scenes: productResultProps?.behind_the_scenes
+            }}
+            narrative={{
+              headline: productResultProps?.headline,
+              tagline: productResultProps?.tagline,
+              story: productResultProps?.story,
+              ownership_notes: productResultProps?.ownership_notes || [],
+              behind_the_scenes: productResultProps?.behind_the_scenes || [],
+              template_used: productResultProps?.narrative_template_used || 'fallback'
+            }}
+            onScanAnother={() => window.location.href = '/'}
+            onShare={() => console.log('Share functionality')}
+          />
         </div>
       </div>
     </>

@@ -1,0 +1,124 @@
+{
+  "brands": [
+    {
+      "brand": "Delta",
+      "truth": { "id": "delta-faucet", "name": "Delta Faucet", "country": "US" },
+      "candidates": [
+        { "entity_id": "delta-airlines", "display": "Delta Air Lines", "owner": "Delta Air Lines, Inc.", "country": "US", "categories": ["airline"] },
+        { "entity_id": "delta-faucet", "display": "Delta Faucet", "owner": "Masco Corporation", "country": "US", "categories": ["faucets", "plumbing"] }
+      ],
+      "ocr_examples": [
+        "Matte black kitchen faucet",
+        "Delta® pull-down sprayer"
+      ]
+    },
+    {
+      "brand": "Dove",
+      "truth": { "id": "dove-soap", "name": "Dove (Soap)", "country": "GB" },
+      "candidates": [
+        { "entity_id": "dove-soap", "display": "Dove (Soap)", "owner": "Unilever PLC", "country": "GB", "categories": ["personal care"] },
+        { "entity_id": "dove-chocolate", "display": "Dove (Chocolate)", "owner": "Mars, Incorporated", "country": "US", "categories": ["confectionery"] }
+      ],
+      "ocr_examples": [
+        "Dove Beauty Bar",
+        "Unilever Dove®"
+      ]
+    },
+    {
+      "brand": "Polo",
+      "truth": { "id": "polo-ralph", "name": "Polo Ralph Lauren", "country": "US" },
+      "candidates": [
+        { "entity_id": "polo-ralph", "display": "Polo Ralph Lauren", "owner": "Ralph Lauren Corp.", "country": "US", "categories": ["apparel"] },
+        { "entity_id": "polo-mints", "display": "POLO Mints", "owner": "Nestlé S.A.", "country": "CH", "categories": ["confectionery"] }
+      ],
+      "ocr_examples": [
+        "Polo Ralph Lauren",
+        "Ralph Lauren®"
+      ]
+    },
+    {
+      "brand": "Orange",
+      "candidates": [
+        { "entity_id": "orange-telco", "display": "Orange (Telecom)", "owner": "Orange S.A.", "country": "FR", "categories": ["telecom"] },
+        { "entity_id": "orange-amps", "display": "Orange Amplification", "owner": "Orange Music", "country": "GB", "categories": ["music gear"] }
+      ]
+    },
+    {
+      "brand": "Canon",
+      "candidates": [
+        { "entity_id": "canon-inc", "display": "Canon (Cameras)", "owner": "Canon Inc.", "country": "JP", "categories": ["cameras", "optics"] },
+        { "entity_id": "canon-printers-au", "display": "Canon (Office AU)", "owner": "Canon Oceania", "country": "AU", "categories": ["office"] }
+      ]
+    },
+    {
+      "brand": "Mercury",
+      "candidates": [
+        { "entity_id": "mercury-marine", "display": "Mercury Marine", "owner": "Brunswick Corporation", "country": "US", "categories": ["marine engines"] },
+        { "entity_id": "mercury-drugs", "display": "Mercury Drug", "owner": "Mercury Drug Corporation", "country": "PH", "categories": ["pharmacy"] }
+      ]
+    },
+    {
+      "brand": "Jaguar",
+      "candidates": [
+        { "entity_id": "jaguar-cars", "display": "Jaguar Cars", "owner": "JLR (Tata Motors)", "country": "GB", "categories": ["automotive"] },
+        { "entity_id": "jaguar-energy", "display": "Jaguar Energy Drink", "owner": "BBDO (brand owner varies)", "country": "PL", "categories": ["beverage"] }
+      ]
+    },
+    {
+      "brand": "Galaxy",
+      "candidates": [
+        { "entity_id": "galaxy-chocolate", "display": "Galaxy (Chocolate)", "owner": "Mars, Incorporated", "country": "US", "categories": ["confectionery"] },
+        { "entity_id": "galaxy-phones", "display": "Galaxy (Phones)", "owner": "Samsung Electronics", "country": "KR", "categories": ["electronics"] }
+      ]
+    },
+    {
+      "brand": "Pioneer",
+      "candidates": [
+        { "entity_id": "pioneer-audio", "display": "Pioneer (Audio)", "owner": "Pioneer Corporation", "country": "JP", "categories": ["audio"] },
+        { "entity_id": "pioneer-seeds", "display": "Pioneer Seeds", "owner": "Corteva Agriscience", "country": "US", "categories": ["agriculture"] }
+      ]
+    },
+    {
+      "brand": "Eagle",
+      "candidates": [
+        { "entity_id": "american-eagle", "display": "American Eagle Outfitters", "owner": "AEO Inc.", "country": "US", "categories": ["apparel"] },
+        { "entity_id": "eagle-tyres", "display": "Eagle Tyres (Goodyear)", "owner": "The Goodyear Tire & Rubber Co.", "country": "US", "categories": ["tires"] }
+      ]
+    },
+    {
+      "brand": "Unity",
+      "candidates": [
+        { "entity_id": "unity-game-engine", "display": "Unity (Engine)", "owner": "Unity Software Inc.", "country": "US", "categories": ["software"] },
+        { "entity_id": "unity-banking", "display": "Unity Bank", "owner": "Unity Bank plc", "country": "NG", "categories": ["banking"] }
+      ]
+    },
+    {
+      "brand": "Tiger",
+      "candidates": [
+        { "entity_id": "tiger-beer", "display": "Tiger Beer", "owner": "Heineken Asia Pacific", "country": "SG", "categories": ["beverage"] },
+        { "entity_id": "tiger-balm", "display": "Tiger Balm", "owner": "Haw Par Corporation", "country": "SG", "categories": ["health"] }
+      ]
+    },
+    {
+      "brand": "Fox",
+      "candidates": [
+        { "entity_id": "fox-media", "display": "FOX (Media)", "owner": "Fox Corporation", "country": "US", "categories": ["media"] },
+        { "entity_id": "fox-racing", "display": "FOX Racing", "owner": "Vista Outdoor", "country": "US", "categories": ["apparel", "sports"] }
+      ]
+    },
+    {
+      "brand": "Aurora",
+      "candidates": [
+        { "entity_id": "aurora-dairy", "display": "Aurora Organic Dairy", "owner": "Aurora Organic Dairy", "country": "US", "categories": ["dairy"] },
+        { "entity_id": "aurora-cannabis", "display": "Aurora Cannabis", "owner": "Aurora Cannabis Inc.", "country": "CA", "categories": ["cannabis"] }
+      ]
+    },
+    {
+      "brand": "Summit",
+      "candidates": [
+        { "entity_id": "summit-beer", "display": "Summit Brewing", "owner": "Summit Brewing Company", "country": "US", "categories": ["beverage"] },
+        { "entity_id": "summit-appliances", "display": "Summit Appliance", "owner": "Felix Storch, Inc.", "country": "US", "categories": ["appliances"] }
+      ]
+    }
+  ]
+}

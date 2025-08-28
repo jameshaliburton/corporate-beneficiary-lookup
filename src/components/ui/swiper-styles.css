@@ -1,0 +1,20 @@
+/* Custom Swiper styles for disambiguation carousel */
+.swiper-pagination-custom .swiper-pagination-bullet {
+  @apply w-2 h-2 bg-muted-foreground/30 rounded-full mx-1 cursor-pointer transition-all duration-200;
+}
+
+.swiper-pagination-custom .swiper-pagination-bullet-active {
+  @apply bg-primary scale-125;
+}
+
+.swiper-slide {
+  transition: opacity 0.3s ease;
+}
+
+.swiper-slide:not(.swiper-slide-active) {
+  opacity: 0.4;
+}
+
+.swiper-slide-active {
+  opacity: 1;
+}

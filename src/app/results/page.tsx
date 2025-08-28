@@ -279,6 +279,14 @@ export default function ResultsPage() {
       <div className="container mx-auto max-w-md px-4 pt-4">
         <ProductResultV2 
           result={ownershipResult}
+          narrative={{
+            headline: result?.headline,
+            tagline: result?.tagline,
+            story: result?.story,
+            ownership_notes: result?.ownership_notes || [],
+            behind_the_scenes: result?.behind_the_scenes || [],
+            template_used: result?.narrative_template_used || 'fallback'
+          }}
           onScanAnother={() => window.location.href = '/'}
           onShare={() => console.log('Share functionality')}
         />
