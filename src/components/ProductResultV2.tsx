@@ -68,14 +68,6 @@ export default function ProductResultV2({
           <h1 className="text-4xl font-bold text-foreground">
             {result.brand_name || 'Unknown Brand'}
           </h1>
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <span>{getCountryFlag(brandCountry)} {brandCountry || 'Unknown'}</span>
-            <span>•</span>
-            <span>{getCountryFlag(ownerCountry)} {ownerCountry || 'Unknown'}</span>
-          </div>
-          <Badge className={getConfidenceColor(confidence)}>
-            {confidence}% confidence
-          </Badge>
         </div>
         
         {/* Narrative Headline and Tagline */}
@@ -120,7 +112,7 @@ export default function ProductResultV2({
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">{result.brand_name || 'Unknown Brand'}</p>
-                  <p className="text-sm text-muted-foreground">Brand • {brandCountry || 'Unknown'}</p>
+                  <p className="text-sm text-muted-foreground">Brand{brandCountry ? ` • ${brandCountry}` : ''}</p>
                 </div>
               </div>
             </div>
@@ -140,7 +132,7 @@ export default function ProductResultV2({
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">{owner || 'Unknown'}</p>
-                  <p className="text-sm text-muted-foreground">Ultimate Owner • {ownerCountry || 'Unknown'}</p>
+                  <p className="text-sm text-muted-foreground">Ultimate Owner{ownerCountry ? ` • ${ownerCountry}` : ''}</p>
                 </div>
               </div>
             </div>
@@ -153,9 +145,11 @@ export default function ProductResultV2({
                   <p className="font-medium text-foreground">
                     Revenue from {result.brand_name || 'this brand'} ultimately flows to {owner || 'Unknown'}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    in {getCountryFlag(ownerCountry)} {ownerCountry || 'Unknown'}
-                  </p>
+                  {ownerCountry && (
+                    <p className="text-sm text-muted-foreground">
+                      in {getCountryFlag(ownerCountry)} {ownerCountry}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -245,8 +239,8 @@ export default function ProductResultV2({
             <div className="text-xs text-muted-foreground space-y-1">
               <p>Template Used: {narrative?.template_used || 'fallback'}</p>
               <p>Confidence: {confidence}%</p>
-              <p>Brand Country: {brandCountry || 'Unknown'}</p>
-              <p>Owner Country: {ownerCountry || 'Unknown'}</p>
+              <p>Brand Country: {brandCountry || 'Not available'}</p>
+              <p>Owner Country: {ownerCountry || 'Not available'}</p>
             </div>
           </CardContent>
         </Card>

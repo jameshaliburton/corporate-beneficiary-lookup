@@ -110,6 +110,9 @@ export interface ProductResultProps {
   agentExecutionTrace?: any;
   resultType?: string;
   sources?: string[];
+  // Country information
+  brandCountry?: string;
+  ownerCountry?: string;
   // LLM-generated copy for engaging storytelling
   generatedCopy?: {
     headline: string;
@@ -266,6 +269,9 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     agentExecutionTrace: pipelineResult.agent_execution_trace,
     resultType: pipelineResult.result_type,
     sources: pipelineResult.sources,
+    // Country information
+    brandCountry: pipelineResult.ownership_flow?.[0]?.country,
+    ownerCountry: pipelineResult.beneficiary_country,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
     // New narrative fields from v3 system
