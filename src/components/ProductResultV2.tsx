@@ -103,38 +103,49 @@ export default function ProductResultV2({
           </h3>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+          <div className="space-y-4">
+            {/* Brand Card */}
+            <div className="glass-card p-4 border border-border/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-lg">{getCountryFlag(brandCountry)}</span>
+                <div className="w-12 h-12 bg-primary-glow/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">{getCountryFlag(brandCountry)}</span>
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{result.brand_name || 'Unknown Brand'}</p>
-                  <p className="text-sm text-gray-600">Brand</p>
+                  <p className="font-semibold text-foreground">{result.brand_name || 'Unknown Brand'}</p>
+                  <p className="text-sm text-muted-foreground">Brand • {brandCountry || 'Unknown'}</p>
                 </div>
               </div>
-              <div className="text-gray-400">→</div>
+            </div>
+            
+            {/* Arrow Down */}
+            <div className="flex justify-center">
+              <div className="w-8 h-8 bg-muted/30 rounded-full flex items-center justify-center">
+                <span className="text-muted-foreground">↓</span>
+              </div>
+            </div>
+            
+            {/* Ultimate Owner Card */}
+            <div className="glass-card p-4 border border-border/20">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-lg">{getCountryFlag(ownerCountry)}</span>
+                <div className="w-12 h-12 bg-primary-glow/20 rounded-full flex items-center justify-center">
+                  <span className="text-xl">{getCountryFlag(ownerCountry)}</span>
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{owner || 'Unknown'}</p>
-                  <p className="text-sm text-gray-600">Ultimate Owner</p>
+                  <p className="font-semibold text-foreground">{owner || 'Unknown'}</p>
+                  <p className="text-sm text-muted-foreground">Ultimate Owner • {ownerCountry || 'Unknown'}</p>
                 </div>
               </div>
             </div>
             
             {/* Revenue Flow */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div className="bg-muted/30 p-4 rounded-component border border-border/20">
               <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-green-600" />
+                <TrendingUp className="w-5 h-5 text-primary-glow" />
                 <div>
-                  <p className="font-medium text-green-800">
+                  <p className="font-medium text-foreground">
                     Revenue from {result.brand_name || 'this brand'} ultimately flows to {owner || 'Unknown'}
                   </p>
-                  <p className="text-sm text-green-600">
+                  <p className="text-sm text-muted-foreground">
                     in {getCountryFlag(ownerCountry)} {ownerCountry || 'Unknown'}
                   </p>
                 </div>
