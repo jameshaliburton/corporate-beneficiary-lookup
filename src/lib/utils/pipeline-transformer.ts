@@ -69,6 +69,13 @@ export interface PipelineResult {
       mapping: string;
     };
   };
+  // New narrative fields from v3 system
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
 }
 
 export interface OwnershipNode {
@@ -115,6 +122,13 @@ export interface ProductResultProps {
       mapping: string;
     };
   };
+  // New narrative fields from v3 system
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
 }
 
 export async function transformPipelineData(pipelineResult: PipelineResult): Promise<ProductResultProps> {
@@ -254,6 +268,13 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     sources: pipelineResult.sources,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
+    // New narrative fields from v3 system
+    headline: pipelineResult.headline,
+    tagline: pipelineResult.tagline,
+    story: pipelineResult.story,
+    ownership_notes: pipelineResult.ownership_notes,
+    behind_the_scenes: pipelineResult.behind_the_scenes,
+    narrative_template_used: pipelineResult.narrative_template_used,
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline
