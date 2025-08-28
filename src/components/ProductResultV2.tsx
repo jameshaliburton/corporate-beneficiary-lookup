@@ -54,52 +54,45 @@ export default function ProductResultV2({
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header Section */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {result.brand_name || 'Unknown Brand'}
-              </h1>
-              <div className="flex items-center gap-2 text-lg text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span>{getCountryFlag(brandCountry)} {brandCountry || 'Unknown'}</span>
-              </div>
-            </div>
-            <Badge className={getConfidenceColor(confidence)}>
-              {confidence}% confidence
-            </Badge>
+      {/* Header Section - No Card Styling, Center-Aligned */}
+      <div className="space-y-6 text-center">
+        <div className="space-y-4">
+          <h1 className="text-4xl font-bold text-foreground">
+            {result.brand_name || 'Unknown Brand'}
+          </h1>
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <span>{getCountryFlag(brandCountry)} {brandCountry || 'Unknown'}</span>
+            <span>•</span>
+            <span>{getCountryFlag(ownerCountry)} {ownerCountry || 'Unknown'}</span>
           </div>
-        </CardHeader>
-      </Card>
+          <Badge className={getConfidenceColor(confidence)}>
+            {confidence}% confidence
+          </Badge>
+        </div>
+        
+        {/* Narrative Headline and Tagline */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-primary-glow">
+            {narrative?.headline || 'Ownership Analysis'}
+          </h2>
+          <p className="text-lg text-muted-foreground italic">
+            {narrative?.tagline || 'Discovering the ownership structure...'}
+          </p>
+        </div>
+      </div>
 
-      {/* Narrative Content */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            {/* Headline */}
-            <h2 className="text-2xl font-bold text-blue-600">
-              {narrative?.headline || 'Ownership Analysis'}
-            </h2>
-            
-            {/* Tagline */}
-            <p className="text-lg text-gray-700 italic">
-              {narrative?.tagline || 'Discovering the ownership structure...'}
-            </p>
-            
-            {/* Story */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">
-                The story of {result.brand_name || 'this brand'}
-              </h3>
-              <p className="text-gray-700 leading-relaxed">
-                {narrative?.story || 'Analyzing ownership data...'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Narrative Content - No Card Styling */}
+      <div className="space-y-4">
+        {/* Story */}
+        <div className="bg-muted/30 p-6 rounded-component border border-border/20">
+          <h3 className="font-semibold text-foreground mb-3">
+            The story of {result.brand_name || 'this brand'}
+          </h3>
+          <p className="text-muted-foreground leading-relaxed">
+            {narrative?.story || 'Analyzing ownership data...'}
+          </p>
+        </div>
+      </div>
 
       {/* Ownership Summary */}
       <Card>
