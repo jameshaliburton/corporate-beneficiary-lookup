@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ProductResult } from '@/components/ProductResult';
+import ProductResultV2 from '@/components/ProductResultV2';
 
 interface PipelineResult {
   success: boolean;
   product_name?: string;
   brand?: string;
+  brand_country?: string;
   barcode?: string;
   financial_beneficiary?: string;
   beneficiary_country?: string;
@@ -26,6 +27,13 @@ interface PipelineResult {
   }>;
   sources?: string[];
   reasoning?: string;
+  // New narrative fields
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
   agent_execution_trace?: {
     sections?: Array<{
       id?: string;
@@ -248,12 +256,32 @@ export default function ResultsPage() {
     );
   }
 
-  const productResultProps = transformPipelineData(result);
+  // Transform the result to match the new ProductResultV2 interface
+  const ownershipResult = {
+    brand_name: result?.brand,
+    brand_country: result?.brand_country,
+    ultimate_owner: result?.financial_beneficiary,
+    ultimate_owner_country: result?.beneficiary_country,
+    financial_beneficiary: result?.financial_beneficiary,
+    financial_beneficiary_country: result?.beneficiary_country,
+    ownership_type: result?.ownership_structure_type,
+    confidence: result?.confidence_score,
+    ownership_notes: result?.ownership_notes,
+    behind_the_scenes: result?.behind_the_scenes,
+    // Use the new narrative fields if available
+    headline: result?.headline,
+    tagline: result?.tagline,
+    story: result?.story
+  };
 
   return (
     <div className="min-h-screen bg-background dark-gradient">
       <div className="container mx-auto max-w-md px-4 pt-4">
-        <ProductResult {...productResultProps} />
+        <ProductResultV2 
+          result={ownershipResult}
+          onScanAnother={() => window.location.href = '/'}
+          onShare={() => console.log('Share functionality')}
+        />
       </div>
     </div>
   );
