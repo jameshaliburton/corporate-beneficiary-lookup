@@ -197,19 +197,19 @@ export default function ProductResultV2({
         </Card>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex gap-4 pt-4">
+      {/* Action Buttons - Stacked Vertically */}
+      <div className="space-y-3 pt-4">
         <Button
           onClick={onScanAnother || (() => router.push('/'))}
           variant="outline"
-          className="flex-1 h-12"
+          className="w-full h-12"
         >
           <Camera className="w-4 h-4 mr-2" />
           Scan Another Product
         </Button>
         <Button
           onClick={onShare || (() => console.log('Share functionality'))}
-          className="flex-1 h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+          className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
         >
           <Share2 className="w-4 h-4 mr-2" />
           Share This Result
