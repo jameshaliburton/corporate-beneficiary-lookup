@@ -52,6 +52,14 @@ export default function ProductResultV2({
   const ownerCountry = result.ultimate_owner_country || result.financial_beneficiary_country;
   const owner = result.ultimate_owner || result.financial_beneficiary;
 
+  // Debug logging for country data
+  console.log('[ProductResultV2] Country data:', { 
+    brandCountry, 
+    ownerCountry, 
+    brandFlag: getCountryFlag(brandCountry), 
+    ownerFlag: getCountryFlag(ownerCountry) 
+  });
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header Section - No Card Styling, Center-Aligned */}
