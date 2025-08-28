@@ -5,7 +5,7 @@
  * while maintaining key requirements like country focus and engaging storytelling.
  */
 
-import { safeLLMCall } from '@/lib/llm/safe-llm-adapter';
+import { Anthropic } from '@anthropic-ai/sdk';
 
 export interface OwnershipResult {
   brand_name?: string;
@@ -115,26 +115,31 @@ Create content that:
 
 Respond with valid JSON only.`;
 
-    const response = await safeLLMCall({
-      system: systemPrompt,
-      user: userPrompt,
-      model: 'claude-3-5-sonnet-20241022',
-      temperature: 0.7,
-      max_tokens: 1000
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    console.log('[NARRATIVE_GEN_V3] LLM response:', response);
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1000,
+      temperature: 0.7,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+    console.log('[NARRATIVE_GEN_V3] LLM response:', responseText);
 
     // Parse the JSON response
     let narrativeData;
     try {
-      narrativeData = JSON.parse(response);
+      narrativeData = JSON.parse(responseText);
     } catch (parseError) {
       console.error('[NARRATIVE_GEN_V3] Failed to parse LLM response as JSON:', parseError);
-      console.log('[NARRATIVE_GEN_V3] Raw response:', response);
+      console.log('[NARRATIVE_GEN_V3] Raw response:', responseText);
       
       // Fallback: try to extract JSON from the response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           narrativeData = JSON.parse(jsonMatch[0]);
