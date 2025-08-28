@@ -86,7 +86,7 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedResult = sessionStorage.getItem('scanResult');
+    const storedResult = sessionStorage.getItem('pipelineResult');
     if (storedResult) {
       try {
         const parsedResult = JSON.parse(storedResult);
