@@ -247,7 +247,7 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     
     // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
     console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
-    const narrative = generateNarrativeFromResult({
+    const narrative = await generateNarrativeFromResult({
       brand_name: cachedResult.brand,
       brand_country: cachedResult.brand_country,
       ultimate_owner: cachedResult.financial_beneficiary,
@@ -1035,7 +1035,7 @@ export async function POST(request: NextRequest) {
       };
       
       console.log('🎨 Starting narrative generation...');
-      const narrative = generateNarrativeFromResult({
+      const narrative = await generateNarrativeFromResult({
         brand_name: currentProductData.brand,
         brand_country: ownershipResult.brand_country,
         ultimate_owner: ownershipResult.financial_beneficiary,
