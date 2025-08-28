@@ -10,7 +10,7 @@ import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
-import { generateOwnershipCopy } from '@/lib/services/copy-generator';
+import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v2';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -245,20 +245,21 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       });
     }
     
-    // 🎨 ALWAYS GENERATE FRESH COPY (even on cache hit)
-    console.log('🎨 [Shared Cache] Generating fresh copy for cached ownership data...');
-    const generatedCopy = await generateOwnershipCopy({
-      brand: cachedResult.brand,
-      ultimateOwner: cachedResult.financial_beneficiary,
-      ultimateCountry: cachedResult.beneficiary_country,
-      ownershipChain: cachedResult.ownership_flow || [],
+    // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
+    console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
+    const narrative = generateNarrativeFromResult({
+      brand_name: cachedResult.brand,
+      brand_country: cachedResult.brand_country,
+      ultimate_owner: cachedResult.financial_beneficiary,
+      ultimate_owner_country: cachedResult.beneficiary_country,
+      financial_beneficiary: cachedResult.financial_beneficiary,
+      financial_beneficiary_country: cachedResult.beneficiary_country,
+      ownership_type: cachedResult.ownership_structure_type,
       confidence: cachedResult.confidence_score || 0,
-      ownershipStructureType: cachedResult.ownership_structure_type,
-      sources: cachedResult.sources || [],
-      reasoning: cachedResult.reasoning,
-      beneficiaryFlag: cachedResult.beneficiary_flag
+      ownership_notes: cachedResult.ownership_notes,
+      behind_the_scenes: cachedResult.behind_the_scenes
     });
-    console.log('✅ [Shared Cache] Generated fresh copy:', generatedCopy);
+    console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
     
     return {
       success: true,
@@ -288,7 +289,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       agent_execution_trace: cachedResult.agent_execution_trace,
       result_type: cachedResult.result_type || 'cache_hit',
       pipeline_type: 'cache_hit',
-      generated_copy: generatedCopy,
+      // New narrative fields for engaging storytelling
+      headline: narrative.headline,
+      tagline: narrative.tagline,
+      story: narrative.story,
+      ownership_notes: narrative.ownership_notes,
+      behind_the_scenes: narrative.behind_the_scenes,
+      narrative_template_used: narrative.template_used,
       cache_hit: true
     };
   } else {
@@ -1027,10 +1034,24 @@ export async function POST(request: NextRequest) {
         beneficiaryFlag: ownershipResult.beneficiary_flag
       };
       
-      console.log('🎨 Starting copy generation...');
-      console.log('🎨 Ownership data:', JSON.stringify(ownershipData, null, 2));
-      const generatedCopy = await generateOwnershipCopy(ownershipData);
-      console.log('✅ Generated copy:', JSON.stringify(generatedCopy, null, 2));
+      console.log('🎨 Starting narrative generation...');
+      const narrative = generateNarrativeFromResult({
+        brand_name: currentProductData.brand,
+        brand_country: ownershipResult.brand_country,
+        ultimate_owner: ownershipResult.financial_beneficiary,
+        ultimate_owner_country: ownershipResult.beneficiary_country,
+        financial_beneficiary: ownershipResult.financial_beneficiary,
+        financial_beneficiary_country: ownershipResult.beneficiary_country,
+        ownership_type: ownershipResult.ownership_structure_type,
+        confidence: ownershipResult.confidence_score || 0,
+        acquisition_year: ownershipResult.acquisition_year,
+        previous_owner: ownershipResult.previous_owner,
+        vision_context: visionContext,
+        disambiguation_options: ownershipResult.disambiguation_options,
+        ownership_notes: ownershipResult.ownership_notes,
+        behind_the_scenes: ownershipResult.behind_the_scenes
+      });
+      console.log('✅ Generated narrative:', narrative);
       
       const mergedResult = {
         success: true,
@@ -1070,8 +1091,13 @@ export async function POST(request: NextRequest) {
           reasoning: visionContext.reasoning
         } : null,
         pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
-        // LLM-generated copy for engaging storytelling
-        generated_copy: generatedCopy,
+        // New narrative fields for engaging storytelling
+        headline: narrative.headline,
+        tagline: narrative.tagline,
+        story: narrative.story,
+        ownership_notes: narrative.ownership_notes,
+        behind_the_scenes: narrative.behind_the_scenes,
+        narrative_template_used: narrative.template_used,
         query_id: queryId
       };
 
