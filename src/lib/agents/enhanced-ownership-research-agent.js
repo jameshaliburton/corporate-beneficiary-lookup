@@ -9,6 +9,7 @@ import { WebResearchAgent, isWebResearchAvailable } from './web-research-agent.j
 import { WebSearchOwnershipAgent, isWebSearchOwnershipAvailable } from './web-search-ownership-agent.js'
 import { EnhancedWebSearchOwnershipAgent, isEnhancedWebSearchOwnershipAvailable } from './enhanced-web-search-ownership-agent.js'
 import { LLMResearchAgent, isLLMResearchAvailable } from './llm-research-agent.js'
+import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from './gemini-ownership-analysis-agent.js'
 import { extractFollowUpContext } from '../services/context-parser.js'
 import { QueryBuilderAgent, isQueryBuilderAvailable } from './query-builder-agent.js'
 import { supabase } from '../supabase.ts'
@@ -761,10 +762,12 @@ Respond in valid JSON format:
     let researchData = null
     let ownershipChain = null
     
+    console.log('[AGENT_ENTRY] Checking if LLM research is available:', isLLMResearchAvailable())
     if (isLLMResearchAvailable()) {
       try {
         webStage.reason('LLM-first research available, attempting direct ownership determination', REASONING_TYPES.INFO)
         
+        console.log('[AGENT_ENTRY] About to call LLMResearchAgent with params:', { brand, product_name, hints })
         const llmResearchResult = await LLMResearchAgent({
           brand,
           product_name,
@@ -782,6 +785,13 @@ Respond in valid JSON format:
           disambiguation_triggered: llmResearchResult?.disambiguation_triggered,
           disambiguation_options: llmResearchResult?.disambiguation_options
         })
+        
+        console.log('[AGENT_ENTRY] LLMResearchAgent called - checking if disambiguation fields exist:', {
+          hasDisambiguationTriggered: 'disambiguation_triggered' in llmResearchResult,
+          hasDisambiguationOptions: 'disambiguation_options' in llmResearchResult,
+          disambiguationTriggeredValue: llmResearchResult?.disambiguation_triggered,
+          disambiguationOptionsValue: llmResearchResult?.disambiguation_options
+        })
 
         if (llmResearchResult?.ownership_chain?.length > 0) {
           // ✅ SHORT-CIRCUIT: Use LLM result as final authoritative output
@@ -789,6 +799,18 @@ Respond in valid JSON format:
             ...llmResearchResult,
             success: true,
             research_method: 'llm_first_research',
+            // Defensive field copying to prevent loss
+            disambiguation_triggered: llmResearchResult?.disambiguation_triggered ?? false,
+            disambiguation_options: llmResearchResult?.disambiguation_options ?? [],
+            disambiguation_reason: llmResearchResult?.disambiguation_reason ?? null,
+            // Preserve trace debug information
+            trace: {
+              debug: [
+                ...(llmResearchResult?.trace?.debug ?? []),
+                '[ENHANCED_AGENT] Merged LLMResearchAgent result',
+                `[ENHANCED_AGENT] Disambiguation preserved: triggered=${llmResearchResult?.disambiguation_triggered}, options=${llmResearchResult?.disambiguation_options?.length || 0}`
+              ]
+            }
           }
           ownershipChain = llmResearchResult.ownership_chain
           
@@ -846,6 +868,17 @@ Respond in valid JSON format:
           }, ['LLM-first research completed successfully'])
           
           // ✅ SHORT-CIRCUIT: Return the final result immediately
+          console.log('[ENHANCED_AGENT_RETURN] Final researchData before buildFinalResult:', JSON.stringify({
+            disambiguation_triggered: researchData.disambiguation_triggered,
+            disambiguation_options: researchData.disambiguation_options,
+            trace_debug_count: researchData.trace?.debug?.length || 0
+          }, null, 2))
+          
+          // Add final trace debug
+          if (researchData.trace?.debug) {
+            researchData.trace.debug.push('[RETURN_CHECK] Disambiguation result:', JSON.stringify(researchData.disambiguation_options))
+          }
+          
           return await buildFinalResult(researchData, ownershipChain, queryAnalysis, traceLogger, queryId, brand)
           
         } else {
@@ -1894,10 +1927,91 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   ownership.fallback_reason = null
   ownership.result_id = generateQueryId()
   
+  // Add Gemini second-opinion analysis
+  let geminiAnalysis = null
+  const forceGeminiForTesting = process.env.FORCE_GEMINI_TESTING === 'true' || process.env.FORCE_GEMINI_FOR_TESTING === 'true'
+  const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
+  const geminiFeatureEnabled = process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true'
+  
+  console.log('[GEMINI_DEBUG] Gemini availability check:', {
+    geminiAvailable,
+    forceGeminiForTesting,
+    geminiFeatureEnabled,
+    willTrigger: (geminiAvailable || forceGeminiForTesting) && geminiFeatureEnabled,
+    envVar: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT SET',
+    keyLength: process.env.GOOGLE_API_KEY?.length || 0,
+    keyPrefix: process.env.GOOGLE_API_KEY?.substring(0, 10) || 'none'
+  })
+  
+  if ((geminiAvailable || forceGeminiForTesting) && geminiFeatureEnabled) {
+    try {
+      console.log('[GEMINI_TRIGGER] Gemini agent triggered - starting verification analysis')
+      console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
+      
+      geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+        brand: brand,
+        product_name: researchData?.product_name,
+        ownershipData: {
+          financial_beneficiary: ownership.financial_beneficiary,
+          confidence_score: ownership.confidence_score,
+          research_method: ownership.result_type,
+          sources: ownership.sources
+        },
+        hints: {},
+        queryId: queryId
+      })
+      
+      console.log('[GEMINI_DEBUG] Gemini analysis result:', {
+        success: geminiAnalysis?.success,
+        triggered: geminiAnalysis?.gemini_triggered,
+        has_result: !!geminiAnalysis?.gemini_result
+      })
+      
+      // Add Gemini results to agent_results
+      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+        ownership.agent_results.gemini_analysis = {
+          success: true,
+          data: geminiAnalysis.gemini_result,
+          reasoning: 'Gemini verified ownership claim through web search and snippet analysis',
+          web_snippets_count: geminiAnalysis.web_snippets_count,
+          search_queries_used: geminiAnalysis.search_queries_used
+        }
+      } else {
+        ownership.agent_results.gemini_analysis = {
+          success: false,
+          reasoning: 'Gemini verification not available or failed'
+        }
+      }
+      
+    } catch (error) {
+      console.error('[GEMINI_DEBUG] Gemini analysis failed:', error)
+      ownership.agent_results.gemini_analysis = {
+        success: false,
+        error: error.message,
+        reasoning: 'Gemini analysis encountered an error'
+      }
+    }
+  } else {
+    if (!geminiFeatureEnabled) {
+      console.log('[FLAG_CHECK] ENABLE_GEMINI_OWNERSHIP_AGENT = false → skipping Gemini agent')
+      ownership.agent_results.gemini_analysis = {
+        success: false,
+        reasoning: 'Gemini agent disabled by feature flag'
+      }
+    } else {
+      console.log('[GEMINI_DEBUG] Gemini not available - missing GOOGLE_API_KEY')
+      ownership.agent_results.gemini_analysis = {
+        success: false,
+        reasoning: 'Gemini analysis not available - missing API key'
+      }
+    }
+  }
+  
   console.log('[DEBUG] Final result built from LLM research:', {
     financial_beneficiary: ownership.financial_beneficiary,
     confidence_score: ownership.confidence_score,
-    research_method: ownership.result_type
+    research_method: ownership.result_type,
+    gemini_triggered: geminiAnalysis?.gemini_triggered || false
   })
   
   return ownership

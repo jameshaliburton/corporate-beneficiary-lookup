@@ -23,6 +23,9 @@
     "test:e2e:comprehensive": "npx tsx tests/e2e/comprehensive-pipeline-verification.ts",
     "test:e2e:extended": "npx tsx tests/e2e/extended-pipeline-verification.ts",
     "test:disambiguation": "npx tsx tests/e2e/test-disambiguation-trigger.ts",
+    "test:gemini": "npx tsx tests/e2e/test-gemini-agent.ts",
+    "test:phase1": "npx tsx tests/e2e/test-phase-1-regression.ts",
+    "test:phase1:flush": "curl -X POST http://localhost:3000/api/dev/flush-cache -H 'Content-Type: application/json' -d '{}'",
     "debug:api": "npx tsx scripts/debug-api-response.ts",
     "debug:api:single": "npx tsx tests/e2e/debug-api.ts"
   },
@@ -38,6 +41,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
     "@google-cloud/local-auth": "^3.0.1",
+    "@google/generative-ai": "^0.24.1",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
     "@next/env": "^15.3.4",

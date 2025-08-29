@@ -60,6 +60,9 @@ export async function LLMResearchAgent({
   console.log('🚨🚨🚨 LLMResearchAgent CALLED for:', { brand, product_name })
   console.log('[LLMResearchAgent] 🚀 Starting LLM-first research for:', { brand, product_name, hints })
   
+  // Add to trace immediately
+  const traceDebug = ['[AGENT_ENTRY] LLMResearchAgent function started']
+  
   try {
     // Step 1: Parse context hints for research strategy
     console.log('[RETURN_CHECK_1] Before parseContextHints')
@@ -85,18 +88,42 @@ export async function LLMResearchAgent({
     
     // Step 4: Check for disambiguation needs
     console.log('🚨🚨🚨 DISAMBIGUATION DEBUG: About to check disambiguation for:', { brand, product_name })
+    traceDebug.push('🚨🚨🚨 DISAMBIGUATION DEBUG: About to check disambiguation')
     let disambiguationNeeded
-    try {
-      disambiguationNeeded = await checkDisambiguationNeeds(brand, product_name, researchResults, contextHints)
+    
+    // Check if disambiguation agent is enabled via feature flag
+    const disambiguationFeatureEnabled = process.env.ENABLE_DISAMBIGUATION_AGENT === 'true'
+    
+    if (!disambiguationFeatureEnabled) {
+      console.log('[FLAG_CHECK] ENABLE_DISAMBIGUATION_AGENT = false → skipping disambiguation check')
+      traceDebug.push('[FLAG_CHECK] ENABLE_DISAMBIGUATION_AGENT = false → skipping disambiguation check')
+      disambiguationNeeded = {
+        needed: false,
+        reason: 'disambiguation_agent_disabled_by_feature_flag',
+        options: [],
+        confidence: researchResults.final_confidence,
+        threshold: 0.90
+      }
+    } else {
+      try {
+        disambiguationNeeded = await checkDisambiguationNeeds(brand, product_name, researchResults, contextHints)
+      traceDebug.push(`[DISAMBIGUATION_CHECK] Result: needed=${disambiguationNeeded.needed}, reason=${disambiguationNeeded.reason}`)
+      if (disambiguationNeeded.confidence !== undefined && disambiguationNeeded.threshold !== undefined) {
+        traceDebug.push(`[CONFIDENCE_CHECK] confidence=${disambiguationNeeded.confidence}, threshold=${disambiguationNeeded.threshold}`)
+      }
       console.log('[LLMResearchAgent] 🔍 DISAMBIGUATION DEBUG: Disambiguation check result:', {
         needed: disambiguationNeeded.needed,
         reason: disambiguationNeeded.reason,
         pattern: disambiguationNeeded.pattern,
-        options: disambiguationNeeded.options
+        options: disambiguationNeeded.options,
+        confidence: disambiguationNeeded.confidence,
+        threshold: disambiguationNeeded.threshold
       })
-    } catch (disambiguationError) {
-      console.error('[LLMResearchAgent] 🔍 DISAMBIGUATION ERROR:', disambiguationError.message)
-      disambiguationNeeded = { needed: false, reason: 'disambiguation_check_failed', error: disambiguationError.message }
+      } catch (disambiguationError) {
+        traceDebug.push(`[DISAMBIGUATION_ERROR] ${disambiguationError.message}`)
+        console.error('[LLMResearchAgent] 🔍 DISAMBIGUATION ERROR:', disambiguationError.message)
+        disambiguationNeeded = { needed: false, reason: 'disambiguation_check_failed', error: disambiguationError.message }
+      }
     }
     
     // Step 5: Validate and structure final results
@@ -121,6 +148,19 @@ export async function LLMResearchAgent({
       disambiguation_triggered: finalResult.disambiguation_triggered
     })
     
+    // Add trace debug information
+    if (!finalResult.trace) {
+      finalResult.trace = { debug: [] }
+    }
+    finalResult.trace.debug = [...traceDebug, '[AGENT_ENTRY] LLMResearchAgent completed', `[DISAMBIGUATION_RESULT] triggered: ${finalResult.disambiguation_triggered}, options: ${finalResult.disambiguation_options?.length || 0}`]
+    
+    console.log('[LLMResearchAgent] 🔍 FINAL RETURN OBJECT:', JSON.stringify({
+      research_method: finalResult.research_method,
+      disambiguation_triggered: finalResult.disambiguation_triggered,
+      disambiguation_options: finalResult.disambiguation_options,
+      trace_debug_count: finalResult.trace?.debug?.length || 0
+    }, null, 2))
+    
     return finalResult
     
   } catch (error) {
@@ -142,6 +182,7 @@ export async function LLMResearchAgent({
  * Check if disambiguation is needed based on brand ambiguity patterns
  */
 async function checkDisambiguationNeeds(brand, product_name, researchResults, contextHints) {
+  console.log('[LLMResearchAgent] 🔍 DISAMBIGUATION FUNCTION ENTRY:', { brand, product_name, researchResults: !!researchResults })
   console.log('[LLMResearchAgent] 🔍 Checking disambiguation needs for:', { brand, product_name })
   
   // Define ambiguous brand patterns
@@ -152,7 +193,7 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
         { name: 'Jordan (Nike)', company: 'Nike, Inc.', country: 'United States', context: 'athletic shoes, sports apparel' },
         { name: 'Jordan (Colgate)', company: 'Colgate-Palmolive Company', country: 'United States', context: 'oral care products' }
       ],
-      trigger_confidence_threshold: 90 // Trigger disambiguation if confidence is high but ambiguous
+      trigger_confidence_threshold: 0.90 // Trigger disambiguation if confidence is high but ambiguous (decimal format)
     },
     'samsung': {
       patterns: ['samsung'],
@@ -161,14 +202,14 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
         { name: 'Samsung Heavy Industries', company: 'Samsung Group', country: 'South Korea', context: 'shipbuilding, construction' },
         { name: 'Samsung C&T', company: 'Samsung Group', country: 'South Korea', context: 'construction, trading' }
       ],
-      trigger_confidence_threshold: 85
+      trigger_confidence_threshold: 0.85 // Decimal format
     },
     'nestle': {
       patterns: ['nestlé', 'nestle'],
       alternatives: [
         { name: 'Nestlé S.A.', company: 'Nestlé S.A.', country: 'Switzerland', context: 'food and beverage products' }
       ],
-      trigger_confidence_threshold: 95,
+      trigger_confidence_threshold: 0.95, // Decimal format
       special_triggers: ['tm_symbol', 'trademark']
     }
   }
@@ -194,12 +235,25 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
   
   console.log('[LLMResearchAgent] 🔍 Matched ambiguous pattern:', matchedPattern.name)
   
-  // Check confidence threshold
+  // Check confidence threshold with epsilon tolerance for floating point precision
   const confidence = researchResults.final_confidence || 0
-  if (confidence < matchedPattern.trigger_confidence_threshold) {
-    console.log('[LLMResearchAgent] 🔍 Confidence too low for disambiguation:', confidence, '<', matchedPattern.trigger_confidence_threshold)
-    return { needed: false, reason: 'confidence_too_low', confidence }
+  const threshold = matchedPattern.trigger_confidence_threshold
+  const EPSILON = 1e-6 // Small tolerance for floating point comparison
+  
+  console.log('[LLMResearchAgent] 🔍 DISAMBIGUATION DEBUG: Confidence check:', {
+    confidence,
+    threshold,
+    epsilon: EPSILON,
+    comparison: `${confidence} + ${EPSILON} < ${threshold}`,
+    result: confidence + EPSILON < threshold
+  })
+  
+  if (confidence + EPSILON < threshold) {
+    console.log('[LLMResearchAgent] 🔍 Confidence too low for disambiguation:', confidence, '+', EPSILON, '<', threshold)
+    return { needed: false, reason: 'confidence_too_low', confidence, threshold }
   }
+  
+  console.log('[LLMResearchAgent] 🔍 Confidence sufficient for disambiguation:', confidence, '+', EPSILON, '>=', threshold)
   
   // Check for special triggers (like TM symbols)
   if (matchedPattern.special_triggers) {
@@ -216,16 +270,8 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
     }
   }
   
-  // Check if product context suggests disambiguation
-  const productContext = product_name?.toLowerCase() || ''
-  const relevantAlternatives = matchedPattern.alternatives.filter(alt => {
-    // Check if product context matches alternative context
-    if (alt.context) {
-      const contextWords = alt.context.toLowerCase().split(/[,\s]+/)
-      return contextWords.some(word => productContext.includes(word))
-    }
-    return true
-  })
+  // For ambiguous brands, include all alternatives to show disambiguation options
+  const relevantAlternatives = matchedPattern.alternatives
   
   if (relevantAlternatives.length <= 1) {
     console.log('[LLMResearchAgent] 🔍 Not enough relevant alternatives for disambiguation:', relevantAlternatives.length)
@@ -240,7 +286,7 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
     country: alt.country,
     context: alt.context,
     confidence: Math.max(confidence - 10, 70), // Slightly lower confidence for disambiguation
-    reasoning: `Based on product context "${productContext}" and brand "${brand}"`
+    reasoning: `Based on product context "${product_name || 'unknown'}" and brand "${brand}"`
   }))
   
   console.log('[LLMResearchAgent] 🔄 Disambiguation needed:', {

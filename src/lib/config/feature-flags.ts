@@ -23,7 +23,13 @@ export const FEATURE_FLAGS = {
   ENABLE_OCR_EXTRACTION: process.env.ENABLE_OCR_EXTRACTION !== 'false',
   
   // Enable barcode scanning from images
-  ENABLE_IMAGE_BARCODE_SCANNING: process.env.ENABLE_IMAGE_BARCODE_SCANNING !== 'false'
+  ENABLE_IMAGE_BARCODE_SCANNING: process.env.ENABLE_IMAGE_BARCODE_SCANNING !== 'false',
+  
+  // Agent-specific feature flags
+  ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
+  ENABLE_DISAMBIGUATION_AGENT: process.env.ENABLE_DISAMBIGUATION_AGENT === 'true',
+  ENABLE_AGENT_REPORTS: process.env.ENABLE_AGENT_REPORTS === 'true',
+  ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
 };
 
 /**
@@ -55,6 +61,34 @@ export function shouldForceFullTrace(): boolean {
 }
 
 /**
+ * Check if Gemini Ownership Agent should be enabled
+ */
+export function shouldEnableGeminiOwnershipAgent(): boolean {
+  return FEATURE_FLAGS.ENABLE_GEMINI_OWNERSHIP_AGENT;
+}
+
+/**
+ * Check if Disambiguation Agent should be enabled
+ */
+export function shouldEnableDisambiguationAgent(): boolean {
+  return FEATURE_FLAGS.ENABLE_DISAMBIGUATION_AGENT;
+}
+
+/**
+ * Check if Agent Reports should be enabled
+ */
+export function shouldEnableAgentReports(): boolean {
+  return FEATURE_FLAGS.ENABLE_AGENT_REPORTS;
+}
+
+/**
+ * Check if Pipeline Logging should be enabled
+ */
+export function shouldEnablePipelineLogging(): boolean {
+  return FEATURE_FLAGS.ENABLE_PIPELINE_LOGGING;
+}
+
+/**
  * Log current feature flag state
  */
 export function logFeatureFlags(): void {
@@ -65,6 +99,10 @@ export function logFeatureFlags(): void {
     FORCE_FULL_TRACE: FEATURE_FLAGS.FORCE_FULL_TRACE,
     ENABLE_ENHANCED_IMAGE_PROCESSING: FEATURE_FLAGS.ENABLE_ENHANCED_IMAGE_PROCESSING,
     ENABLE_OCR_EXTRACTION: FEATURE_FLAGS.ENABLE_OCR_EXTRACTION,
-    ENABLE_IMAGE_BARCODE_SCANNING: FEATURE_FLAGS.ENABLE_IMAGE_BARCODE_SCANNING
+    ENABLE_IMAGE_BARCODE_SCANNING: FEATURE_FLAGS.ENABLE_IMAGE_BARCODE_SCANNING,
+    ENABLE_GEMINI_OWNERSHIP_AGENT: FEATURE_FLAGS.ENABLE_GEMINI_OWNERSHIP_AGENT,
+    ENABLE_DISAMBIGUATION_AGENT: FEATURE_FLAGS.ENABLE_DISAMBIGUATION_AGENT,
+    ENABLE_AGENT_REPORTS: FEATURE_FLAGS.ENABLE_AGENT_REPORTS,
+    ENABLE_PIPELINE_LOGGING: FEATURE_FLAGS.ENABLE_PIPELINE_LOGGING
   });
 } 

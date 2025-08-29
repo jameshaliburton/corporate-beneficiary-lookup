@@ -186,6 +186,7 @@ function isProductDataMeaningful(productData: any): boolean {
 async function lookupWithCache(brand: string, productName?: string, queryId?: string) {
   const cacheKey = makeCacheKey(brand, productName);
   console.log('🧠 [Shared Cache] Looking up key:', cacheKey);
+  console.log('[CACHE_DEBUG] Starting cache lookup for:', { brand, productName, cacheKey });
   
   const cachedResult = await logAgentExecution('CacheLookup', async () => {
     const normalizedBrand = brand?.toLowerCase().trim();
@@ -196,9 +197,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       return null;
     }
     
+    // Import service client for cache reads (to bypass RLS)
+    const { getServiceClient } = await import('@/lib/database/service-client');
+    const serviceClient = getServiceClient();
+    
     // Try brand + product name first
     if (normalizedProductName) {
-      const { data: brandProductData, error: brandProductError } = await supabase
+      const { data: brandProductData, error: brandProductError } = await serviceClient
         .from('products')
         .select('*')
         .eq('brand', normalizedBrand)
@@ -206,31 +211,31 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         .limit(1);
       
       if (brandProductError) {
-        console.error('[Shared Cache] Database error:', brandProductError);
+        console.error('[CACHE_ERROR] Database error:', brandProductError);
       } else if (brandProductData && brandProductData.length > 0) {
-        console.log('🧠 [Shared Cache] HIT → Brand + Product:', normalizedBrand, '+', normalizedProductName);
+        console.log('[CACHE_HIT] Brand + Product:', normalizedBrand, '+', normalizedProductName);
         return brandProductData[0];
       }
     }
     
     // Fallback to brand-only lookup
-    const { data: brandData, error: brandError } = await supabase
+    const { data: brandData, error: brandError } = await serviceClient
       .from('products')
       .select('*')
       .eq('brand', normalizedBrand)
       .limit(1);
     
     if (brandError) {
-      console.error('[Shared Cache] Database error:', brandError);
+      console.error('[CACHE_ERROR] Database error:', brandError);
       return null;
     }
     
     if (brandData && brandData.length > 0) {
-      console.log('🧠 [Shared Cache] HIT → Brand only:', normalizedBrand);
+      console.log('[CACHE_HIT] Brand only:', normalizedBrand);
       return brandData[0];
     }
     
-    console.log('🧠 [Shared Cache] MISS → No cached data found');
+    console.log('[CACHE_MISS] No cached data found');
     return null;
   });
   
@@ -321,13 +326,54 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       const cacheKey = makeCacheKey(brand, productName);
       console.log('💾 [Shared Cache] Saving to cache with key:', cacheKey);
 
+      // Import service client for cache writes
+      const { safeCacheWrite } = await import('@/lib/database/service-client');
+
       // Save brand + product name entry
       if (productName) {
-        const { error: saveError } = await supabase
+        const saveResult = await safeCacheWrite(async (client) => {
+          const { data, error } = await client
+            .from('products')
+            .upsert({
+              barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
+              brand: brand?.toLowerCase().trim(),
+              product_name: productName?.toLowerCase().trim(),
+              financial_beneficiary: ownershipResult.financial_beneficiary,
+              beneficiary_country: ownershipResult.beneficiary_country,
+              beneficiary_flag: ownershipResult.beneficiary_flag,
+              confidence_score: ownershipResult.confidence_score,
+              ownership_structure_type: ownershipResult.ownership_structure_type,
+              ownership_flow: ownershipResult.ownership_flow,
+              sources: ownershipResult.sources,
+              reasoning: ownershipResult.reasoning,
+              agent_results: ownershipResult.agent_results,
+              result_type: ownershipResult.result_type,
+              updated_at: new Date().toISOString()
+            })
+            .select();
+
+          if (error) throw error;
+          return data;
+        }, 'BrandProductCacheWrite');
+
+        if (saveResult.success) {
+          console.log('[CACHE_WRITE_SUCCESS] Brand+product entry:', cacheKey);
+        } else {
+          console.error('[CACHE_WRITE_ERROR] Brand+product entry:', saveResult.error);
+        }
+      }
+
+      // Also save brand-only entry for broader matching
+      const brandKey = makeCacheKey(brand);
+      console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
+
+      const brandSaveResult = await safeCacheWrite(async (client) => {
+        const { data, error } = await client
           .from('products')
           .upsert({
+            barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
             brand: brand?.toLowerCase().trim(),
-            product_name: productName?.toLowerCase().trim(),
+            product_name: null, // Brand-only entry
             financial_beneficiary: ownershipResult.financial_beneficiary,
             beneficiary_country: ownershipResult.beneficiary_country,
             beneficiary_flag: ownershipResult.beneficiary_flag,
@@ -339,41 +385,17 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             agent_results: ownershipResult.agent_results,
             result_type: ownershipResult.result_type,
             updated_at: new Date().toISOString()
-          });
+          })
+          .select();
 
-        if (saveError) {
-          console.error('💾 [Shared Cache] Error saving brand+product entry:', saveError);
-        } else {
-          console.log('💾 [Shared Cache] Saved brand+product entry:', cacheKey);
-        }
-      }
+        if (error) throw error;
+        return data;
+      }, 'BrandOnlyCacheWrite');
 
-      // Also save brand-only entry for broader matching
-      const brandKey = makeCacheKey(brand);
-      console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
-
-      const { error: brandSaveError } = await supabase
-        .from('products')
-        .upsert({
-          brand: brand?.toLowerCase().trim(),
-          product_name: null, // Brand-only entry
-          financial_beneficiary: ownershipResult.financial_beneficiary,
-          beneficiary_country: ownershipResult.beneficiary_country,
-          beneficiary_flag: ownershipResult.beneficiary_flag,
-          confidence_score: ownershipResult.confidence_score,
-          ownership_structure_type: ownershipResult.ownership_structure_type,
-          ownership_flow: ownershipResult.ownership_flow,
-          sources: ownershipResult.sources,
-          reasoning: ownershipResult.reasoning,
-          agent_results: ownershipResult.agent_results,
-          result_type: ownershipResult.result_type,
-          updated_at: new Date().toISOString()
-        });
-
-      if (brandSaveError) {
-        console.error('💾 [Shared Cache] Error saving brand-only entry:', brandSaveError);
+      if (brandSaveResult.success) {
+        console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', brandKey);
       } else {
-        console.log('💾 [Shared Cache] Saved brand-only entry:', brandKey);
+        console.error('[CACHE_WRITE_ERROR] Brand-only entry:', brandSaveResult.error);
       }
 
     } catch (cacheError) {
@@ -384,6 +406,14 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
 export async function POST(request: NextRequest) {
   try {
+    // Log feature flags at the start of each request
+    console.log('🔧 Feature Flags:', {
+      ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
+      ENABLE_DISAMBIGUATION_AGENT: process.env.ENABLE_DISAMBIGUATION_AGENT === 'true',
+      ENABLE_AGENT_REPORTS: process.env.ENABLE_AGENT_REPORTS === 'true',
+      ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
+    });
+    
     let body;
     try {
       body = await request.json();
@@ -912,6 +942,11 @@ export async function POST(request: NextRequest) {
         console.log('✅ [Pipeline] Database save confirmed - ownership result persisted');
         
         // 💾 SHARED CACHE SAVING - Save successful ownership results to cache
+        console.log('[CACHE_DEBUG] About to save to cache:', { 
+          brand: currentProductData.brand, 
+          product: currentProductData.product_name,
+          beneficiary: ownershipResult.financial_beneficiary 
+        });
         await saveToCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
         
       } else {

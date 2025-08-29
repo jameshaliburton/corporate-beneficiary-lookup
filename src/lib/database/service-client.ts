@@ -22,7 +22,7 @@ export function getServiceClient() {
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     console.error('[SERVICE_CLIENT] Missing required environment variables for service role client');
