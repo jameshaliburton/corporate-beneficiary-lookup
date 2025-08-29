@@ -6,8 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "jest --config=src/tests/jest.config.js",
+    "test:watch": "jest --config=src/tests/jest.config.js --watch",
+    "test:coverage": "jest --config=src/tests/jest.config.js --coverage",
+    "test:narrative": "jest --config=src/tests/jest.config.js --testNamePattern=@narrative",
+    "test:ui": "jest --config=src/tests/jest.config.js --testNamePattern=@ui",
+    "test:pipeline": "jest --config=src/tests/jest.config.js --testNamePattern=@pipeline",
+    "test:fallback": "jest --config=src/tests/jest.config.js --testNamePattern=@fallback",
+    "test:vitest": "vitest",
+    "test:vitest:coverage": "vitest run --coverage",
+    "test:e2e": "node tests/e2e/e2e-test-runner.mjs",
+    "test:e2e:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/e2e-test-runner.mjs"
   },
   "keywords": [
     "corporate-ownership",
@@ -85,8 +94,11 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "16.3.0",
+    "@types/jest": "^29.5.12",
     "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.21",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "jsdom": "26.1.0",
     "msw": "^2.10.4",
     "nock": "^14.0.7",
@@ -94,6 +106,7 @@
     "postcss": "8.5.6",
     "postcss-js": "^4.0.1",
     "tailwindcss": "^3.4.1",
+    "ts-jest": "^29.1.2",
     "tsx": "^4.20.3",
     "vitest": "3.2.4"
   }

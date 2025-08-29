@@ -3,6 +3,8 @@
  * Implements multi-factor scoring for more accurate confidence assessment
  */
 
+import { validateConfidence, safeParseOwnershipData, ConfidenceSchema } from '../schemas/ownership-schema.ts'
+
 /**
  * Calculate enhanced confidence score using multiple factors
  * @param {Object} params - Confidence calculation parameters
@@ -62,13 +64,18 @@ export function calculateEnhancedConfidence({
     contribution: Math.round(score * weights[factor])
   }))
 
-  return {
+  // 🧠 SCHEMA VALIDATION
+  console.log('[SCHEMA_GUARD] calculateEnhancedConfidence - Validating result before return')
+  const rawResult = {
     confidence_score: finalScore,
     confidence_level: confidenceLevel,
     factors,
     breakdown,
     reasoning: generateConfidenceReasoning(factors, finalScore)
   }
+  
+  const validatedResult = safeParseOwnershipData(ConfidenceSchema, rawResult, 'calculateEnhancedConfidence')
+  return validatedResult
 }
 
 /**

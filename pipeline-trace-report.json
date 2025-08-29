@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-08-29T07:40:43.147Z",
+  "summary": {
+    "totalAgents": 3,
+    "successfulAgents": 2,
+    "failedAgents": 1,
+    "totalComponents": 2,
+    "successfulComponents": 2,
+    "failedComponents": 0
+  },
+  "agentAnalysis": {
+    "EnhancedAgentOwnershipResearch": {
+      "success": true,
+      "duration": 16952,
+      "result": {
+        "financial_beneficiary": "Unilever PLC",
+        "confidence_score": 95,
+        "ownership_flow": 3
+      }
+    },
+    "EnhancedWebSearchOwnershipAgent": {
+      "success": false,
+      "error": "Cannot read properties of null (reading 'success')"
+    },
+    "NarrativeGenerator": {
+      "success": true,
+      "duration": 7254,
+      "result": {
+        "headline": "Your Lipton tea? Actually Dutch! 🇳🇱",
+        "tagline": "The famous tea brand is owned by Dutch giant Unilever",
+        "story": "That iconic yellow label tea brand isn't British or American as many think - Lipton is actually owne...",
+        "template_used": "global_brand_reveal"
+      }
+    }
+  },
+  "componentAnalysis": {
+    "Supabase": {
+      "success": true,
+      "duration": 67,
+      "result": {
+        "connected": true,
+        "sampleRecords": 0
+      }
+    },
+    "Environment": {
+      "success": true,
+      "result": {
+        "allRequiredVarsPresent": true,
+        "anthropicKeyLength": 108
+      }
+    }
+  },
+  "issues": [
+    {
+      "type": "agent_failure",
+      "agent": "EnhancedWebSearchOwnershipAgent",
+      "error": "Cannot read properties of null (reading 'success')"
+    }
+  ],
+  "recommendations": [
+    "Fix critical agent/component failures before proceeding",
+    "Priority: Fix failed agents: EnhancedWebSearchOwnershipAgent",
+    "Working agents: EnhancedAgentOwnershipResearch, NarrativeGenerator"
+  ]
+}

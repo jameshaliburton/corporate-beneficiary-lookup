@@ -37,11 +37,17 @@ export interface NarrativeFields {
  * Generate narrative content using flexible LLM approach
  */
 export async function generateNarrativeFromResult(result: OwnershipResult): Promise<NarrativeFields> {
+  // Handle null/undefined input
+  if (!result) {
+    console.error('[NARRATIVE_GEN_V3] No result provided, using fallback');
+    return createFallbackNarrative({} as OwnershipResult);
+  }
+
   console.log('[NARRATIVE_GEN_V3] Starting flexible narrative generation for:', {
-    brand: result.brand_name,
-    owner: result.ultimate_owner || result.financial_beneficiary,
-    ownerCountry: result.ultimate_owner_country || result.financial_beneficiary_country,
-    confidence: result.confidence
+    brand: result.brand_name || 'Unknown Brand',
+    owner: result.ultimate_owner || result.financial_beneficiary || 'Unknown Owner',
+    ownerCountry: result.ultimate_owner_country || result.financial_beneficiary_country || 'Unknown Country',
+    confidence: result.confidence || 0
   });
 
   try {
@@ -119,51 +125,82 @@ Respond with valid JSON only.`;
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1000,
-      temperature: 0.7,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
-    });
+    // Retry logic with exponential backoff for API overload issues
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[NARRATIVE_GEN_V3] Attempt ${attempt}/${maxRetries} - Calling Anthropic API...`);
+        
+        const response = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 1000,
+          temperature: 0.7,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }]
+        });
 
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
-    console.log('[NARRATIVE_GEN_V3] LLM response:', responseText);
+        const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+        console.log('[NARRATIVE_GEN_V3] LLM response:', responseText);
 
-    // Parse the JSON response
-    let narrativeData;
-    try {
-      narrativeData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('[NARRATIVE_GEN_V3] Failed to parse LLM response as JSON:', parseError);
-      console.log('[NARRATIVE_GEN_V3] Raw response:', responseText);
-      
-      // Fallback: try to extract JSON from the response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
+        // Parse the JSON response
+        let narrativeData;
         try {
-          narrativeData = JSON.parse(jsonMatch[0]);
-        } catch (secondParseError) {
-          console.error('[NARRATIVE_GEN_V3] Second JSON parse attempt failed:', secondParseError);
-          narrativeData = createFallbackNarrative(result);
+          narrativeData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('[NARRATIVE_GEN_V3] Failed to parse LLM response as JSON:', parseError);
+          console.log('[NARRATIVE_GEN_V3] Raw response:', responseText);
+          
+          // Fallback: try to extract JSON from the response
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              narrativeData = JSON.parse(jsonMatch[0]);
+            } catch (secondParseError) {
+              console.error('[NARRATIVE_GEN_V3] Second JSON parse attempt failed:', secondParseError);
+              narrativeData = createFallbackNarrative(result);
+            }
+          } else {
+            narrativeData = createFallbackNarrative(result);
+          }
         }
-      } else {
-        narrativeData = createFallbackNarrative(result);
+
+        const narrative: NarrativeFields = {
+          headline: narrativeData.headline || createFallbackHeadline(result),
+          tagline: narrativeData.tagline || createFallbackTagline(result),
+          story: narrativeData.story || createFallbackStory(result),
+          ownership_notes: Array.isArray(narrativeData.ownership_notes) ? narrativeData.ownership_notes : [createFallbackNote(result)],
+          behind_the_scenes: Array.isArray(narrativeData.behind_the_scenes) ? narrativeData.behind_the_scenes : [createFallbackBehindTheScenes(result)],
+          template_used: narrativeData.template_used || 'flexible_creative'
+        };
+
+        console.log('[NARRATIVE_GEN_V3] Generated narrative:', narrative);
+        return narrative;
+
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[NARRATIVE_GEN_V3] Attempt ${attempt} failed:`, error.message);
+        
+        // Check if it's a retryable error (overload, rate limit, etc.)
+        const isRetryable = error.status === 529 || // Overloaded
+                          error.status === 429 || // Rate limited
+                          error.status === 503 || // Service unavailable
+                          error.status >= 500;    // Server errors
+        
+        if (attempt < maxRetries && isRetryable) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+          console.log(`[NARRATIVE_GEN_V3] Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          break; // Don't retry on non-retryable errors or after max attempts
+        }
       }
     }
-
-    // Validate and ensure all required fields exist
-    const narrative: NarrativeFields = {
-      headline: narrativeData.headline || createFallbackHeadline(result),
-      tagline: narrativeData.tagline || createFallbackTagline(result),
-      story: narrativeData.story || createFallbackStory(result),
-      ownership_notes: Array.isArray(narrativeData.ownership_notes) ? narrativeData.ownership_notes : [createFallbackNote(result)],
-      behind_the_scenes: Array.isArray(narrativeData.behind_the_scenes) ? narrativeData.behind_the_scenes : [createFallbackBehindTheScenes(result)],
-      template_used: narrativeData.template_used || 'flexible_creative'
-    };
-
-    console.log('[NARRATIVE_GEN_V3] Generated narrative:', narrative);
-    return narrative;
+    
+    // If all retries failed, use fallback
+    console.error('[NARRATIVE_GEN_V3] All retry attempts failed, using fallback narrative');
+    return createFallbackNarrative(result);
 
   } catch (error) {
     console.error('[NARRATIVE_GEN_V3] Error generating narrative:', error);

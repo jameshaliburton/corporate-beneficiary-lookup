@@ -24,6 +24,7 @@ import { safeJSONParse } from '../utils/json-repair.js'
 import { supabase } from '../supabase.ts'
 import { emitProgress } from '../utils.ts'
 import { getTrustedSource, isTrustedSource, getTrustLevel } from './trustedSources.ts'
+import { validateOwnershipChain, validateSources, validateConfidence, safeParseOwnershipData, WebSearchResultSchema } from '../schemas/ownership-schema.ts'
 
 // Only load .env.local in development
 if (process.env.NODE_ENV !== 'production') {
@@ -203,8 +204,12 @@ export async function EnhancedWebSearchOwnershipAgent({
         })
       }
       
+      // 🧠 SCHEMA VALIDATION
+      console.log('[SCHEMA_GUARD] EnhancedWebSearchOwnershipAgent - Validating result before return')
+      const validatedResult = safeParseOwnershipData(WebSearchResultSchema, result, 'EnhancedWebSearchOwnershipAgent')
+      
       console.timeEnd('[AgentTimer] EnhancedWebSearchOwnershipAgent')
-      return result
+      return validatedResult
     } else {
       console.log('[EnhancedWebSearchOwnershipAgent] Research failed - returning null for fallback')
       console.timeEnd('[AgentTimer] EnhancedWebSearchOwnershipAgent')

@@ -28,6 +28,7 @@ import {
   REASONING_TYPES 
 } from './enhanced-trace-logging.js'
 import { ragKnowledgeBase } from './rag-knowledge-base.js'
+import { validateOwnershipChain, validateSources, validateConfidence, safeParseOwnershipData, EnhancedAgentResultSchema } from '../schemas/ownership-schema.ts'
 import { repairJSON, extractJSONFromMarkdown } from '../utils/json-repair.js'
 import { generateCurrentResultId } from '../utils/generateResultId.ts'
 import { shouldSkipUrl, markDomainAsPaywalled, isPaywallStatusCode, detectPaywallInHTML } from '../utils/paywallDetection.ts'
@@ -1399,7 +1400,9 @@ function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData)
   // Extract sources for the result
   const sources = allSources.map(source => source.url).filter(Boolean)
   
-  return {
+  // 🧠 SCHEMA VALIDATION
+  console.log('[SCHEMA_GUARD] EnhancedAgentOwnershipResearch - Validating result before return')
+  const rawResult = {
     financial_beneficiary: ultimateOwner.name,
     beneficiary_country: ultimateOwner.country || 'Unknown',
     beneficiary_flag: getCountryFlag(ultimateOwner.country),
@@ -1433,6 +1436,9 @@ function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData)
       ownership_chain: ownershipChain
     }
   }
+  
+  const validatedResult = safeParseOwnershipData(EnhancedAgentResultSchema, rawResult, 'EnhancedAgentOwnershipResearch')
+  return validatedResult
 }
 
 /**

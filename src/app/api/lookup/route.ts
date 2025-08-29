@@ -11,6 +11,7 @@ import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
 import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
+import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -400,6 +401,9 @@ export async function POST(request: NextRequest) {
     // 🧠 FEATURE FLAG LOGGING
     logFeatureFlags();
     
+    // 🧠 RUNTIME CONFIG LOGGING
+    printMinimalRuntimeConfig('API_LOOKUP_HANDLER');
+    
     // 🧠 PIPELINE TRIGGER LOGGING
     logPipelineTrigger({ barcode, product_name, brand, image_base64, evaluation_mode });
     
@@ -474,8 +478,8 @@ export async function POST(request: NextRequest) {
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
             query_id: queryId
-          });
-        } else {
+              });
+            } else {
           console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for manual entry');
         }
       }
@@ -523,7 +527,7 @@ export async function POST(request: NextRequest) {
         // Prepare user data if provided
         const userData = (product_name || brand) ? {
           product_name,
-          brand,
+    brand,
           region_hint: hints.country_of_origin
         } : null;
         
@@ -540,7 +544,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
-            success: false,
+      success: false, 
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
             product_data: {
@@ -616,7 +620,7 @@ export async function POST(request: NextRequest) {
           };
           
           await emitProgress(queryId, 'manual_entry', 'completed', currentProductData);
-        } else {
+  } else {
           // Only image provided - we'll handle this in the vision analysis section below
           currentProductData = {
             product_name: null,
@@ -671,7 +675,7 @@ export async function POST(request: NextRequest) {
           } else {
             console.log('❌ [Vision-First] No fallback data available');
             return NextResponse.json({
-              success: false,
+      success: false, 
               requires_manual_entry: true,
               reason: 'vision_extraction_failed_no_fallback',
               vision_context: visionContext,
@@ -913,7 +917,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
-          success: false,
+      success: false,
           reason: 'no_valid_ownership_result'
         });
         

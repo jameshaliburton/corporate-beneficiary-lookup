@@ -1,0 +1,23 @@
+{
+  "brand": "IKEA",
+  "product_name": "IKEA",
+  "barcode": null,
+  "hints": {},
+  "expected_behavior": "direct_ownership_resolution",
+  "expected_owner": "INGKA Foundation",
+  "expected_owner_country": "Netherlands",
+  "expected_confidence_min": 85,
+  "expected_confidence_max": 100,
+  "expected_ownership_chain_length_min": 1,
+  "expected_ownership_chain_length_max": 3,
+  "expected_sources_min": 1,
+  "expected_narrative_fields": [
+    "headline",
+    "tagline",
+    "story", 
+    "ownership_notes",
+    "behind_the_scenes"
+  ],
+  "expected_country_emphasis": true,
+  "expected_template_used": "global_brand_ownership"
+}

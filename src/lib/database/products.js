@@ -1,4 +1,5 @@
 import { supabase } from '../supabase.ts'
+import { safeCacheWrite, logRlsViolation, isRlsError } from './service-client.ts'
 
 /**
  * Products Database Operations
@@ -139,15 +140,31 @@ export async function upsertProduct(productData) {
       beneficiary: productData.financial_beneficiary
     })
     
-    const { data, error } = await supabase
-      .from('products')
-      .upsert([normalizedData], { onConflict: 'barcode' })
-      .select()
+    // 🧠 USE SERVICE CLIENT FOR CACHE WRITES
+    const result = await safeCacheWrite(async (client) => {
+      const { data, error } = await client
+        .from('products')
+        .upsert([normalizedData], { onConflict: 'barcode' })
+        .select()
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data;
+    }, 'ProductUpsert');
     
-    if (error) {
-      console.error('[Products] Upsert error:', error)
-      return { success: false, error }
+    if (!result.success) {
+      if (result.rlsDenied) {
+        console.log('[RLS_DENY_EXPECTED] Product upsert blocked by RLS policy (expected in test environment)');
+        return { success: false, error: result.error, rlsDenied: true };
+      } else {
+        console.error('[Products] Upsert error:', result.error);
+        return { success: false, error: result.error };
+      }
     }
+    
+    const data = result.data;
     
     console.log('[Products] Product upserted:', data[0])
     const duration = Date.now() - startTime;
