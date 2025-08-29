@@ -1936,8 +1936,9 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   const verificationOverride = process.env.GEMINI_VERIFICATION_OVERRIDE === 'true'
   const verificationTTLDays = parseInt(process.env.GEMINI_VERIFICATION_TTL_DAYS || '14')
   
-  // Check if we have existing verification data
-  const existingVerification = ownership.verified_at
+  // Check if we have existing verification data from cache
+  const existingVerification = existingProduct?.verified_at
+  const existingVerificationStatus = existingProduct?.verification_status
   const hasDisambiguation = ownership.disambiguation_triggered === true
   
   // Smart trigger conditions
@@ -1949,7 +1950,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     }
     
     // No verification status present
-    if (!ownership.verification_status || ownership.verification_status === 'unknown') {
+    if (!existingVerificationStatus || existingVerificationStatus === 'unknown') {
       console.log('[VERIFICATION_TRIGGER] reason = missing')
       return true
     }
@@ -1987,6 +1988,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     verificationOverride,
     verificationTTLDays,
     existingVerification,
+    existingVerificationStatus,
     hasDisambiguation,
     shouldTrigger: shouldTriggerGemini()
   })
@@ -2050,7 +2052,9 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         console.log('[GEMINI_DEBUG] ownership verification fields after assignment:', {
           verification_status: ownership.verification_status,
           verified_at: ownership.verified_at,
-          verification_method: ownership.verification_method
+          verification_method: ownership.verification_method,
+          confidence_assessment: ownership.confidence_assessment,
+          verification_notes: ownership.verification_notes
         })
       } else {
         ownership.agent_results.gemini_analysis = {
@@ -2088,14 +2092,10 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       // Propagate existing verification fields from cache/database
       if (existingVerification) {
         ownership.verified_at = existingVerification
-        ownership.verification_method = ownership.verification_method || 'cached'
-        ownership.confidence_assessment = ownership.confidence_assessment || null
-        ownership.verification_notes = ownership.verification_notes || 'Using cached verification data'
-        
-        // Set verification status if not already set
-        if (!ownership.verification_status) {
-          ownership.verification_status = 'unknown'
-        }
+        ownership.verification_method = existingProduct.verification_method || 'cached'
+        ownership.confidence_assessment = existingProduct.confidence_assessment || null
+        ownership.verification_notes = existingProduct.verification_notes || 'Using cached verification data'
+        ownership.verification_status = existingVerificationStatus || 'unknown'
         
         console.log('[VERIFICATION_SKIP] Propagated verification data:', {
           verified_at: ownership.verified_at,

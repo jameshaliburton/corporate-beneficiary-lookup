@@ -105,6 +105,7 @@ export async function GeminiOwnershipAnalysisAgent({
       gemini_triggered: true,
       gemini_result: {
         ...verificationResult,
+        // Override any null values with our metadata
         verified_at: new Date().toISOString(),
         verification_method: 'gemini_web_search',
         confidence_assessment: verificationResult.confidence_assessment,
@@ -155,6 +156,7 @@ export async function GeminiOwnershipAnalysisAgent({
         gemini_triggered: true,
         gemini_result: {
           ...mockResult,
+          // Override any null values with our metadata
           verified_at: new Date().toISOString(),
           verification_method: 'gemini_mock_fallback',
           confidence_assessment: mockResult.confidence_assessment,
