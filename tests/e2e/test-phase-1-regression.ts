@@ -372,8 +372,8 @@ class Phase1RegressionTestSuite {
     try {
       console.log(`\n[TEST_CASE_D] Starting: ${testCase}`);
       
-      // Flush cache to ensure clean test
-      await this.flushCache(['apple']);
+      // Flush cache to ensure clean test (flush all to be safe)
+      await this.flushCache();
       
       // First request (should be cache miss)
       console.log(`[TEST_CASE_D] First request (expected cache miss)...`);
