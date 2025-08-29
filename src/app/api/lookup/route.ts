@@ -296,9 +296,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       result_type: cachedResult.result_type || 'cache_hit',
       pipeline_type: 'cache_hit',
       // Gemini verification fields
-      verification_status: cachedResult.verification_status || 'inconclusive',
+      verification_status: cachedResult.verification_status || 'unknown',
       verification_confidence_change: cachedResult.verification_confidence_change || null,
       verification_evidence: cachedResult.verification_evidence || null,
+      verified_at: cachedResult.verified_at || null,
+      verification_method: cachedResult.verification_method || null,
+      confidence_assessment: cachedResult.confidence_assessment || null,
+      verification_notes: cachedResult.verification_notes || null,
       // New narrative fields for engaging storytelling
       headline: narrative.headline,
       tagline: narrative.tagline,
@@ -1122,9 +1126,13 @@ export async function POST(request: NextRequest) {
         user_contributed: !!(product_name || brand),
         agent_execution_trace: sharedTrace,
         // Gemini verification fields
-        verification_status: ownershipResult.verification_status || 'inconclusive',
+        verification_status: ownershipResult.verification_status || 'unknown',
         verification_confidence_change: ownershipResult.verification_confidence_change || null,
         verification_evidence: ownershipResult.verification_evidence || null,
+        verified_at: ownershipResult.verified_at || null,
+        verification_method: ownershipResult.verification_method || null,
+        confidence_assessment: ownershipResult.confidence_assessment || null,
+        verification_notes: ownershipResult.verification_notes || null,
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,

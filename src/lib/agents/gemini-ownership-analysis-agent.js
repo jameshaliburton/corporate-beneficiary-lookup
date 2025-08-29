@@ -103,7 +103,13 @@ export async function GeminiOwnershipAnalysisAgent({
     return {
       success: true,
       gemini_triggered: true,
-      gemini_result: verificationResult,
+      gemini_result: {
+        ...verificationResult,
+        verified_at: new Date().toISOString(),
+        verification_method: 'gemini_web_search',
+        confidence_assessment: verificationResult.confidence_assessment,
+        verification_notes: `Verified using Gemini AI with ${webSnippets.length} web search results`
+      },
       web_snippets_count: webSnippets.length,
       search_queries_used: searchQueries,
       analysis_duration_ms: duration,
@@ -147,7 +153,13 @@ export async function GeminiOwnershipAnalysisAgent({
       return {
         success: true,
         gemini_triggered: true,
-        gemini_result: mockResult,
+        gemini_result: {
+          ...mockResult,
+          verified_at: new Date().toISOString(),
+          verification_method: 'gemini_mock_fallback',
+          confidence_assessment: mockResult.confidence_assessment,
+          verification_notes: 'Mock verification fallback due to API being disabled'
+        },
         web_snippets_count: 2,
         search_queries_used: buildVerificationQueries(brand, product_name, ownershipData),
         analysis_duration_ms: Date.now() - startTime,

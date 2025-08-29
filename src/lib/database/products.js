@@ -540,6 +540,10 @@ export function ownershipResultToProductData(barcode, productName, brand, owners
     verification_status: ownershipResult.verification_status || 'inconclusive',
     verification_confidence_change: ownershipResult.verification_confidence_change || null,
     verification_evidence: ownershipResult.verification_evidence || null,
+    verified_at: ownershipResult.verified_at || null,
+    verification_method: ownershipResult.verification_method || null,
+    confidence_assessment: ownershipResult.confidence_assessment || null,
+    verification_notes: ownershipResult.verification_notes || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }

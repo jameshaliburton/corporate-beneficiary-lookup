@@ -1928,24 +1928,71 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   ownership.fallback_reason = null
   ownership.result_id = generateQueryId()
   
-  // Add Gemini second-opinion analysis - ALWAYS RUN for verification
+  // Smart Gemini verification logic with TTL and conditions
   let geminiAnalysis = null
   const forceGeminiForTesting = process.env.FORCE_GEMINI_TESTING === 'true' || process.env.FORCE_GEMINI_FOR_TESTING === 'true'
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
   const geminiFeatureEnabled = process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true'
+  const verificationOverride = process.env.GEMINI_VERIFICATION_OVERRIDE === 'true'
+  const verificationTTLDays = parseInt(process.env.GEMINI_VERIFICATION_TTL_DAYS || '14')
   
-  console.log('[GEMINI_DEBUG] Gemini availability check:', {
+  // Check if we have existing verification data
+  const existingVerification = ownership.verified_at
+  const hasDisambiguation = ownership.disambiguation_triggered === true
+  
+  // Smart trigger conditions
+  const shouldTriggerGemini = () => {
+    // Override flag always triggers
+    if (verificationOverride) {
+      console.log('[VERIFICATION_TRIGGER] reason = override')
+      return true
+    }
+    
+    // No verification status present
+    if (!ownership.verification_status || ownership.verification_status === 'unknown') {
+      console.log('[VERIFICATION_TRIGGER] reason = missing')
+      return true
+    }
+    
+    // Check TTL expiration
+    if (existingVerification) {
+      const verifiedDate = new Date(existingVerification)
+      const now = new Date()
+      const daysSinceVerification = (now.getTime() - verifiedDate.getTime()) / (1000 * 60 * 60 * 24)
+      
+      if (daysSinceVerification > verificationTTLDays) {
+        console.log('[VERIFICATION_TRIGGER] reason = expired (', daysSinceVerification.toFixed(1), 'days old)')
+        return true
+      } else {
+        console.log('[VERIFICATION_SKIP] verified_at =', existingVerification, '(', daysSinceVerification.toFixed(1), 'days old, TTL =', verificationTTLDays, 'days)')
+        return false
+      }
+    }
+    
+    // Disambiguation was manually selected - skip verification
+    if (hasDisambiguation) {
+      console.log('[VERIFICATION_SKIP] reason = disambiguation_manual_selection')
+      return false
+    }
+    
+    // Default to trigger if no existing verification
+    console.log('[VERIFICATION_TRIGGER] reason = no_existing_verification')
+    return true
+  }
+  
+  console.log('[GEMINI_DEBUG] Smart verification check:', {
     geminiAvailable,
     forceGeminiForTesting,
     geminiFeatureEnabled,
-    willTrigger: geminiAvailable || forceGeminiForTesting, // Always run if available
-    envVar: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT SET',
-    keyLength: process.env.GOOGLE_API_KEY?.length || 0,
-    keyPrefix: process.env.GOOGLE_API_KEY?.substring(0, 10) || 'none'
+    verificationOverride,
+    verificationTTLDays,
+    existingVerification,
+    hasDisambiguation,
+    shouldTrigger: shouldTriggerGemini()
   })
   
-  // Always run Gemini verification if available (not gated by feature flag)
-  if (geminiAvailable || forceGeminiForTesting) {
+  // Smart Gemini verification trigger
+  if ((geminiAvailable || forceGeminiForTesting) && shouldTriggerGemini()) {
     try {
       console.log('[GEMINI_TRIGGER] Gemini agent triggered - starting verification analysis')
       console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
@@ -1991,12 +2038,20 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
           search_queries_used: geminiAnalysis.search_queries_used
         }
         
-        // Add verification status to top level
-        console.log('[GEMINI_DEBUG] Setting ownership.verification_status to:', verificationStatus)
+        // Add verification status and metadata to top level
+        console.log('[GEMINI_DEBUG] Setting ownership verification fields to:', verificationStatus)
         ownership.verification_status = verificationStatus
         ownership.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change
         ownership.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis
-        console.log('[GEMINI_DEBUG] ownership.verification_status after assignment:', ownership.verification_status)
+        ownership.verified_at = geminiAnalysis.gemini_result.verified_at
+        ownership.verification_method = geminiAnalysis.gemini_result.verification_method
+        ownership.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment
+        ownership.verification_notes = geminiAnalysis.gemini_result.verification_notes
+        console.log('[GEMINI_DEBUG] ownership verification fields after assignment:', {
+          verification_status: ownership.verification_status,
+          verified_at: ownership.verified_at,
+          verification_method: ownership.verification_method
+        })
       } else {
         ownership.agent_results.gemini_analysis = {
           success: false,
@@ -2015,25 +2070,56 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       ownership.verification_status = 'inconclusive'
     }
   } else {
-    console.log('[GEMINI_DEBUG] Gemini NOT triggered - condition failed')
-    console.log('[GEMINI_DEBUG] geminiAvailable:', geminiAvailable)
-    console.log('[GEMINI_DEBUG] forceGeminiForTesting:', forceGeminiForTesting)
-    console.log('[GEMINI_DEBUG] condition result:', geminiAvailable || forceGeminiForTesting)
+    // Gemini was skipped due to smart logic or unavailability
+    console.log('[GEMINI_DEBUG] Gemini NOT triggered - smart logic or unavailability')
     
-    if (!geminiFeatureEnabled) {
-      console.log('[FLAG_CHECK] ENABLE_GEMINI_OWNERSHIP_AGENT = false → skipping Gemini agent')
-      ownership.agent_results.gemini_analysis = {
-        success: false,
-        reasoning: 'Gemini agent disabled by feature flag'
-      }
-    } else {
+    if (!geminiAvailable && !forceGeminiForTesting) {
+      // Gemini not available
       console.log('[GEMINI_DEBUG] Gemini not available - missing GOOGLE_API_KEY')
       ownership.agent_results.gemini_analysis = {
         success: false,
         reasoning: 'Gemini analysis not available - missing API key'
       }
+      ownership.verification_status = 'inconclusive'
+    } else if (!shouldTriggerGemini()) {
+      // Smart logic determined we should skip - propagate existing verification data
+      console.log('[VERIFICATION_SKIP] Propagating existing verification data')
+      
+      // Propagate existing verification fields from cache/database
+      if (existingVerification) {
+        ownership.verified_at = existingVerification
+        ownership.verification_method = ownership.verification_method || 'cached'
+        ownership.confidence_assessment = ownership.confidence_assessment || null
+        ownership.verification_notes = ownership.verification_notes || 'Using cached verification data'
+        
+        // Set verification status if not already set
+        if (!ownership.verification_status) {
+          ownership.verification_status = 'unknown'
+        }
+        
+        console.log('[VERIFICATION_SKIP] Propagated verification data:', {
+          verified_at: ownership.verified_at,
+          verification_status: ownership.verification_status,
+          verification_method: ownership.verification_method
+        })
+      } else {
+        // No existing verification data - set to unknown
+        ownership.verification_status = 'unknown'
+        ownership.verification_notes = 'No previous verification data available'
+      }
+      
+      ownership.agent_results.gemini_analysis = {
+        success: false,
+        reasoning: 'Gemini verification skipped due to smart logic (TTL, disambiguation, etc.)'
+      }
+    } else {
+      // Should trigger but conditions not met
+      ownership.verification_status = 'inconclusive'
+      ownership.agent_results.gemini_analysis = {
+        success: false,
+        reasoning: 'Gemini verification conditions not met'
+      }
     }
-    ownership.verification_status = 'inconclusive'
   }
   
   console.log('[DEBUG] Final result built from LLM research:', {
