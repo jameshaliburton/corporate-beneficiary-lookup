@@ -57,7 +57,7 @@ try {
  * Check if disambiguation is needed based on brand ambiguity patterns
  */
 async function checkDisambiguationNeeds(brand, product_name, researchResults, contextHints) {
-  console.log('[EnhancedAgent] 🔍 Checking disambiguation needs for:', { brand, product_name })
+  console.log('[EnhancedAgent] 🔍 DISAMBIGUATION DEBUG: Starting check for:', { brand, product_name })
   
   // Define ambiguous brand patterns
   const ambiguousBrands = {
@@ -103,11 +103,12 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
   }
   
   if (!matchedPattern) {
-    console.log('[EnhancedAgent] 🔍 No ambiguous pattern matched for:', normalizedBrand)
+    console.log('[EnhancedAgent] 🔍 DISAMBIGUATION DEBUG: No ambiguous pattern matched for:', normalizedBrand)
+    console.log('[EnhancedAgent] 🔍 DISAMBIGUATION DEBUG: Available patterns:', Object.keys(ambiguousBrands))
     return { needed: false, reason: 'no_ambiguous_pattern' }
   }
   
-  console.log('[EnhancedAgent] 🔍 Matched ambiguous pattern:', matchedPattern.name)
+  console.log('[EnhancedAgent] 🔍 DISAMBIGUATION DEBUG: Matched ambiguous pattern:', matchedPattern.name)
   
   // Check for special triggers (like TM symbols) - but don't require them for basic disambiguation
   if (matchedPattern.special_triggers) {
@@ -145,10 +146,11 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
     reasoning: `Based on product context "${productContext}" and brand "${brand}"`
   }))
   
-  console.log('[EnhancedAgent] 🔄 Disambiguation needed:', {
+  console.log('[EnhancedAgent] 🔍 DISAMBIGUATION DEBUG: Disambiguation needed:', {
     pattern: matchedPattern.name,
     alternatives: disambiguationOptions.length,
-    reason: 'ambiguous_brand_detected'
+    reason: 'ambiguous_brand_detected',
+    options: disambiguationOptions
   })
   
   return {
@@ -776,7 +778,9 @@ Respond in valid JSON format:
           ownership_chain: llmResearchResult?.ownership_chain,
           ownership_chain_length: llmResearchResult?.ownership_chain?.length,
           final_confidence: llmResearchResult?.final_confidence,
-          research_method: llmResearchResult?.research_method
+          research_method: llmResearchResult?.research_method,
+          disambiguation_triggered: llmResearchResult?.disambiguation_triggered,
+          disambiguation_options: llmResearchResult?.disambiguation_options
         })
 
         if (llmResearchResult?.ownership_chain?.length > 0) {

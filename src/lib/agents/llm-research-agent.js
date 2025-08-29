@@ -56,19 +56,27 @@ export async function LLMResearchAgent({
   queryId = null,
   followUpContext = null
 }) {
+  console.log('🚨🚨🚨🚨🚨 LLMResearchAgent FUNCTION ENTRY POINT REACHED 🚨🚨🚨🚨🚨')
+  console.log('🚨🚨🚨 LLMResearchAgent CALLED for:', { brand, product_name })
   console.log('[LLMResearchAgent] 🚀 Starting LLM-first research for:', { brand, product_name, hints })
   
   try {
     // Step 1: Parse context hints for research strategy
+    console.log('[RETURN_CHECK_1] Before parseContextHints')
     const contextHints = await parseContextHints(brand, product_name, hints.context || '')
+    console.log('[RETURN_CHECK_1] After parseContextHints - no early return')
     console.log('[LLMResearchAgent] 📊 Context hints:', contextHints)
     
     // Step 2: Generate research strategy based on context
+    console.log('[RETURN_CHECK_2] Before generateResearchStrategy')
     const researchStrategy = generateResearchStrategy(brand, product_name, contextHints)
+    console.log('[RETURN_CHECK_2] After generateResearchStrategy - no early return')
     console.log('[LLMResearchAgent] 🎯 Research strategy:', researchStrategy)
     
     // Step 3: Execute multi-round LLM research
+    console.log('[RETURN_CHECK_3] Before executeMultiRoundResearch')
     const researchResults = await executeMultiRoundResearch(brand, product_name, researchStrategy, contextHints)
+    console.log('[RETURN_CHECK_3] After executeMultiRoundResearch - no early return')
     console.log('[LLMResearchAgent] 📈 Research results:', {
       rounds: researchResults.rounds.length,
       confidence: researchResults.final_confidence,
@@ -76,15 +84,25 @@ export async function LLMResearchAgent({
     })
     
     // Step 4: Check for disambiguation needs
-    const disambiguationNeeded = await checkDisambiguationNeeds(brand, product_name, researchResults, contextHints)
-    console.log('[LLMResearchAgent] 🔍 Disambiguation check:', {
-      needed: disambiguationNeeded.needed,
-      reason: disambiguationNeeded.reason,
-      confidence: researchResults.final_confidence
-    })
+    console.log('🚨🚨🚨 DISAMBIGUATION DEBUG: About to check disambiguation for:', { brand, product_name })
+    let disambiguationNeeded
+    try {
+      disambiguationNeeded = await checkDisambiguationNeeds(brand, product_name, researchResults, contextHints)
+      console.log('[LLMResearchAgent] 🔍 DISAMBIGUATION DEBUG: Disambiguation check result:', {
+        needed: disambiguationNeeded.needed,
+        reason: disambiguationNeeded.reason,
+        pattern: disambiguationNeeded.pattern,
+        options: disambiguationNeeded.options
+      })
+    } catch (disambiguationError) {
+      console.error('[LLMResearchAgent] 🔍 DISAMBIGUATION ERROR:', disambiguationError.message)
+      disambiguationNeeded = { needed: false, reason: 'disambiguation_check_failed', error: disambiguationError.message }
+    }
     
     // Step 5: Validate and structure final results
+    console.log('[RETURN_CHECK_4] Before validateAndStructureLLMResults')
     const finalResult = validateAndStructureLLMResults(researchResults, brand, product_name)
+    console.log('[RETURN_CHECK_4] After validateAndStructureLLMResults - no early return')
     
     // Add disambiguation options if needed
     if (disambiguationNeeded.needed) {
