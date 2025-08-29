@@ -34,6 +34,9 @@ export interface ProductData {
   initial_llm_confidence?: number
   agent_results?: any
   fallback_reason?: string
+  verification_status?: string
+  verification_confidence_change?: string
+  verification_evidence?: any
 }
 
 export interface ProductStats {

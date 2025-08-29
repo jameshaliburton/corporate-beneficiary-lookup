@@ -295,6 +295,10 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       agent_execution_trace: cachedResult.agent_execution_trace,
       result_type: cachedResult.result_type || 'cache_hit',
       pipeline_type: 'cache_hit',
+      // Gemini verification fields
+      verification_status: cachedResult.verification_status || 'inconclusive',
+      verification_confidence_change: cachedResult.verification_confidence_change || null,
+      verification_evidence: cachedResult.verification_evidence || null,
       // New narrative fields for engaging storytelling
       headline: narrative.headline,
       tagline: narrative.tagline,
@@ -333,22 +337,22 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       if (productName) {
         const saveResult = await safeCacheWrite(async (client) => {
           const { data, error } = await client
-            .from('products')
-            .upsert({
+          .from('products')
+          .upsert({
               barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
               brand: brand?.toLowerCase().trim(),
               product_name: productName?.toLowerCase().trim(),
-              financial_beneficiary: ownershipResult.financial_beneficiary,
-              beneficiary_country: ownershipResult.beneficiary_country,
-              beneficiary_flag: ownershipResult.beneficiary_flag,
-              confidence_score: ownershipResult.confidence_score,
-              ownership_structure_type: ownershipResult.ownership_structure_type,
-              ownership_flow: ownershipResult.ownership_flow,
-              sources: ownershipResult.sources,
-              reasoning: ownershipResult.reasoning,
-              agent_results: ownershipResult.agent_results,
-              result_type: ownershipResult.result_type,
-              updated_at: new Date().toISOString()
+            financial_beneficiary: ownershipResult.financial_beneficiary,
+            beneficiary_country: ownershipResult.beneficiary_country,
+            beneficiary_flag: ownershipResult.beneficiary_flag,
+            confidence_score: ownershipResult.confidence_score,
+            ownership_structure_type: ownershipResult.ownership_structure_type,
+            ownership_flow: ownershipResult.ownership_flow,
+            sources: ownershipResult.sources,
+            reasoning: ownershipResult.reasoning,
+            agent_results: ownershipResult.agent_results,
+            result_type: ownershipResult.result_type,
+            updated_at: new Date().toISOString()
             })
             .select();
 
@@ -369,22 +373,22 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
       const brandSaveResult = await safeCacheWrite(async (client) => {
         const { data, error } = await client
-          .from('products')
-          .upsert({
+        .from('products')
+        .upsert({
             barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
             brand: brand?.toLowerCase().trim(),
-            product_name: null, // Brand-only entry
-            financial_beneficiary: ownershipResult.financial_beneficiary,
-            beneficiary_country: ownershipResult.beneficiary_country,
-            beneficiary_flag: ownershipResult.beneficiary_flag,
-            confidence_score: ownershipResult.confidence_score,
-            ownership_structure_type: ownershipResult.ownership_structure_type,
-            ownership_flow: ownershipResult.ownership_flow,
-            sources: ownershipResult.sources,
-            reasoning: ownershipResult.reasoning,
-            agent_results: ownershipResult.agent_results,
-            result_type: ownershipResult.result_type,
-            updated_at: new Date().toISOString()
+          product_name: null, // Brand-only entry
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          beneficiary_country: ownershipResult.beneficiary_country,
+          beneficiary_flag: ownershipResult.beneficiary_flag,
+          confidence_score: ownershipResult.confidence_score,
+          ownership_structure_type: ownershipResult.ownership_structure_type,
+          ownership_flow: ownershipResult.ownership_flow,
+          sources: ownershipResult.sources,
+          reasoning: ownershipResult.reasoning,
+          agent_results: ownershipResult.agent_results,
+          result_type: ownershipResult.result_type,
+          updated_at: new Date().toISOString()
           })
           .select();
 
@@ -394,7 +398,7 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
       if (brandSaveResult.success) {
         console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', brandKey);
-      } else {
+            } else {
         console.error('[CACHE_WRITE_ERROR] Brand-only entry:', brandSaveResult.error);
       }
 
@@ -1117,6 +1121,10 @@ export async function POST(request: NextRequest) {
         result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
         user_contributed: !!(product_name || brand),
         agent_execution_trace: sharedTrace,
+        // Gemini verification fields
+        verification_status: ownershipResult.verification_status || 'inconclusive',
+        verification_confidence_change: ownershipResult.verification_confidence_change || null,
+        verification_evidence: ownershipResult.verification_evidence || null,
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,

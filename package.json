@@ -26,6 +26,7 @@
     "test:gemini": "npx tsx tests/e2e/test-gemini-agent.ts",
     "test:phase1": "npx tsx tests/e2e/test-phase-1-regression.ts",
     "test:phase1:flush": "curl -X POST http://localhost:3000/api/dev/flush-cache -H 'Content-Type: application/json' -d '{}'",
+    "test:gemini:verification": "npx tsx tests/e2e/test-gemini-verification.ts",
     "debug:api": "npx tsx scripts/debug-api-response.ts",
     "debug:api:single": "npx tsx tests/e2e/debug-api.ts"
   },

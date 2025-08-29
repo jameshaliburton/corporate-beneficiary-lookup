@@ -249,7 +249,8 @@ export async function EnhancedAgentOwnershipResearch({
           agent_execution_trace: combineTraces(imageProcessingTrace, traceLogger.toDatabaseFormat()),
           initial_llm_confidence: existingProduct.initial_llm_confidence,
           agent_results: existingProduct.agent_results,
-          fallback_reason: existingProduct.fallback_reason
+          fallback_reason: existingProduct.fallback_reason,
+          verification_status: existingProduct.verification_status || 'inconclusive'
         }
         
         cacheStage.success({
@@ -1927,7 +1928,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   ownership.fallback_reason = null
   ownership.result_id = generateQueryId()
   
-  // Add Gemini second-opinion analysis
+  // Add Gemini second-opinion analysis - ALWAYS RUN for verification
   let geminiAnalysis = null
   const forceGeminiForTesting = process.env.FORCE_GEMINI_TESTING === 'true' || process.env.FORCE_GEMINI_FOR_TESTING === 'true'
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
@@ -1937,13 +1938,14 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     geminiAvailable,
     forceGeminiForTesting,
     geminiFeatureEnabled,
-    willTrigger: (geminiAvailable || forceGeminiForTesting) && geminiFeatureEnabled,
+    willTrigger: geminiAvailable || forceGeminiForTesting, // Always run if available
     envVar: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT SET',
     keyLength: process.env.GOOGLE_API_KEY?.length || 0,
     keyPrefix: process.env.GOOGLE_API_KEY?.substring(0, 10) || 'none'
   })
   
-  if ((geminiAvailable || forceGeminiForTesting) && geminiFeatureEnabled) {
+  // Always run Gemini verification if available (not gated by feature flag)
+  if (geminiAvailable || forceGeminiForTesting) {
     try {
       console.log('[GEMINI_TRIGGER] Gemini agent triggered - starting verification analysis')
       console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
@@ -1967,8 +1969,11 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         has_result: !!geminiAnalysis?.gemini_result
       })
       
-      // Add Gemini results to agent_results
+      // Add Gemini results to agent_results and top-level verification status
       if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+        const verificationStatus = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
+        console.log('[GEMINI_RESULT] verification_status =', verificationStatus)
+        
         ownership.agent_results.gemini_analysis = {
           success: true,
           data: geminiAnalysis.gemini_result,
@@ -1976,11 +1981,17 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
           web_snippets_count: geminiAnalysis.web_snippets_count,
           search_queries_used: geminiAnalysis.search_queries_used
         }
+        
+        // Add verification status to top level
+        ownership.verification_status = verificationStatus
+        ownership.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change
+        ownership.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis
       } else {
         ownership.agent_results.gemini_analysis = {
           success: false,
           reasoning: 'Gemini verification not available or failed'
         }
+        ownership.verification_status = 'inconclusive'
       }
       
     } catch (error) {
@@ -1990,6 +2001,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         error: error.message,
         reasoning: 'Gemini analysis encountered an error'
       }
+      ownership.verification_status = 'inconclusive'
     }
   } else {
     if (!geminiFeatureEnabled) {
@@ -2005,6 +2017,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         reasoning: 'Gemini analysis not available - missing API key'
       }
     }
+    ownership.verification_status = 'inconclusive'
   }
   
   console.log('[DEBUG] Final result built from LLM research:', {

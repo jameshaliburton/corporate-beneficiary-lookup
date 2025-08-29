@@ -1,6 +1,6 @@
 # Phase 1 Regression Test Report
 
-**Generated:** 2025-08-29T19:19:06.523Z
+**Generated:** 2025-08-29T19:42:33.576Z
 **Environment:** undefined
 
 ## 📊 Test Summary
@@ -11,7 +11,7 @@
 | ✅ Passed | 4 |
 | ❌ Failed | 1 |
 | ⏭️ Skipped | 0 |
-| ⏱️ Duration | 52277.11ms |
+| ⏱️ Duration | 38254.04ms |
 
 ## 🔧 Feature Flags
 
@@ -25,7 +25,7 @@
 ### ✅ A. Brand with Known Single Owner (Therabreath)
 
 **Status:** PASS
-**Duration:** 9375.81ms
+**Duration:** 6783.98ms
 **Cache State:** HIT
 **Agents Triggered:** llm_first_analysis
 
@@ -43,7 +43,7 @@
 ### ✅ B. Ambiguous Brand (Jordan - No Product)
 
 **Status:** PASS
-**Duration:** 6706.86ms
+**Duration:** 6355.23ms
 **Cache State:** HIT
 **Agents Triggered:** web_research, query_builder, gemini_analysis, ownership_analysis
 
@@ -69,8 +69,8 @@
 ### ✅ C. Brand with Misspelled Input (Nescafe → Nescafé)
 
 **Status:** PASS
-**Duration:** 18251.90ms
-**Cache State:** MISS
+**Duration:** 6592.55ms
+**Cache State:** HIT
 **Agents Triggered:** llm_first_analysis
 
 **Result Details:**
@@ -79,14 +79,14 @@
   "success": true,
   "beneficiary": "Nestlé S.A.",
   "confidence": 100,
-  "brand": "Nescafe"
+  "brand": "nescafe"
 }
 ```
 
 ### ❌ D. Cache Hit vs Miss Performance
 
 **Status:** FAIL
-**Duration:** 12059.43ms
+**Duration:** 12272.65ms
 **Cache State:** HIT → HIT
 **Agents Triggered:** llm_first_analysis
 
@@ -96,23 +96,23 @@
 ```json
 {
   "firstRequest": {
-    "duration": 6237.037375,
+    "duration": 6241.063208,
     "cacheState": "HIT",
     "beneficiary": "Apple Inc."
   },
   "secondRequest": {
-    "duration": 5411.086042000003,
+    "duration": 5682.388625,
     "cacheState": "HIT",
     "beneficiary": "Apple Inc."
   },
-  "performanceImprovement": "13.2%"
+  "performanceImprovement": "9.0%"
 }
 ```
 
 ### ✅ E. Feature Flag Enforcement
 
 **Status:** PASS
-**Duration:** 5881.59ms
+**Duration:** 6247.99ms
 **Cache State:** HIT
 **Agents Triggered:** web_research, query_builder, gemini_analysis, ownership_analysis
 

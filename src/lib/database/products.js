@@ -537,6 +537,9 @@ export function ownershipResultToProductData(barcode, productName, brand, owners
     initial_llm_confidence: ownershipResult.initial_llm_confidence || null,
     agent_results: ownershipResult.agent_results || null,
     fallback_reason: ownershipResult.fallback_reason || null,
+    verification_status: ownershipResult.verification_status || 'inconclusive',
+    verification_confidence_change: ownershipResult.verification_confidence_change || null,
+    verification_evidence: ownershipResult.verification_evidence || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
