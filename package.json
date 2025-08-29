@@ -16,7 +16,9 @@
     "test:vitest": "vitest",
     "test:vitest:coverage": "vitest run --coverage",
     "test:e2e": "node tests/e2e/e2e-test-runner.mjs",
-    "test:e2e:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/e2e-test-runner.mjs"
+    "test:e2e:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/e2e-test-runner.mjs",
+    "test:e2e:full": "node tests/e2e/full-pipeline-verification.mjs",
+    "test:e2e:full:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/full-pipeline-verification.mjs"
   },
   "keywords": [
     "corporate-ownership",

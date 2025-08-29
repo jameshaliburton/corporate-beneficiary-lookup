@@ -1,0 +1,24 @@
+{
+  "brand": "Samsung",
+  "product_name": "Samsung",
+  "barcode": null,
+  "hints": {},
+  "expected_behavior": "success_with_complex_ownership",
+  "expected_owner": "Samsung Group",
+  "expected_owner_country": "South Korea",
+  "expected_confidence_min": 90,
+  "expected_confidence_max": 100,
+  "expected_ownership_chain_length_min": 2,
+  "expected_ownership_chain_length_max": 5,
+  "expected_sources_min": 3,
+  "expected_narrative_fields": [
+    "headline",
+    "tagline",
+    "story",
+    "ownership_notes",
+    "behind_the_scenes"
+  ],
+  "expected_country_emphasis": true,
+  "expected_template_used": "global_corporation",
+  "test_disambiguation": true
+}

@@ -1,0 +1,253 @@
+{
+  "timestamp": "2025-08-29T08:46:08.017Z",
+  "summary": {
+    "totalTests": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0
+  },
+  "brandTests": [
+    {
+      "brand": "Lipton",
+      "success": false,
+      "error": "HTTP 500: Internal Server Error",
+      "duration": 794
+    },
+    {
+      "brand": "Samsung",
+      "success": false,
+      "error": "HTTP 500: Internal Server Error",
+      "duration": 660
+    },
+    {
+      "brand": "IKEA",
+      "success": false,
+      "error": "HTTP 500: Internal Server Error",
+      "duration": 667
+    },
+    {
+      "brand": "Moose Milk",
+      "success": false,
+      "error": "HTTP 500: Internal Server Error",
+      "duration": 669
+    },
+    {
+      "brand": "Nestlé",
+      "success": false,
+      "error": "HTTP 500: Internal Server Error",
+      "duration": 670
+    }
+  ],
+  "featureFlagTests": [
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "on"
+      },
+      "success": false,
+      "duration": 667
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "off",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "on"
+      },
+      "success": false,
+      "duration": 664
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "off",
+        "CACHE_WRITE": "on"
+      },
+      "success": false,
+      "duration": 669
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "off"
+      },
+      "success": false,
+      "duration": 665
+    }
+  ],
+  "agentTraceAnalysis": [],
+  "schemaValidationResults": [
+    {
+      "testCase": "Valid ownership data",
+      "input": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US"
+          }
+        ],
+        "sources": [
+          "source1",
+          "source2"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "ultimate_owner": "Test Owner"
+      },
+      "result": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          }
+        ],
+        "sources": [
+          "source1",
+          "source2"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Test Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Null data",
+      "input": null,
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Undefined data",
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Empty object",
+      "input": {},
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Malformed ownership chain",
+      "input": {
+        "ownership_chain": "not an array",
+        "sources": null,
+        "confidence": "not a number"
+      },
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    }
+  ],
+  "silentFailureDetection": [],
+  "fallbackContentAnalysis": [],
+  "recommendations": [
+    {
+      "priority": "medium",
+      "category": "Monitoring",
+      "recommendation": "Implement comprehensive pipeline monitoring",
+      "details": "Add metrics for agent performance, fallback rates, and error tracking"
+    },
+    {
+      "priority": "low",
+      "category": "User Experience",
+      "recommendation": "Add fallback content indicators in frontend",
+      "details": "Show users when fallback content is displayed so they understand data limitations"
+    }
+  ]
+}
