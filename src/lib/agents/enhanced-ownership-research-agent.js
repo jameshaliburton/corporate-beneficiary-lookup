@@ -167,8 +167,8 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
  */
 export async function EnhancedAgentOwnershipResearch({
   barcode,
-  product_name,
-  brand,
+    product_name, 
+    brand, 
   hints = {},
   enableEvaluation = false,
   imageProcessingTrace = null,
@@ -1949,6 +1949,14 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     try {
       console.log('[GEMINI_TRIGGER] Gemini agent triggered - starting verification analysis')
       console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
+      console.log('[GEMINI_DEBUG] About to call GeminiOwnershipAnalysisAgent with:', {
+        brand,
+        product_name,
+        ownershipData: {
+          financial_beneficiary: ownershipData?.financial_beneficiary,
+          confidence_score: ownershipData?.confidence_score
+        }
+      })
       
       geminiAnalysis = await GeminiOwnershipAnalysisAgent({
         brand: brand,
@@ -1970,6 +1978,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       })
       
       // Add Gemini results to agent_results and top-level verification status
+      console.log('[GEMINI_DEBUG] Checking condition: success=', geminiAnalysis?.success, 'has_result=', !!geminiAnalysis?.gemini_result)
       if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
         const verificationStatus = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
         console.log('[GEMINI_RESULT] verification_status =', verificationStatus)
@@ -1983,9 +1992,11 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         }
         
         // Add verification status to top level
+        console.log('[GEMINI_DEBUG] Setting ownership.verification_status to:', verificationStatus)
         ownership.verification_status = verificationStatus
         ownership.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change
         ownership.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis
+        console.log('[GEMINI_DEBUG] ownership.verification_status after assignment:', ownership.verification_status)
       } else {
         ownership.agent_results.gemini_analysis = {
           success: false,
@@ -2004,6 +2015,11 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       ownership.verification_status = 'inconclusive'
     }
   } else {
+    console.log('[GEMINI_DEBUG] Gemini NOT triggered - condition failed')
+    console.log('[GEMINI_DEBUG] geminiAvailable:', geminiAvailable)
+    console.log('[GEMINI_DEBUG] forceGeminiForTesting:', forceGeminiForTesting)
+    console.log('[GEMINI_DEBUG] condition result:', geminiAvailable || forceGeminiForTesting)
+    
     if (!geminiFeatureEnabled) {
       console.log('[FLAG_CHECK] ENABLE_GEMINI_OWNERSHIP_AGENT = false → skipping Gemini agent')
       ownership.agent_results.gemini_analysis = {

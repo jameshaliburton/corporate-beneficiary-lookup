@@ -5,8 +5,67 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Camera, ChevronDown, ChevronUp, Building2, MapPin, TrendingUp } from "lucide-react";
+import { Share2, Camera, ChevronDown, ChevronUp, Building2, MapPin, TrendingUp, CheckCircle, AlertTriangle, HelpCircle } from "lucide-react";
 import { OwnershipResult, NarrativeFields } from '@/lib/services/narrative-generator-v3';
+
+interface VerificationStatusBadgeProps {
+  status: string;
+  confidenceChange?: string;
+  evidence?: any;
+}
+
+const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
+  status, 
+  confidenceChange, 
+  evidence 
+}) => {
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'confirmed':
+        return {
+          icon: CheckCircle,
+          label: 'Verified by Gemini',
+          className: 'bg-green-100 text-green-800 border-green-200',
+          tooltip: 'Gemini AI has verified this ownership claim with supporting evidence.'
+        };
+      case 'contradicted':
+        return {
+          icon: AlertTriangle,
+          label: '⚠️ Verification failed',
+          className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          tooltip: 'Gemini found evidence that contradicts this result.'
+        };
+      case 'inconclusive':
+      default:
+        return {
+          icon: HelpCircle,
+          label: 'Could not verify',
+          className: 'bg-gray-100 text-gray-600 border-gray-200',
+          tooltip: 'Gemini couldn\'t confirm or deny the claim based on available data.'
+        };
+    }
+  };
+
+  const config = getStatusConfig();
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div 
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${config.className}`}
+        title={config.tooltip}
+      >
+        <Icon className="w-4 h-4" />
+        {config.label}
+      </div>
+      {confidenceChange && (
+        <span className="text-xs text-gray-500">
+          ({confidenceChange})
+        </span>
+      )}
+    </div>
+  );
+};
 
 interface ProductResultV2Props {
   result: OwnershipResult;
@@ -136,6 +195,17 @@ export default function ProductResultV2({
                 </div>
               </div>
             </div>
+            
+            {/* Verification Status Badge */}
+            {result.verification_status && (
+              <div className="flex justify-center">
+                <VerificationStatusBadge 
+                  status={result.verification_status}
+                  confidenceChange={result.verification_confidence_change}
+                  evidence={result.verification_evidence}
+                />
+              </div>
+            )}
             
             {/* Revenue Flow */}
             <div className="bg-muted/30 p-4 rounded-component border border-border/20">

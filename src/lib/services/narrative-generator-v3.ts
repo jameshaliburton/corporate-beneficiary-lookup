@@ -22,6 +22,10 @@ export interface OwnershipResult {
   disambiguation_options?: any[];
   ownership_notes?: string[];
   behind_the_scenes?: string[];
+  // Gemini verification fields
+  verification_status?: string;
+  verification_confidence_change?: string;
+  verification_evidence?: any;
 }
 
 export interface NarrativeFields {
