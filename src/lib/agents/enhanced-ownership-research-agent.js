@@ -54,6 +54,112 @@ try {
 }
 
 /**
+ * Check if disambiguation is needed based on brand ambiguity patterns
+ */
+async function checkDisambiguationNeeds(brand, product_name, researchResults, contextHints) {
+  console.log('[EnhancedAgent] 🔍 Checking disambiguation needs for:', { brand, product_name })
+  
+  // Define ambiguous brand patterns
+  const ambiguousBrands = {
+    'jordan': {
+      patterns: ['jordan'],
+      alternatives: [
+        { name: 'Jordan (Nike)', company: 'Nike, Inc.', country: 'United States', context: 'athletic shoes, sports apparel' },
+        { name: 'Jordan (Colgate)', company: 'Colgate-Palmolive Company', country: 'United States', context: 'oral care products' }
+      ],
+      trigger_confidence_threshold: 90 // Trigger disambiguation if confidence is high but ambiguous
+    },
+    'samsung': {
+      patterns: ['samsung'],
+      alternatives: [
+        { name: 'Samsung Electronics', company: 'Samsung Group', country: 'South Korea', context: 'electronics, smartphones' },
+        { name: 'Samsung Heavy Industries', company: 'Samsung Group', country: 'South Korea', context: 'shipbuilding, construction' },
+        { name: 'Samsung C&T', company: 'Samsung Group', country: 'South Korea', context: 'construction, trading' }
+      ],
+      trigger_confidence_threshold: 85
+    },
+    'nestle': {
+      patterns: ['nestlé', 'nestle'],
+      alternatives: [
+        { name: 'Nestlé S.A.', company: 'Nestlé S.A.', country: 'Switzerland', context: 'food and beverage products' }
+      ],
+      trigger_confidence_threshold: 95,
+      special_triggers: ['tm_symbol', 'trademark']
+    }
+  }
+  
+  // Check if brand matches ambiguous patterns
+  const normalizedBrand = brand.toLowerCase().trim()
+  let matchedPattern = null
+  
+  for (const [patternName, pattern] of Object.entries(ambiguousBrands)) {
+    for (const patternStr of pattern.patterns) {
+      if (normalizedBrand.includes(patternStr)) {
+        matchedPattern = { name: patternName, ...pattern }
+        break
+      }
+    }
+    if (matchedPattern) break
+  }
+  
+  if (!matchedPattern) {
+    console.log('[EnhancedAgent] 🔍 No ambiguous pattern matched for:', normalizedBrand)
+    return { needed: false, reason: 'no_ambiguous_pattern' }
+  }
+  
+  console.log('[EnhancedAgent] 🔍 Matched ambiguous pattern:', matchedPattern.name)
+  
+  // Check for special triggers (like TM symbols) - but don't require them for basic disambiguation
+  if (matchedPattern.special_triggers) {
+    const hasSpecialTrigger = matchedPattern.special_triggers.some(trigger => {
+      if (trigger === 'tm_symbol') {
+        return brand.includes('™') || brand.includes('®')
+      }
+      return false
+    })
+    
+    if (hasSpecialTrigger) {
+      console.log('[EnhancedAgent] 🔍 Special trigger found for:', matchedPattern.name)
+    } else {
+      console.log('[EnhancedAgent] 🔍 No special trigger for:', matchedPattern.name, 'but proceeding with disambiguation anyway')
+    }
+  }
+  
+  // For disambiguation, we want to show ALL alternatives regardless of product context
+  // The product context should help the user choose, not filter out options
+  const relevantAlternatives = matchedPattern.alternatives
+  
+  if (relevantAlternatives.length <= 1) {
+    console.log('[EnhancedAgent] 🔍 Not enough alternatives for disambiguation:', relevantAlternatives.length)
+    return { needed: false, reason: 'insufficient_alternatives' }
+  }
+  
+  // Generate disambiguation options
+  const disambiguationOptions = relevantAlternatives.map((alt, index) => ({
+    id: `${matchedPattern.name}_${index}`,
+    name: alt.name,
+    company: alt.company,
+    country: alt.country,
+    context: alt.context,
+    confidence: 85, // High confidence for disambiguation options
+    reasoning: `Based on product context "${productContext}" and brand "${brand}"`
+  }))
+  
+  console.log('[EnhancedAgent] 🔄 Disambiguation needed:', {
+    pattern: matchedPattern.name,
+    alternatives: disambiguationOptions.length,
+    reason: 'ambiguous_brand_detected'
+  })
+  
+  return {
+    needed: true,
+    reason: 'ambiguous_brand_detected',
+    pattern: matchedPattern.name,
+    options: disambiguationOptions
+  }
+}
+
+/**
  * Enhanced AgentOwnershipResearch with multi-factor confidence and detailed tracing
  */
 export async function EnhancedAgentOwnershipResearch({
@@ -365,12 +471,24 @@ export async function EnhancedAgentOwnershipResearch({
           ).join('\n')}`
         : ''
 
+      // Check for disambiguation needs before LLM analysis
+      const disambiguationCheck = await checkDisambiguationNeeds(brand, product_name, { final_confidence: 0 }, {})
+      console.log('[EnhancedAgent] 🔍 Disambiguation check result:', disambiguationCheck)
+      
       const llmFirstPrompt = `You are an expert corporate ownership researcher. Analyze the following brand and product to determine the ultimate financial beneficiary (parent company or owner), and provide a detailed ownership chain if possible.
 
 Brand: ${brand}
 Product: ${product_name || 'Unknown product'}
 Barcode: ${barcode}
 Additional hints: ${JSON.stringify(hints)}${ragContextText}
+
+${disambiguationCheck.needed ? `
+⚠️ DISAMBIGUATION ALERT: This brand "${brand}" is known to have multiple companies with similar names. Please consider the following alternatives and provide disambiguation options if the brand could refer to multiple entities:
+
+${disambiguationCheck.options.map(opt => `- ${opt.name}: ${opt.company} (${opt.country}) - ${opt.context}`).join('\n')}
+
+If you determine that disambiguation is needed, include a "disambiguation_options" field in your response.
+` : ''}
 
 Based on your knowledge of corporate structures and brand ownership, provide a detailed analysis:
 
@@ -397,7 +515,7 @@ Respond in valid JSON format:
     {"name": "Parent Company", "type": "Parent Company", "country": "Country", "source": "knowledge"}
   ],
   "confidence_score": 85,
-  "reasoning": "Detailed explanation of analysis..."
+  "reasoning": "Detailed explanation of analysis..."${disambiguationCheck.needed ? ',\n  "disambiguation_options": [\n    {"id": "option1", "name": "Alternative Name", "company": "Company Name", "country": "Country", "context": "Context", "confidence": 80, "reasoning": "Why this alternative"}\n  ]' : ''}
 }`
 
       // Set enhanced trace data for LLM stage
@@ -491,12 +609,16 @@ Respond in valid JSON format:
             ownership_structure_type: llmFirstResult.ownership_structure_type,
             confidence_score: llmFirstResult.confidence_score,
             reasoning: llmFirstResult.reasoning,
-            ownership_flow: llmFirstResult.ownership_flow
+            ownership_flow: llmFirstResult.ownership_flow,
+            disambiguation_options: llmFirstResult.disambiguation_options || [],
+            disambiguation_triggered: !!(llmFirstResult.disambiguation_options && llmFirstResult.disambiguation_options.length > 0)
           },
           intermediateVariables: {
             rag_context_count: ragContext.length,
             llm_response_length: llmFirstContent.length,
-            json_parse_success: true
+            json_parse_success: true,
+            disambiguation_check_needed: disambiguationCheck.needed,
+            disambiguation_options_count: llmFirstResult.disambiguation_options?.length || 0
           }
         })
         
@@ -530,6 +652,8 @@ Respond in valid JSON format:
             sources: [`LLM analysis of ${brand}`],
             reasoning: llmFirstResult.reasoning,
             ownership_flow: ownershipFlow,
+            disambiguation_options: llmFirstResult.disambiguation_options || [],
+            disambiguation_triggered: !!(llmFirstResult.disambiguation_options && llmFirstResult.disambiguation_options.length > 0),
             web_research_used: false,
             web_sources_count: 0,
             query_analysis_used: false,
@@ -697,6 +821,8 @@ Respond in valid JSON format:
               success: researchData.success,
               total_sources: researchData.sources?.length || 0,
               ownership_chain_length: ownershipChain?.length || 0,
+              disambiguation_triggered: researchData.disambiguation_triggered || false,
+              disambiguation_options: researchData.disambiguation_options || [],
               final_confidence: researchData.final_confidence,
               research_method: 'llm_first_research',
               notes: researchData.research_summary || ''
@@ -1728,6 +1854,8 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   ownership.cached = false
   ownership.agent_execution_trace = traceLogger.toDatabaseFormat()
   ownership.initial_llm_confidence = researchData?.final_confidence || 0
+  ownership.disambiguation_options = researchData?.disambiguation_options || []
+  ownership.disambiguation_triggered = researchData?.disambiguation_triggered || false
   ownership.agent_results = {
     query_builder: queryAnalysis ? {
       success: true,

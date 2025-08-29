@@ -18,7 +18,13 @@
     "test:e2e": "node tests/e2e/e2e-test-runner.mjs",
     "test:e2e:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/e2e-test-runner.mjs",
     "test:e2e:full": "node tests/e2e/full-pipeline-verification.mjs",
-    "test:e2e:full:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/full-pipeline-verification.mjs"
+    "test:e2e:full:matrix": "WEB_RESEARCH=on NARRATIVE_V3=on CACHE_WRITE=on node tests/e2e/full-pipeline-verification.mjs",
+    "test:e2e:complete": "npx tsx tests/e2e/test-runner.ts",
+    "test:e2e:comprehensive": "npx tsx tests/e2e/comprehensive-pipeline-verification.ts",
+    "test:e2e:extended": "npx tsx tests/e2e/extended-pipeline-verification.ts",
+    "test:disambiguation": "npx tsx tests/e2e/test-disambiguation-trigger.ts",
+    "debug:api": "npx tsx scripts/debug-api-response.ts",
+    "debug:api:single": "npx tsx tests/e2e/debug-api.ts"
   },
   "keywords": [
     "corporate-ownership",

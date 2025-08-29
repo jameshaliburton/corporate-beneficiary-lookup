@@ -1,0 +1,3208 @@
+{
+  "timestamp": "2025-08-29T09:06:39.667Z",
+  "summary": {
+    "totalTests": 5,
+    "passed": 0,
+    "failed": 5,
+    "skipped": 0
+  },
+  "brandTests": [
+    {
+      "brand": "Lipton",
+      "success": true,
+      "duration": 24680,
+      "validation": {
+        "brand": "Lipton",
+        "passed": false,
+        "errors": [
+          "Missing ownership_data in response"
+        ],
+        "warnings": [
+          "Missing narrative in response"
+        ],
+        "metrics": {}
+      },
+      "agentAnalysis": {
+        "brand": "Lipton",
+        "hasAgentTraces": true,
+        "agentExecutionStages": [
+          {
+            "section": "Retrieval",
+            "stage": "cache_check"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "sheets_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "static_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "rag_retrieval"
+          },
+          {
+            "section": "Ownership",
+            "stage": "llm_first_analysis"
+          },
+          {
+            "section": "Persistence",
+            "stage": "database_save"
+          }
+        ],
+        "silentFailures": [],
+        "fallbackTriggers": [],
+        "schemaValidationLogs": [],
+        "confidenceScoring": null,
+        "narrativeGeneration": null,
+        "cacheOperations": []
+      },
+      "result": {
+        "success": true,
+        "product_name": "Lipton",
+        "brand": "Lipton",
+        "barcode": null,
+        "financial_beneficiary": "Unilever PLC",
+        "beneficiary_country": "United Kingdom",
+        "beneficiary_flag": "🇬🇧",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Joint Venture",
+        "ownership_flow": [
+          {
+            "name": "Lipton",
+            "type": "Brand",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "ultimate": false
+          },
+          {
+            "name": "ekaterra",
+            "type": "Subsidiary",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "CVC Capital Partners",
+            "type": "Ultimate Owner",
+            "country": "Luxembourg",
+            "flag": "🇱🇺",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Lipton"
+        ],
+        "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure varies by product type and region, with the tea business now owned by CVC Capital Partners, while the ready-to-drink beverage business operates through the Pepsi Lipton International joint venture. This analysis focuses on the tea business portion, which is now ultimately owned by CVC Capital Partners through the ekaterra acquisition.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Unilever PLC",
+              "beneficiary_country": "United Kingdom",
+              "ownership_structure_type": "Joint Venture",
+              "ownership_flow": [
+                {
+                  "name": "Lipton",
+                  "type": "Brand",
+                  "country": "United Kingdom",
+                  "source": "historical knowledge"
+                },
+                {
+                  "name": "ekaterra",
+                  "type": "Subsidiary",
+                  "country": "Netherlands",
+                  "source": "corporate restructuring knowledge"
+                },
+                {
+                  "name": "CVC Capital Partners",
+                  "type": "Ultimate Owner",
+                  "country": "Luxembourg",
+                  "source": "acquisition news 2022"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure varies by product type and region, with the tea business now owned by CVC Capital Partners, while the ready-to-drink beverage business operates through the Pepsi Lipton International joint venture. This analysis focuses on the tea business portion, which is now ultimately owned by CVC Capital Partners through the ekaterra acquisition."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "lipton::lipton"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Lipton",
+                      "product_name": "Lipton",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unilever PLC",
+                      "beneficiary_country": "United Kingdom",
+                      "ownership_structure_type": "Joint Venture",
+                      "confidence_score": 95,
+                      "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure varies by product type and region, with the tea business now owned by CVC Capital Partners, while the ready-to-drink beverage business operates through the Pepsi Lipton International joint venture. This analysis focuses on the tea business portion, which is now ultimately owned by CVC Capital Partners through the ekaterra acquisition.",
+                      "ownership_flow": [
+                        {
+                          "name": "Lipton",
+                          "type": "Brand",
+                          "country": "United Kingdom",
+                          "source": "historical knowledge"
+                        },
+                        {
+                          "name": "ekaterra",
+                          "type": "Subsidiary",
+                          "country": "Netherlands",
+                          "source": "corporate restructuring knowledge"
+                        },
+                        {
+                          "name": "CVC Capital Partners",
+                          "type": "Ultimate Owner",
+                          "country": "Luxembourg",
+                          "source": "acquisition news 2022"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1465,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Unilever PLC",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Unilever PLC"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Lipton's British twist: Your tea's secret owner 🇬🇧",
+        "tagline": "That cup of Lipton is actually steeped in British ownership",
+        "story": "Your favorite tea brand Lipton is part of British giant Unilever PLC through a joint venture arrangement, showing how global the tea business has become.",
+        "ownership_notes": [
+          "Unilever PLC is the ultimate owner, based in the United Kingdom",
+          "Ownership structure is a joint venture",
+          "95% confidence in ownership data",
+          "Original brand country data unavailable"
+        ],
+        "behind_the_scenes": [
+          "Verified Unilever PLC as ultimate owner",
+          "Confirmed UK as country of ownership",
+          "Identified joint venture structure",
+          "Noted high confidence level (95%)"
+        ],
+        "narrative_template_used": "global_owner_reveal",
+        "query_id": "query_1756458405686_f0fk54doh"
+      }
+    },
+    {
+      "brand": "Samsung",
+      "success": true,
+      "duration": 18531,
+      "validation": {
+        "brand": "Samsung",
+        "passed": false,
+        "errors": [
+          "Missing ownership_data in response"
+        ],
+        "warnings": [
+          "Missing narrative in response"
+        ],
+        "metrics": {}
+      },
+      "agentAnalysis": {
+        "brand": "Samsung",
+        "hasAgentTraces": true,
+        "agentExecutionStages": [
+          {
+            "section": "Retrieval",
+            "stage": "cache_check"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "sheets_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "static_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "rag_retrieval"
+          },
+          {
+            "section": "Ownership",
+            "stage": "llm_first_analysis"
+          },
+          {
+            "section": "Persistence",
+            "stage": "database_save"
+          }
+        ],
+        "silentFailures": [],
+        "fallbackTriggers": [],
+        "schemaValidationLogs": [],
+        "confidenceScoring": null,
+        "narrativeGeneration": null,
+        "cacheOperations": []
+      },
+      "result": {
+        "success": true,
+        "product_name": "Samsung",
+        "brand": "Samsung",
+        "barcode": null,
+        "financial_beneficiary": "Samsung Group",
+        "beneficiary_country": "South Korea",
+        "beneficiary_flag": "🇰🇷",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Public Company/Chaebol",
+        "ownership_flow": [
+          {
+            "name": "Samsung",
+            "type": "Brand",
+            "country": "South Korea",
+            "flag": "🇰🇷",
+            "ultimate": false
+          },
+          {
+            "name": "Samsung Electronics",
+            "type": "Parent Company",
+            "country": "South Korea",
+            "flag": "🇰🇷",
+            "ultimate": false
+          },
+          {
+            "name": "Samsung Group",
+            "type": "Ultimate Owner/Chaebol",
+            "country": "South Korea",
+            "flag": "🇰🇷",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Samsung"
+        ],
+        "reasoning": "Samsung is one of South Korea's largest chaebols (family-controlled business conglomerates). The company structure is well documented and publicly available. Samsung Electronics is the flagship company of the Samsung Group, which is controlled by the Lee family through a complex web of cross-shareholdings. The founding Lee family maintains control through various Samsung Group subsidiaries, with the late Lee Kun-hee's son, Lee Jae-yong, serving as the de facto head. Samsung Electronics is publicly traded on the Korea Exchange, but the broader Samsung Group structure ensures family control. The ownership structure is typical of Korean chaebols, combining public ownership with family control through a complex corporate structure. This information is widely available through corporate filings, regulatory documents, and extensive media coverage of one of the world's largest technology companies.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Samsung Group",
+              "beneficiary_country": "South Korea",
+              "ownership_structure_type": "Public Company/Chaebol",
+              "ownership_flow": [
+                {
+                  "name": "Samsung",
+                  "type": "Brand",
+                  "country": "South Korea",
+                  "source": "public records"
+                },
+                {
+                  "name": "Samsung Electronics",
+                  "type": "Parent Company",
+                  "country": "South Korea",
+                  "source": "corporate filings"
+                },
+                {
+                  "name": "Samsung Group",
+                  "type": "Ultimate Owner/Chaebol",
+                  "country": "South Korea",
+                  "source": "corporate structure documentation"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Samsung is one of South Korea's largest chaebols (family-controlled business conglomerates). The company structure is well documented and publicly available. Samsung Electronics is the flagship company of the Samsung Group, which is controlled by the Lee family through a complex web of cross-shareholdings. The founding Lee family maintains control through various Samsung Group subsidiaries, with the late Lee Kun-hee's son, Lee Jae-yong, serving as the de facto head. Samsung Electronics is publicly traded on the Korea Exchange, but the broader Samsung Group structure ensures family control. The ownership structure is typical of Korean chaebols, combining public ownership with family control through a complex corporate structure. This information is widely available through corporate filings, regulatory documents, and extensive media coverage of one of the world's largest technology companies."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "samsung::samsung"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Samsung",
+                      "product_name": "Samsung",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Samsung Group",
+                      "beneficiary_country": "South Korea",
+                      "ownership_structure_type": "Public Company/Chaebol",
+                      "confidence_score": 95,
+                      "reasoning": "Samsung is one of South Korea's largest chaebols (family-controlled business conglomerates). The company structure is well documented and publicly available. Samsung Electronics is the flagship company of the Samsung Group, which is controlled by the Lee family through a complex web of cross-shareholdings. The founding Lee family maintains control through various Samsung Group subsidiaries, with the late Lee Kun-hee's son, Lee Jae-yong, serving as the de facto head. Samsung Electronics is publicly traded on the Korea Exchange, but the broader Samsung Group structure ensures family control. The ownership structure is typical of Korean chaebols, combining public ownership with family control through a complex corporate structure. This information is widely available through corporate filings, regulatory documents, and extensive media coverage of one of the world's largest technology companies.",
+                      "ownership_flow": [
+                        {
+                          "name": "Samsung",
+                          "type": "Brand",
+                          "country": "South Korea",
+                          "source": "public records"
+                        },
+                        {
+                          "name": "Samsung Electronics",
+                          "type": "Parent Company",
+                          "country": "South Korea",
+                          "source": "corporate filings"
+                        },
+                        {
+                          "name": "Samsung Group",
+                          "type": "Ultimate Owner/Chaebol",
+                          "country": "South Korea",
+                          "source": "corporate structure documentation"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1561,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Samsung Group",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Samsung Group"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Samsung: Korea's biggest family business 🇰🇷",
+        "tagline": "Part of South Korea's powerful Samsung Group chaebol empire",
+        "story": "Samsung isn't just a tech company - it's the crown jewel of South Korea's largest family-controlled business empire (chaebol), touching everything from phones to insurance to construction.",
+        "ownership_notes": [
+          "Samsung Group is a South Korean chaebol (family-controlled conglomerate)",
+          "While publicly traded, the founding Lee family maintains significant control",
+          "Complex ownership structure typical of Korean chaebols",
+          "One of South Korea's largest and most influential companies"
+        ],
+        "behind_the_scenes": [
+          "Samsung Group is the ultimate parent company",
+          "Based in South Korea (verified with 95% confidence)",
+          "Ownership type confirmed as public company/chaebol",
+          "Chaebol structure unique to South Korean business culture"
+        ],
+        "narrative_template_used": "global_conglomerate",
+        "query_id": "query_1756458424814_lzkrhwp68"
+      }
+    },
+    {
+      "brand": "IKEA",
+      "success": true,
+      "duration": 17879,
+      "validation": {
+        "brand": "IKEA",
+        "passed": false,
+        "errors": [
+          "Missing ownership_data in response"
+        ],
+        "warnings": [
+          "Missing narrative in response"
+        ],
+        "metrics": {}
+      },
+      "agentAnalysis": {
+        "brand": "IKEA",
+        "hasAgentTraces": true,
+        "agentExecutionStages": [
+          {
+            "section": "Retrieval",
+            "stage": "cache_check"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "sheets_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "static_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "rag_retrieval"
+          },
+          {
+            "section": "Ownership",
+            "stage": "llm_first_analysis"
+          },
+          {
+            "section": "Persistence",
+            "stage": "database_save"
+          }
+        ],
+        "silentFailures": [],
+        "fallbackTriggers": [],
+        "schemaValidationLogs": [],
+        "confidenceScoring": null,
+        "narrativeGeneration": null,
+        "cacheOperations": []
+      },
+      "result": {
+        "success": true,
+        "product_name": "IKEA",
+        "brand": "IKEA",
+        "barcode": null,
+        "financial_beneficiary": "INGKA Foundation",
+        "beneficiary_country": "Netherlands",
+        "beneficiary_flag": "🇳🇱",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Foundation-owned Private Company",
+        "ownership_flow": [
+          {
+            "name": "IKEA",
+            "type": "Brand",
+            "country": "Sweden",
+            "flag": "🇸🇪",
+            "ultimate": false
+          },
+          {
+            "name": "Inter IKEA Systems B.V.",
+            "type": "Brand Owner/Franchisor",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "INGKA Group",
+            "type": "Operating Company",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "INGKA Foundation",
+            "type": "Ultimate Owner",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of IKEA"
+        ],
+        "reasoning": "IKEA has a complex ownership structure deliberately designed for tax efficiency and control. The IKEA brand and concept is owned by Inter IKEA Systems B.V., which is the worldwide IKEA franchisor. However, the majority of IKEA stores are operated by INGKA Group (formerly IKEA Group), which is ultimately controlled by the INGKA Foundation, a Dutch-registered entity established by IKEA founder Ingvar Kamprad in 1982. The INGKA Foundation is the largest owner of IKEA stores worldwide and is effectively the ultimate financial beneficiary of most IKEA retail operations. This structure is well-documented in corporate filings and has been extensively reported by financial media. The INGKA Foundation's charitable status and Dutch registration have been consistent features of IKEA's corporate structure for decades, making this analysis highly reliable.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "INGKA Foundation",
+              "beneficiary_country": "Netherlands",
+              "ownership_structure_type": "Foundation-owned Private Company",
+              "ownership_flow": [
+                {
+                  "name": "IKEA",
+                  "type": "Brand",
+                  "country": "Sweden",
+                  "source": "public records"
+                },
+                {
+                  "name": "Inter IKEA Systems B.V.",
+                  "type": "Brand Owner/Franchisor",
+                  "country": "Netherlands",
+                  "source": "corporate filings"
+                },
+                {
+                  "name": "INGKA Group",
+                  "type": "Operating Company",
+                  "country": "Netherlands",
+                  "source": "corporate structure documents"
+                },
+                {
+                  "name": "INGKA Foundation",
+                  "type": "Ultimate Owner",
+                  "country": "Netherlands",
+                  "source": "corporate records"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "IKEA has a complex ownership structure deliberately designed for tax efficiency and control. The IKEA brand and concept is owned by Inter IKEA Systems B.V., which is the worldwide IKEA franchisor. However, the majority of IKEA stores are operated by INGKA Group (formerly IKEA Group), which is ultimately controlled by the INGKA Foundation, a Dutch-registered entity established by IKEA founder Ingvar Kamprad in 1982. The INGKA Foundation is the largest owner of IKEA stores worldwide and is effectively the ultimate financial beneficiary of most IKEA retail operations. This structure is well-documented in corporate filings and has been extensively reported by financial media. The INGKA Foundation's charitable status and Dutch registration have been consistent features of IKEA's corporate structure for decades, making this analysis highly reliable."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "ikea::ikea"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "IKEA",
+                      "product_name": "IKEA",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "INGKA Foundation",
+                      "beneficiary_country": "Netherlands",
+                      "ownership_structure_type": "Foundation-owned Private Company",
+                      "confidence_score": 95,
+                      "reasoning": "IKEA has a complex ownership structure deliberately designed for tax efficiency and control. The IKEA brand and concept is owned by Inter IKEA Systems B.V., which is the worldwide IKEA franchisor. However, the majority of IKEA stores are operated by INGKA Group (formerly IKEA Group), which is ultimately controlled by the INGKA Foundation, a Dutch-registered entity established by IKEA founder Ingvar Kamprad in 1982. The INGKA Foundation is the largest owner of IKEA stores worldwide and is effectively the ultimate financial beneficiary of most IKEA retail operations. This structure is well-documented in corporate filings and has been extensively reported by financial media. The INGKA Foundation's charitable status and Dutch registration have been consistent features of IKEA's corporate structure for decades, making this analysis highly reliable.",
+                      "ownership_flow": [
+                        {
+                          "name": "IKEA",
+                          "type": "Brand",
+                          "country": "Sweden",
+                          "source": "public records"
+                        },
+                        {
+                          "name": "Inter IKEA Systems B.V.",
+                          "type": "Brand Owner/Franchisor",
+                          "country": "Netherlands",
+                          "source": "corporate filings"
+                        },
+                        {
+                          "name": "INGKA Group",
+                          "type": "Operating Company",
+                          "country": "Netherlands",
+                          "source": "corporate structure documents"
+                        },
+                        {
+                          "name": "INGKA Foundation",
+                          "type": "Ultimate Owner",
+                          "country": "Netherlands",
+                          "source": "corporate records"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1665,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "INGKA Foundation",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "INGKA Foundation"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "IKEA's Dutch secret you never knew 🇳🇱",
+        "tagline": "World's favorite furniture store owned by Dutch foundation",
+        "story": "While IKEA feels Swedish through and through, it's actually controlled by the INGKA Foundation in the Netherlands, which owns the majority of IKEA stores worldwide.",
+        "ownership_notes": [
+          "INGKA Foundation is the largest owner of IKEA stores globally",
+          "The foundation structure helps ensure IKEA's long-term independence",
+          "Complex ownership structure split between retail and brand rights"
+        ],
+        "behind_the_scenes": [
+          "Foundation ownership verified with 95% confidence",
+          "INGKA Foundation established in Netherlands for tax and legal purposes",
+          "Unique foundation-owned structure differs from typical corporate ownership"
+        ],
+        "narrative_template_used": "foundation_ownership",
+        "query_id": "query_1756458442902_8p5ldgx4q"
+      }
+    },
+    {
+      "brand": "Moose Milk",
+      "success": true,
+      "duration": 31797,
+      "validation": {
+        "brand": "Moose Milk",
+        "passed": false,
+        "errors": [
+          "Missing ownership_data in response"
+        ],
+        "warnings": [
+          "Missing narrative in response"
+        ],
+        "metrics": {}
+      },
+      "agentAnalysis": {
+        "brand": "Moose Milk",
+        "hasAgentTraces": true,
+        "agentExecutionStages": [
+          {
+            "section": "Retrieval",
+            "stage": "cache_check"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "sheets_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "static_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "rag_retrieval"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "query_builder"
+          },
+          {
+            "section": "Ownership",
+            "stage": "llm_first_analysis"
+          },
+          {
+            "section": "Ownership",
+            "stage": "web_research"
+          },
+          {
+            "section": "Persistence",
+            "stage": "database_save"
+          }
+        ],
+        "silentFailures": [],
+        "fallbackTriggers": [],
+        "schemaValidationLogs": [],
+        "confidenceScoring": null,
+        "narrativeGeneration": null,
+        "cacheOperations": []
+      },
+      "result": {
+        "success": true,
+        "product_name": "Moose Milk",
+        "brand": "Moose Milk",
+        "barcode": null,
+        "financial_beneficiary": "Saputo Inc.",
+        "beneficiary_flag": "🏳️",
+        "confidence_score": 93,
+        "ownership_flow": [
+          {
+            "name": "Moose Milk",
+            "role": "Unknown",
+            "country": "Canada",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          },
+          {
+            "name": "Canadian Dairy Manufacturing Ltd.",
+            "role": "Unknown",
+            "country": "Canada",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          },
+          {
+            "name": "Saputo Inc.",
+            "role": "Unknown",
+            "country": "Canada",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          }
+        ],
+        "agent_results": {
+          "query_builder": {
+            "success": true,
+            "data": [
+              {
+                "query": "\"[object Object]\" parent company",
+                "purpose": "find parent company information",
+                "priority": 5,
+                "expected_sources": [
+                  "company websites",
+                  "financial news"
+                ]
+              },
+              {
+                "query": "\"[object Object]\" ultimate owner",
+                "purpose": "find ultimate ownership",
+                "priority": 5,
+                "expected_sources": [
+                  "financial filings",
+                  "corporate registries"
+                ]
+              }
+            ],
+            "reasoning": "Query builder analyzed brand characteristics and generated optimized search queries"
+          },
+          "web_research": {
+            "success": true,
+            "data": {
+              "success": true,
+              "brand": "Moose Milk",
+              "product_name": "Moose Milk",
+              "ownership_chain": [
+                {
+                  "name": "Moose Milk",
+                  "role": "Brand",
+                  "country": "Canada",
+                  "flag": "🇨🇦",
+                  "ultimate": false,
+                  "sources": [
+                    {
+                      "url": "https://corporationscanada.ic.gc.ca",
+                      "name": "Corporations Canada",
+                      "type": "registry",
+                      "confidence": 0.95,
+                      "tier": 1
+                    },
+                    {
+                      "url": "https://www.saputo.com/en/our-company/leadership",
+                      "name": "Saputo Corporate Registry",
+                      "type": "official",
+                      "confidence": 0.9,
+                      "tier": 2
+                    }
+                  ]
+                },
+                {
+                  "name": "Canadian Dairy Manufacturing Ltd.",
+                  "role": "Parent",
+                  "country": "Canada",
+                  "flag": "🇨🇦",
+                  "ultimate": false,
+                  "sources": [
+                    {
+                      "url": "https://corporationscanada.ic.gc.ca",
+                      "name": "Corporations Canada",
+                      "type": "registry",
+                      "confidence": 0.95,
+                      "tier": 1
+                    },
+                    {
+                      "url": "https://www.saputo.com/en/our-company/leadership",
+                      "name": "Saputo Corporate Registry",
+                      "type": "official",
+                      "confidence": 0.9,
+                      "tier": 2
+                    }
+                  ]
+                },
+                {
+                  "name": "Saputo Inc.",
+                  "role": "Ultimate Owner",
+                  "country": "Canada",
+                  "flag": "🇨🇦",
+                  "ultimate": true,
+                  "sources": [
+                    {
+                      "url": "https://corporationscanada.ic.gc.ca",
+                      "name": "Corporations Canada",
+                      "type": "registry",
+                      "confidence": 0.95,
+                      "tier": 1
+                    },
+                    {
+                      "url": "https://www.saputo.com/en/our-company/leadership",
+                      "name": "Saputo Corporate Registry",
+                      "type": "official",
+                      "confidence": 0.9,
+                      "tier": 2
+                    }
+                  ]
+                }
+              ],
+              "final_confidence": 0.85,
+              "sources": [
+                {
+                  "name": "Corporations Canada",
+                  "url": "https://corporationscanada.ic.gc.ca",
+                  "type": "registry",
+                  "reliability": 0.95
+                },
+                {
+                  "name": "Saputo Corporate Registry",
+                  "url": "https://www.saputo.com/en/our-company/leadership",
+                  "type": "official",
+                  "reliability": 0.9
+                }
+              ],
+              "verification_status": "verified",
+              "verification_reasoning": "Found 2 sources with 1 verified sources",
+              "research_summary": "Moose Milk appears to be a brand owned by Canadian Dairy Manufacturing Ltd., which is ultimately owned by Saputo Inc., one of Canada's largest dairy processors. The ownership structure has been stable since 2019.",
+              "data_quality": {
+                "completeness": 0.5,
+                "recency": 0.5,
+                "consistency": 0.5
+              },
+              "debug_info": {
+                "research_rounds": 1,
+                "best_round": "registry_research",
+                "strategy_used": {
+                  "primary_approach": "registry_research",
+                  "secondary_approaches": [
+                    "news_research",
+                    "corporate_structure"
+                  ],
+                  "language_priority": [
+                    "en"
+                  ],
+                  "registry_focus": [],
+                  "legal_suffixes": [
+                    "AB",
+                    "AS",
+                    "Ltd"
+                  ],
+                  "industry_keywords": [
+                    "beverages",
+                    "dairy",
+                    "food and drink"
+                  ]
+                }
+              },
+              "research_method": "llm_first_research",
+              "total_sources": 2,
+              "notes": "Moose Milk appears to be a brand owned by Canadian Dairy Manufacturing Ltd., which is ultimately owned by Saputo Inc., one of Canada's largest dairy processors. The ownership structure has been stable since 2019.",
+              "trusted_sources": [
+                {
+                  "name": "Corporations Canada",
+                  "url": "https://corporationscanada.ic.gc.ca",
+                  "type": "registry",
+                  "reliability": 0.95
+                }
+              ],
+              "verified_sources": [
+                {
+                  "name": "Corporations Canada",
+                  "url": "https://corporationscanada.ic.gc.ca",
+                  "type": "registry",
+                  "reliability": 0.95
+                }
+              ],
+              "highly_likely_sources": [
+                {
+                  "name": "Corporations Canada",
+                  "url": "https://corporationscanada.ic.gc.ca",
+                  "type": "registry",
+                  "reliability": 0.95
+                },
+                {
+                  "name": "Saputo Corporate Registry",
+                  "url": "https://www.saputo.com/en/our-company/leadership",
+                  "type": "official",
+                  "reliability": 0.9
+                }
+              ]
+            },
+            "reasoning": "LLM-first research provided high-confidence ownership determination"
+          },
+          "ownership_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Saputo Inc.",
+              "confidence_score": 93,
+              "ownership_flow": [
+                {
+                  "name": "Moose Milk",
+                  "role": "Unknown",
+                  "country": "Canada",
+                  "flag": "🏳️",
+                  "ultimate": false,
+                  "sources": []
+                },
+                {
+                  "name": "Canadian Dairy Manufacturing Ltd.",
+                  "role": "Unknown",
+                  "country": "Canada",
+                  "flag": "🏳️",
+                  "ultimate": false,
+                  "sources": []
+                },
+                {
+                  "name": "Saputo Inc.",
+                  "role": "Unknown",
+                  "country": "Canada",
+                  "flag": "🏳️",
+                  "ultimate": false,
+                  "sources": []
+                }
+              ]
+            },
+            "reasoning": "Ownership analysis completed using LLM research results"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "moose milk::moose milk"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "query_builder",
+                  "label": "Query Builder",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the query_builder stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Moose Milk",
+                      "product_name": "Moose Milk",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unknown - Multiple Independent Producers",
+                      "beneficiary_country": "Multiple",
+                      "ownership_structure_type": "Various Independent Producers",
+                      "confidence_score": 60,
+                      "reasoning": "Moose Milk appears to be a generic product name rather than a specific brand owned by a single company. It refers to an alcoholic beverage that originated in Canadian military traditions and is now produced by various independent manufacturers and establishments. There isn't a single company that owns the rights to 'Moose Milk' as a brand - it's more akin to how 'eggnog' is a type of drink rather than a specific brand. Different producers make their own versions of the drink, particularly in Canada. Without a specific barcode or additional identifying information, it's impossible to attribute this to a single producer. The product is most commonly associated with Canadian military mess halls and social functions, but commercial versions are made by various independent producers.",
+                      "ownership_flow": [
+                        {
+                          "name": "Moose Milk",
+                          "type": "Brand/Product",
+                          "country": "Multiple",
+                          "source": "market research"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1168,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "web_research",
+                  "label": "Web Research",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Moose Milk",
+                      "product_name": "Moose Milk",
+                      "hints": "{}",
+                      "query_analysis": "[{\"query\":\"\\\"[object Object]\\\" parent company\",\"purpose\":\"find parent company information\",\"priority\":5,\"expected_sources\":[\"company websites\",\"financial news\"]},{\"query\":\"\\\"[object Object]\\\" ultimate owner\",\"purpose\":\"find ultimate ownership\",\"priority\":5,\"expected_sources\":[\"financial filings\",\"corporate registries\"]}]"
+                    },
+                    "outputVariables": {
+                      "success": true,
+                      "total_sources": 2,
+                      "ownership_chain_length": 3,
+                      "final_confidence": 0.85,
+                      "research_method": "llm_first_research",
+                      "notes": "Moose Milk appears to be a brand owned by Canadian Dairy Manufacturing Ltd., which is ultimately owned by Saputo Inc., one of Canada's largest dairy processors. The ownership structure has been stable since 2019."
+                    },
+                    "intermediateVariables": {
+                      "llm_research_available": true,
+                      "evidence_tracked": 2
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the web_research stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Saputo Inc.",
+                    "confidence": 93
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Saputo Inc."
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Moose Milk's Canadian dairy empire connection 🇨🇦",
+        "tagline": "Owned by Saputo, one of North America's largest dairy producers",
+        "story": "Though branded as Moose Milk, this product is actually part of Saputo Inc.'s extensive dairy portfolio, a major Canadian dairy corporation.",
+        "ownership_notes": [
+          "Saputo Inc. is headquartered in Montreal, Canada",
+          "93% confidence in ownership connection",
+          "Exact ownership structure details not available"
+        ],
+        "behind_the_scenes": [
+          "Added Canadian flag based on Saputo's known headquarters",
+          "Focused on verifiable Saputo connection",
+          "Maintained transparency about limited data",
+          "Emphasized dairy industry context for relevance"
+        ],
+        "narrative_template_used": "limited_data_corporate",
+        "query_id": "query_1756458460783_ld7n5plhx"
+      }
+    },
+    {
+      "brand": "Nestlé",
+      "success": true,
+      "duration": 17902,
+      "validation": {
+        "brand": "Nestlé",
+        "passed": false,
+        "errors": [
+          "Missing ownership_data in response"
+        ],
+        "warnings": [
+          "Missing narrative in response"
+        ],
+        "metrics": {}
+      },
+      "agentAnalysis": {
+        "brand": "Nestlé",
+        "hasAgentTraces": true,
+        "agentExecutionStages": [
+          {
+            "section": "Retrieval",
+            "stage": "cache_check"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "sheets_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "static_mapping"
+          },
+          {
+            "section": "Retrieval",
+            "stage": "rag_retrieval"
+          },
+          {
+            "section": "Ownership",
+            "stage": "llm_first_analysis"
+          },
+          {
+            "section": "Persistence",
+            "stage": "database_save"
+          }
+        ],
+        "silentFailures": [],
+        "fallbackTriggers": [],
+        "schemaValidationLogs": [],
+        "confidenceScoring": null,
+        "narrativeGeneration": null,
+        "cacheOperations": []
+      },
+      "result": {
+        "success": true,
+        "product_name": "Nestlé",
+        "brand": "Nestlé",
+        "barcode": null,
+        "financial_beneficiary": "Nestlé S.A.",
+        "beneficiary_country": "Switzerland",
+        "beneficiary_flag": "🇨🇭",
+        "confidence_score": 100,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Public Company",
+        "ownership_flow": [
+          {
+            "name": "Nestlé",
+            "type": "Brand",
+            "country": "Switzerland",
+            "flag": "🇨🇭",
+            "ultimate": false
+          },
+          {
+            "name": "Nestlé S.A.",
+            "type": "Ultimate Owner",
+            "country": "Switzerland",
+            "flag": "🇨🇭",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Nestlé"
+        ],
+        "reasoning": "Nestlé is one of the most straightforward cases of corporate ownership as it is both the brand name and the name of the parent company. Nestlé S.A. is a publicly traded company headquartered in Vevey, Switzerland. The company was founded in 1866 by Henri Nestlé and has grown to become one of the largest food and beverage companies in the world. The company trades on the SIX Swiss Exchange under the symbol NESN. In this case, there is no complex ownership chain as Nestlé S.A. directly owns and operates the Nestlé brand as its core identity. The company is publicly traded, meaning it is ultimately owned by its shareholders, but the corporate entity Nestlé S.A. is the controlling legal entity and financial beneficiary of the brand's operations. The confidence score is 100 because this is a well-documented, straightforward case of corporate ownership with no intermediary entities between the brand and the ultimate parent company.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Nestlé S.A.",
+              "beneficiary_country": "Switzerland",
+              "ownership_structure_type": "Public Company",
+              "ownership_flow": [
+                {
+                  "name": "Nestlé",
+                  "type": "Brand",
+                  "country": "Switzerland",
+                  "source": "corporate history"
+                },
+                {
+                  "name": "Nestlé S.A.",
+                  "type": "Ultimate Owner",
+                  "country": "Switzerland",
+                  "source": "corporate documentation"
+                }
+              ],
+              "confidence_score": 100,
+              "reasoning": "Nestlé is one of the most straightforward cases of corporate ownership as it is both the brand name and the name of the parent company. Nestlé S.A. is a publicly traded company headquartered in Vevey, Switzerland. The company was founded in 1866 by Henri Nestlé and has grown to become one of the largest food and beverage companies in the world. The company trades on the SIX Swiss Exchange under the symbol NESN. In this case, there is no complex ownership chain as Nestlé S.A. directly owns and operates the Nestlé brand as its core identity. The company is publicly traded, meaning it is ultimately owned by its shareholders, but the corporate entity Nestlé S.A. is the controlling legal entity and financial beneficiary of the brand's operations. The confidence score is 100 because this is a well-documented, straightforward case of corporate ownership with no intermediary entities between the brand and the ultimate parent company."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "nestlé::nestlé"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Nestlé",
+                      "product_name": "Nestlé",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Nestlé S.A.",
+                      "beneficiary_country": "Switzerland",
+                      "ownership_structure_type": "Public Company",
+                      "confidence_score": 100,
+                      "reasoning": "Nestlé is one of the most straightforward cases of corporate ownership as it is both the brand name and the name of the parent company. Nestlé S.A. is a publicly traded company headquartered in Vevey, Switzerland. The company was founded in 1866 by Henri Nestlé and has grown to become one of the largest food and beverage companies in the world. The company trades on the SIX Swiss Exchange under the symbol NESN. In this case, there is no complex ownership chain as Nestlé S.A. directly owns and operates the Nestlé brand as its core identity. The company is publicly traded, meaning it is ultimately owned by its shareholders, but the corporate entity Nestlé S.A. is the controlling legal entity and financial beneficiary of the brand's operations. The confidence score is 100 because this is a well-documented, straightforward case of corporate ownership with no intermediary entities between the brand and the ultimate parent company.",
+                      "ownership_flow": [
+                        {
+                          "name": "Nestlé",
+                          "type": "Brand",
+                          "country": "Switzerland",
+                          "source": "corporate history"
+                        },
+                        {
+                          "name": "Nestlé S.A.",
+                          "type": "Ultimate Owner",
+                          "country": "Switzerland",
+                          "source": "corporate documentation"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1419,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Nestlé S.A.",
+                    "confidence": 100
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Nestlé S.A."
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Nestlé: Swiss precision in global snacking 🇨🇭",
+        "tagline": "World's largest food company stays true to Swiss roots",
+        "story": "While Nestlé sells products in 186 countries, its heart remains in Switzerland where it was founded in 1866 by Henri Nestlé.",
+        "ownership_notes": [
+          "Nestlé S.A. is publicly traded on the Swiss Stock Exchange (SIX)",
+          "Headquarters remain in Vevey, Switzerland",
+          "One of Switzerland's most valuable companies by market cap"
+        ],
+        "behind_the_scenes": [
+          "Confirmed Swiss ownership through corporate registry",
+          "Verified public company status",
+          "High confidence (100%) in ownership data"
+        ],
+        "narrative_template_used": "global_heritage",
+        "query_id": "query_1756458492582_8cyzoydal"
+      }
+    }
+  ],
+  "featureFlagTests": [
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "on"
+      },
+      "success": true,
+      "duration": 18870,
+      "result": {
+        "success": true,
+        "product_name": "Lipton",
+        "brand": "Lipton",
+        "barcode": null,
+        "financial_beneficiary": "Unilever PLC",
+        "beneficiary_country": "United Kingdom",
+        "beneficiary_flag": "🇬🇧",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Joint Venture",
+        "ownership_flow": [
+          {
+            "name": "Lipton",
+            "type": "Brand",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "ultimate": false
+          },
+          {
+            "name": "ekaterra",
+            "type": "Subsidiary",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "CVC Capital Partners",
+            "type": "Ultimate Owner",
+            "country": "Luxembourg",
+            "flag": "🇱🇺",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Lipton"
+        ],
+        "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business ownership, which is now under CVC Capital Partners through the ekaterra acquisition.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Unilever PLC",
+              "beneficiary_country": "United Kingdom",
+              "ownership_structure_type": "Joint Venture",
+              "ownership_flow": [
+                {
+                  "name": "Lipton",
+                  "type": "Brand",
+                  "country": "United Kingdom",
+                  "source": "historical knowledge"
+                },
+                {
+                  "name": "ekaterra",
+                  "type": "Subsidiary",
+                  "country": "Netherlands",
+                  "source": "corporate restructuring knowledge"
+                },
+                {
+                  "name": "CVC Capital Partners",
+                  "type": "Ultimate Owner",
+                  "country": "Luxembourg",
+                  "source": "acquisition news 2022"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business ownership, which is now under CVC Capital Partners through the ekaterra acquisition."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "lipton::lipton"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Lipton",
+                      "product_name": "Lipton",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unilever PLC",
+                      "beneficiary_country": "United Kingdom",
+                      "ownership_structure_type": "Joint Venture",
+                      "confidence_score": 95,
+                      "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business ownership, which is now under CVC Capital Partners through the ekaterra acquisition.",
+                      "ownership_flow": [
+                        {
+                          "name": "Lipton",
+                          "type": "Brand",
+                          "country": "United Kingdom",
+                          "source": "historical knowledge"
+                        },
+                        {
+                          "name": "ekaterra",
+                          "type": "Subsidiary",
+                          "country": "Netherlands",
+                          "source": "corporate restructuring knowledge"
+                        },
+                        {
+                          "name": "CVC Capital Partners",
+                          "type": "Ultimate Owner",
+                          "country": "Luxembourg",
+                          "source": "acquisition news 2022"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1490,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Unilever PLC",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Unilever PLC"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Lipton's British twist on tea time 🇬🇧",
+        "tagline": "Your favorite tea brand is steeped in British ownership",
+        "story": "While Lipton tea is enjoyed globally, it's ultimately owned by British giant Unilever PLC through a unique joint venture structure.",
+        "ownership_notes": [
+          "Unilever PLC is the ultimate owner, based in the United Kingdom",
+          "Ownership structure is a joint venture",
+          "High confidence (95%) in ownership data",
+          "Original brand country data unavailable"
+        ],
+        "behind_the_scenes": [
+          "Verified Unilever PLC as parent company",
+          "Confirmed UK as country of ultimate ownership",
+          "Identified joint venture structure",
+          "Noted missing brand origin country"
+        ],
+        "narrative_template_used": "global_brand_ownership",
+        "query_id": "query_1756458510483_4kw2wtip6"
+      }
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "off",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "on"
+      },
+      "success": true,
+      "duration": 18929,
+      "result": {
+        "success": true,
+        "product_name": "Lipton",
+        "brand": "Lipton",
+        "barcode": null,
+        "financial_beneficiary": "Unilever PLC",
+        "beneficiary_country": "United Kingdom",
+        "beneficiary_flag": "🇬🇧",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Joint Venture",
+        "ownership_flow": [
+          {
+            "name": "Lipton",
+            "type": "Brand",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "ultimate": false
+          },
+          {
+            "name": "ekaterra",
+            "type": "Subsidiary",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "CVC Capital Partners",
+            "type": "Ultimate Owner",
+            "country": "Luxembourg",
+            "flag": "🇱🇺",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Lipton"
+        ],
+        "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business portion, which is now owned by CVC Capital Partners through the ekaterra acquisition.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Unilever PLC",
+              "beneficiary_country": "United Kingdom",
+              "ownership_structure_type": "Joint Venture",
+              "ownership_flow": [
+                {
+                  "name": "Lipton",
+                  "type": "Brand",
+                  "country": "United Kingdom",
+                  "source": "historical knowledge"
+                },
+                {
+                  "name": "ekaterra",
+                  "type": "Subsidiary",
+                  "country": "Netherlands",
+                  "source": "corporate restructuring knowledge"
+                },
+                {
+                  "name": "CVC Capital Partners",
+                  "type": "Ultimate Owner",
+                  "country": "Luxembourg",
+                  "source": "acquisition news 2022"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business portion, which is now owned by CVC Capital Partners through the ekaterra acquisition."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "lipton::lipton"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Lipton",
+                      "product_name": "Lipton",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unilever PLC",
+                      "beneficiary_country": "United Kingdom",
+                      "ownership_structure_type": "Joint Venture",
+                      "confidence_score": 95,
+                      "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the tea business in retail channels. The Lipton ready-to-drink beverages remain part of a joint venture between Unilever and PepsiCo. The ownership structure is complex because the brand is effectively split: CVC Capital Partners owns the tea business through ekaterra, while the ready-to-drink business remains under the Pepsi Lipton International joint venture between PepsiCo and Unilever. This analysis focuses on the tea business portion, which is now owned by CVC Capital Partners through the ekaterra acquisition.",
+                      "ownership_flow": [
+                        {
+                          "name": "Lipton",
+                          "type": "Brand",
+                          "country": "United Kingdom",
+                          "source": "historical knowledge"
+                        },
+                        {
+                          "name": "ekaterra",
+                          "type": "Subsidiary",
+                          "country": "Netherlands",
+                          "source": "corporate restructuring knowledge"
+                        },
+                        {
+                          "name": "CVC Capital Partners",
+                          "type": "Ultimate Owner",
+                          "country": "Luxembourg",
+                          "source": "acquisition news 2022"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1491,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Unilever PLC",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Unilever PLC"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Lipton's British twist on your tea 🇬🇧",
+        "tagline": "Your favorite tea brand is steeped in British ownership",
+        "story": "That iconic yellow label tea actually belongs to British giant Unilever PLC, who shares ownership through a strategic joint venture.",
+        "ownership_notes": [
+          "Unilever PLC is the ultimate owner, based in the United Kingdom",
+          "Ownership structure is a joint venture",
+          "95% confidence in ownership data",
+          "Original brand country data unavailable"
+        ],
+        "behind_the_scenes": [
+          "Verified Unilever PLC as parent company",
+          "Confirmed UK as country of ultimate ownership",
+          "Identified joint venture ownership structure",
+          "High confidence (95%) in data accuracy"
+        ],
+        "narrative_template_used": "global_ownership_reveal",
+        "query_id": "query_1756458529360_gnvz9g6p6"
+      }
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "off",
+        "CACHE_WRITE": "on"
+      },
+      "success": true,
+      "duration": 18763,
+      "result": {
+        "success": true,
+        "product_name": "Lipton",
+        "brand": "Lipton",
+        "barcode": null,
+        "financial_beneficiary": "Unilever PLC",
+        "beneficiary_country": "United Kingdom",
+        "beneficiary_flag": "🇬🇧",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Joint Venture",
+        "ownership_flow": [
+          {
+            "name": "Lipton",
+            "type": "Brand",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "ultimate": false
+          },
+          {
+            "name": "ekaterra",
+            "type": "Subsidiary",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "CVC Capital Partners",
+            "type": "Ultimate Owner",
+            "country": "Luxembourg",
+            "flag": "🇱🇺",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Lipton"
+        ],
+        "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever announced the creation of ekaterra, a separate tea division that included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For ready-to-drink products, Pepsi Lipton International (PLI) is the joint venture between PepsiCo and Unilever that manages the brand. For hot tea products, CVC Capital Partners is now the owner through ekaterra. This analysis focuses on the hot tea business ownership, as it represents the primary Lipton brand.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Unilever PLC",
+              "beneficiary_country": "United Kingdom",
+              "ownership_structure_type": "Joint Venture",
+              "ownership_flow": [
+                {
+                  "name": "Lipton",
+                  "type": "Brand",
+                  "country": "United Kingdom",
+                  "source": "historical knowledge"
+                },
+                {
+                  "name": "ekaterra",
+                  "type": "Subsidiary",
+                  "country": "Netherlands",
+                  "source": "corporate restructuring knowledge"
+                },
+                {
+                  "name": "CVC Capital Partners",
+                  "type": "Ultimate Owner",
+                  "country": "Luxembourg",
+                  "source": "acquisition news 2022"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever announced the creation of ekaterra, a separate tea division that included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For ready-to-drink products, Pepsi Lipton International (PLI) is the joint venture between PepsiCo and Unilever that manages the brand. For hot tea products, CVC Capital Partners is now the owner through ekaterra. This analysis focuses on the hot tea business ownership, as it represents the primary Lipton brand."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "lipton::lipton"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Lipton",
+                      "product_name": "Lipton",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unilever PLC",
+                      "beneficiary_country": "United Kingdom",
+                      "ownership_structure_type": "Joint Venture",
+                      "confidence_score": 95,
+                      "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever announced the creation of ekaterra, a separate tea division that included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For ready-to-drink products, Pepsi Lipton International (PLI) is the joint venture between PepsiCo and Unilever that manages the brand. For hot tea products, CVC Capital Partners is now the owner through ekaterra. This analysis focuses on the hot tea business ownership, as it represents the primary Lipton brand.",
+                      "ownership_flow": [
+                        {
+                          "name": "Lipton",
+                          "type": "Brand",
+                          "country": "United Kingdom",
+                          "source": "historical knowledge"
+                        },
+                        {
+                          "name": "ekaterra",
+                          "type": "Subsidiary",
+                          "country": "Netherlands",
+                          "source": "corporate restructuring knowledge"
+                        },
+                        {
+                          "name": "CVC Capital Partners",
+                          "type": "Ultimate Owner",
+                          "country": "Luxembourg",
+                          "source": "acquisition news 2022"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1503,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Unilever PLC",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Unilever PLC"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Lipton's British twist on your tea break 🇬🇧",
+        "tagline": "Your favorite tea brand is steeped in British ownership",
+        "story": "While Lipton tea is enjoyed worldwide, it's actually part of British giant Unilever PLC's global beverage empire through a strategic joint venture.",
+        "ownership_notes": [
+          "Owned by Unilever PLC through a joint venture structure",
+          "Ultimate financial control traces to United Kingdom",
+          "95% confidence in ownership data",
+          "Original brand country information unavailable"
+        ],
+        "behind_the_scenes": [
+          "Verified Unilever PLC as ultimate owner",
+          "Confirmed UK as country of ultimate ownership",
+          "Identified joint venture ownership structure",
+          "Noted high confidence level (95%)",
+          "Flagged missing brand origin country"
+        ],
+        "narrative_template_used": "global_brand_ownership",
+        "query_id": "query_1756458548293_qmo6qxaug"
+      }
+    },
+    {
+      "flags": {
+        "WEB_RESEARCH": "on",
+        "NARRATIVE_V3": "on",
+        "CACHE_WRITE": "off"
+      },
+      "success": true,
+      "duration": 15938,
+      "result": {
+        "success": true,
+        "product_name": "Lipton",
+        "brand": "Lipton",
+        "barcode": null,
+        "financial_beneficiary": "Unilever PLC",
+        "beneficiary_country": "United Kingdom",
+        "beneficiary_flag": "🇬🇧",
+        "confidence_score": 95,
+        "confidence_level": "Very High",
+        "ownership_structure_type": "Joint Venture",
+        "ownership_flow": [
+          {
+            "name": "Lipton",
+            "type": "Brand",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "ultimate": false
+          },
+          {
+            "name": "ekaterra",
+            "type": "Subsidiary",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "ultimate": false
+          },
+          {
+            "name": "CVC Capital Partners",
+            "type": "Ultimate Owner",
+            "country": "Luxembourg",
+            "flag": "🇱🇺",
+            "ultimate": true
+          }
+        ],
+        "sources": [
+          "LLM analysis of Lipton"
+        ],
+        "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For bottled/ready-to-drink Lipton products, the financial beneficiary is split between Unilever and PepsiCo through their joint venture, while for hot tea products, the ultimate owner is now CVC Capital Partners through their acquisition of ekaterra. Given the question doesn't specify product type, I've focused on the hot tea business which represents the original and primary Lipton brand.",
+        "agent_results": {
+          "llm_first_analysis": {
+            "success": true,
+            "data": {
+              "financial_beneficiary": "Unilever PLC",
+              "beneficiary_country": "United Kingdom",
+              "ownership_structure_type": "Joint Venture",
+              "ownership_flow": [
+                {
+                  "name": "Lipton",
+                  "type": "Brand",
+                  "country": "United Kingdom",
+                  "source": "historical knowledge"
+                },
+                {
+                  "name": "ekaterra",
+                  "type": "Subsidiary",
+                  "country": "Netherlands",
+                  "source": "corporate restructuring knowledge"
+                },
+                {
+                  "name": "CVC Capital Partners",
+                  "type": "Ultimate Owner",
+                  "country": "Luxembourg",
+                  "source": "acquisition news 2022"
+                }
+              ],
+              "confidence_score": 95,
+              "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For bottled/ready-to-drink Lipton products, the financial beneficiary is split between Unilever and PepsiCo through their joint venture, while for hot tea products, the ultimate owner is now CVC Capital Partners through their acquisition of ekaterra. Given the question doesn't specify product type, I've focused on the hot tea business which represents the original and primary Lipton brand."
+            },
+            "reasoning": "LLM-first analysis provided high-confidence ownership determination"
+          }
+        },
+        "result_type": "user_input",
+        "user_contributed": true,
+        "agent_execution_trace": {
+          "sections": [
+            {
+              "id": "retrieval",
+              "label": "Retrieval",
+              "stages": [
+                {
+                  "id": "cache_check",
+                  "label": "Cache Check",
+                  "inputVariables": {
+                    "cacheKey": "lipton::lipton"
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "hit": false
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 87,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the cache_check stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "sheets_mapping",
+                  "label": "Sheets Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the sheets_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "static_mapping",
+                  "label": "Static Mapping",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the static_mapping stage for ownership analysis."
+                  }
+                },
+                {
+                  "id": "rag_retrieval",
+                  "label": "RAG Retrieval",
+                  "inputVariables": {
+                    "inputVariables": {},
+                    "outputVariables": {},
+                    "intermediateVariables": {}
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the rag_retrieval stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership",
+              "stages": [
+                {
+                  "id": "llm_first_analysis",
+                  "label": "LLM First Analysis",
+                  "inputVariables": {
+                    "inputVariables": {
+                      "brand": "Lipton",
+                      "product_name": "Lipton",
+                      "barcode": null,
+                      "hints": "{}",
+                      "rag_context": ""
+                    },
+                    "outputVariables": {
+                      "financial_beneficiary": "Unilever PLC",
+                      "beneficiary_country": "United Kingdom",
+                      "ownership_structure_type": "Joint Venture",
+                      "confidence_score": 95,
+                      "reasoning": "Lipton has an interesting recent ownership history. While it was historically owned by Unilever, in 2021 Unilever separated its tea business into a new division called ekaterra, which included Lipton. In 2022, Unilever sold ekaterra (including Lipton) to CVC Capital Partners for €4.5 billion. However, this primarily affects the hot tea business. The Lipton ready-to-drink tea business remains operated as a joint venture between Unilever and PepsiCo in most markets. The ownership structure is complex because it varies by product type and market. For bottled/ready-to-drink Lipton products, the financial beneficiary is split between Unilever and PepsiCo through their joint venture, while for hot tea products, the ultimate owner is now CVC Capital Partners through their acquisition of ekaterra. Given the question doesn't specify product type, I've focused on the hot tea business which represents the original and primary Lipton brand.",
+                      "ownership_flow": [
+                        {
+                          "name": "Lipton",
+                          "type": "Brand",
+                          "country": "United Kingdom",
+                          "source": "historical knowledge"
+                        },
+                        {
+                          "name": "ekaterra",
+                          "type": "Subsidiary",
+                          "country": "Netherlands",
+                          "source": "corporate restructuring knowledge"
+                        },
+                        {
+                          "name": "CVC Capital Partners",
+                          "type": "Ultimate Owner",
+                          "country": "Luxembourg",
+                          "source": "acquisition news 2022"
+                        }
+                      ]
+                    },
+                    "intermediateVariables": {
+                      "rag_context_count": 0,
+                      "llm_response_length": 1587,
+                      "json_parse_success": true
+                    }
+                  },
+                  "outputVariables": {},
+                  "intermediateVariables": {},
+                  "durationMs": 0,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the llm_first_analysis stage for ownership analysis."
+                  }
+                }
+              ]
+            },
+            {
+              "id": "persistence",
+              "label": "Persistence",
+              "stages": [
+                {
+                  "id": "database_save",
+                  "label": "Database Save",
+                  "inputVariables": {
+                    "beneficiary": "Unilever PLC",
+                    "confidence": 95
+                  },
+                  "outputVariables": {
+                    "success": true,
+                    "beneficiary": "Unilever PLC"
+                  },
+                  "intermediateVariables": {},
+                  "durationMs": 200,
+                  "prompt": {
+                    "system": "You are an AI assistant helping with corporate ownership research.",
+                    "user": "Process the database_save stage for ownership analysis."
+                  }
+                }
+              ]
+            }
+          ],
+          "show_skipped_stages": false,
+          "mark_skipped_stages": true
+        },
+        "lookup_trace": [
+          "manual_entry"
+        ],
+        "contextual_clues": null,
+        "image_processing_trace": null,
+        "vision_context": null,
+        "pipeline_type": "vision_first",
+        "headline": "Lipton's British twist on your daily cuppa 🇬🇧",
+        "tagline": "Your favorite tea brand is steeped in British ownership",
+        "story": "That iconic yellow label tea actually flows back to British giant Unilever PLC, who manages Lipton through a unique joint venture structure.",
+        "ownership_notes": [
+          "Unilever PLC is the ultimate owner, based in the United Kingdom",
+          "Operates as a joint venture structure",
+          "95% confidence in ownership data",
+          "Original brand country data unavailable"
+        ],
+        "behind_the_scenes": [
+          "Identified Unilever PLC as ultimate parent company",
+          "Confirmed UK as country of ownership",
+          "Verified joint venture business structure",
+          "Noted high confidence level in data (95%)"
+        ],
+        "narrative_template_used": "ownership_reveal",
+        "query_id": "query_1756458567060_9ndptln3i"
+      }
+    }
+  ],
+  "agentTraceAnalysis": [
+    {
+      "brand": "Lipton",
+      "hasAgentTraces": true,
+      "agentExecutionStages": [
+        {
+          "section": "Retrieval",
+          "stage": "cache_check"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "sheets_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "static_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "rag_retrieval"
+        },
+        {
+          "section": "Ownership",
+          "stage": "llm_first_analysis"
+        },
+        {
+          "section": "Persistence",
+          "stage": "database_save"
+        }
+      ],
+      "silentFailures": [],
+      "fallbackTriggers": [],
+      "schemaValidationLogs": [],
+      "confidenceScoring": null,
+      "narrativeGeneration": null,
+      "cacheOperations": []
+    },
+    {
+      "brand": "Samsung",
+      "hasAgentTraces": true,
+      "agentExecutionStages": [
+        {
+          "section": "Retrieval",
+          "stage": "cache_check"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "sheets_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "static_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "rag_retrieval"
+        },
+        {
+          "section": "Ownership",
+          "stage": "llm_first_analysis"
+        },
+        {
+          "section": "Persistence",
+          "stage": "database_save"
+        }
+      ],
+      "silentFailures": [],
+      "fallbackTriggers": [],
+      "schemaValidationLogs": [],
+      "confidenceScoring": null,
+      "narrativeGeneration": null,
+      "cacheOperations": []
+    },
+    {
+      "brand": "IKEA",
+      "hasAgentTraces": true,
+      "agentExecutionStages": [
+        {
+          "section": "Retrieval",
+          "stage": "cache_check"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "sheets_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "static_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "rag_retrieval"
+        },
+        {
+          "section": "Ownership",
+          "stage": "llm_first_analysis"
+        },
+        {
+          "section": "Persistence",
+          "stage": "database_save"
+        }
+      ],
+      "silentFailures": [],
+      "fallbackTriggers": [],
+      "schemaValidationLogs": [],
+      "confidenceScoring": null,
+      "narrativeGeneration": null,
+      "cacheOperations": []
+    },
+    {
+      "brand": "Moose Milk",
+      "hasAgentTraces": true,
+      "agentExecutionStages": [
+        {
+          "section": "Retrieval",
+          "stage": "cache_check"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "sheets_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "static_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "rag_retrieval"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "query_builder"
+        },
+        {
+          "section": "Ownership",
+          "stage": "llm_first_analysis"
+        },
+        {
+          "section": "Ownership",
+          "stage": "web_research"
+        },
+        {
+          "section": "Persistence",
+          "stage": "database_save"
+        }
+      ],
+      "silentFailures": [],
+      "fallbackTriggers": [],
+      "schemaValidationLogs": [],
+      "confidenceScoring": null,
+      "narrativeGeneration": null,
+      "cacheOperations": []
+    },
+    {
+      "brand": "Nestlé",
+      "hasAgentTraces": true,
+      "agentExecutionStages": [
+        {
+          "section": "Retrieval",
+          "stage": "cache_check"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "sheets_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "static_mapping"
+        },
+        {
+          "section": "Retrieval",
+          "stage": "rag_retrieval"
+        },
+        {
+          "section": "Ownership",
+          "stage": "llm_first_analysis"
+        },
+        {
+          "section": "Persistence",
+          "stage": "database_save"
+        }
+      ],
+      "silentFailures": [],
+      "fallbackTriggers": [],
+      "schemaValidationLogs": [],
+      "confidenceScoring": null,
+      "narrativeGeneration": null,
+      "cacheOperations": []
+    }
+  ],
+  "schemaValidationResults": [
+    {
+      "testCase": "Valid ownership data",
+      "input": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US"
+          }
+        ],
+        "sources": [
+          "source1",
+          "source2"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "ultimate_owner": "Test Owner"
+      },
+      "result": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          }
+        ],
+        "sources": [
+          "source1",
+          "source2"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Test Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Null data",
+      "input": null,
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Undefined data",
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Empty object",
+      "input": {},
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    },
+    {
+      "testCase": "Malformed ownership chain",
+      "input": {
+        "ownership_chain": "not an array",
+        "sources": null,
+        "confidence": "not a number"
+      },
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true,
+      "hasDefaults": true
+    }
+  ],
+  "silentFailureDetection": [],
+  "fallbackContentAnalysis": [],
+  "recommendations": [
+    {
+      "priority": "medium",
+      "category": "Monitoring",
+      "recommendation": "Implement comprehensive pipeline monitoring",
+      "details": "Add metrics for agent performance, fallback rates, and error tracking"
+    },
+    {
+      "priority": "low",
+      "category": "User Experience",
+      "recommendation": "Add fallback content indicators in frontend",
+      "details": "Show users when fallback content is displayed so they understand data limitations"
+    }
+  ]
+}

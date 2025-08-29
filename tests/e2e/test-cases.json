@@ -1,0 +1,22 @@
+[
+  { "brand": "Lipton", "product": "Lipton Ice Tea" },
+  { "brand": "ikea", "product": "Billy Bookcase" },
+  { "brand": "Nestlé™", "product": "Nescafé" },
+  { "brand": "PePsI", "product": "Pepsi Max" },
+  { "brand": "Starbux", "product": "Coffee Beans" },
+  { "brand": "Moose Milk", "product": "Local Cream Liqueur" },
+  { "brand": "百事可乐", "product": "Pepsi China" },
+  { "brand": "🤯🥩🚀", "product": "Chaos Product" },
+  { "brand": "", "product": "No Brand" },
+  { "brand": "Samsung", "product": "Galaxy Buds" },
+  { "brand": "LG", "product": "OLED TV" },
+  { "brand": "Danone", "product": "Activia Yogurt" },
+  { "brand": "Unilever", "product": "Dove Soap" },
+  { "brand": "Nike", "product": "Jordan Shoes" },
+  { "brand": "Jordan", "product": "Toothpaste" },
+  { "brand": "Tide", "product": "Laundry Detergent" },
+  { "brand": "Equate", "product": "Walmart Vitamins" },
+  { "brand": "Keurig", "product": "Coffee Pods" },
+  { "brand": "Dr. Oetker", "product": "Frozen Pizza" },
+  { "brand": "GreenMetrica", "product": "Carbon Report" }
+]

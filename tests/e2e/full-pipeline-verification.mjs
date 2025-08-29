@@ -128,6 +128,8 @@ async function makeLookupRequest(brand, testConfig = {}) {
   console.log(`\n🔍 Testing ${brand.name} (${brand.type})`);
   console.log(`📋 Expected: ${brand.expectedBehavior}`);
   console.log(`🎯 Owner: ${brand.expectedOwner}, Country: ${brand.expectedCountry}`);
+  console.log(`📤 Request URL: ${url}`);
+  console.log(`📤 Request Body:`, JSON.stringify(requestBody, null, 2));
   
   const startTime = Date.now();
   
@@ -142,11 +144,36 @@ async function makeLookupRequest(brand, testConfig = {}) {
     
     const duration = Date.now() - startTime;
     
+    // Log response details regardless of success/failure
+    console.log(`\n📥 Response for ${brand.name}:`);
+    console.log(`   Status: ${response.status} ${response.statusText}`);
+    console.log(`   Duration: ${duration}ms`);
+    console.log(`   Headers:`, Object.fromEntries(response.headers.entries()));
+    
+    // Get response text first to handle both JSON and non-JSON responses
+    const responseText = await response.text();
+    console.log(`   Raw Response Body:`, responseText);
+    
+    // Check for server errors
+    if (response.status >= 500) {
+      console.error(`🚨 SERVER ERROR (${response.status}) for ${brand.name}`);
+      console.error(`   This indicates a server-side issue, not a test problem`);
+      console.error(`   Check server logs for detailed error information`);
+    }
+    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    const result = await response.json();
+    // Try to parse as JSON, fallback to raw text
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log(`   Parsed JSON Response:`, JSON.stringify(result, null, 2));
+    } catch (parseError) {
+      console.warn(`   Failed to parse JSON response:`, parseError.message);
+      result = { raw_response: responseText };
+    }
     
     console.log(`✅ ${brand.name} completed in ${duration}ms`);
     console.log(`   Success: ${result.success || false}`);
@@ -157,19 +184,42 @@ async function makeLookupRequest(brand, testConfig = {}) {
       duration,
       result,
       brand: brand.name,
-      requestBody
+      requestBody,
+      responseStatus: response.status,
+      responseText
     };
     
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ ${brand.name} failed after ${duration}ms:`, error.message);
+    
+    // Enhanced error logging
+    console.error(`\n❌ ${brand.name} failed after ${duration}ms:`);
+    console.error(`   Error Type: ${error.name}`);
+    console.error(`   Error Message: ${error.message}`);
+    console.error(`   Error Stack:`, error.stack);
+    
+    // Check for specific error types
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`🚨 NETWORK ERROR: Server may be unreachable at ${url}`);
+      console.error(`   Check if dev server is running: npm run dev`);
+      console.error(`   Verify server is accessible at: ${TEST_CONFIG.baseUrl}`);
+    }
+    
+    if (error.message.includes('500')) {
+      console.error(`🚨 SERVER ERROR: 500 Internal Server Error`);
+      console.error(`   This indicates a server-side issue, not a test problem`);
+      console.error(`   Check server logs for detailed error information`);
+    }
     
     return {
       success: false,
       duration,
       error: error.message,
+      errorType: error.name,
+      errorStack: error.stack,
       brand: brand.name,
-      requestBody
+      requestBody,
+      url
     };
   }
 }
@@ -806,6 +856,67 @@ function saveTestResults() {
 }
 
 /**
+ * Log environment variables and configuration
+ */
+function logEnvironmentAndConfig() {
+  console.log('\n🔧 ENVIRONMENT & CONFIGURATION');
+  console.log('================================');
+  
+  // Log critical environment variables
+  const criticalEnvVars = [
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'ANTHROPIC_API_KEY',
+    'GOOGLE_API_KEY',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'WEB_RESEARCH',
+    'NARRATIVE_V3',
+    'CACHE_WRITE'
+  ];
+  
+  console.log('📋 Critical Environment Variables:');
+  criticalEnvVars.forEach(envVar => {
+    const value = process.env[envVar];
+    if (value) {
+      // Mask sensitive values
+      const maskedValue = envVar.includes('KEY') || envVar.includes('SECRET') 
+        ? `${value.substring(0, 8)}...${value.substring(value.length - 4)}`
+        : value;
+      console.log(`   ${envVar}: ${maskedValue}`);
+    } else {
+      console.log(`   ${envVar}: ❌ NOT SET`);
+    }
+  });
+  
+  // Check for .env.local file
+  const envLocalPath = path.join(process.cwd(), '.env.local');
+  if (fs.existsSync(envLocalPath)) {
+    console.log(`\n✅ .env.local file found at: ${envLocalPath}`);
+  } else {
+    console.log(`\n⚠️  .env.local file NOT found at: ${envLocalPath}`);
+    console.log('   This may cause environment variable issues');
+  }
+  
+  // Log current working directory and Node.js info
+  console.log(`\n📁 Current Working Directory: ${process.cwd()}`);
+  console.log(`📁 Test Script Location: ${__dirname}`);
+  console.log(`🟢 Node.js Version: ${process.version}`);
+  console.log(`🟢 Platform: ${process.platform}`);
+  
+  // Log feature flags
+  console.log('\n🎛️  Current Feature Flags:');
+  const featureFlags = ['WEB_RESEARCH', 'NARRATIVE_V3', 'CACHE_WRITE'];
+  featureFlags.forEach(flag => {
+    const value = process.env[flag] || 'not set';
+    console.log(`   ${flag}: ${value}`);
+  });
+  
+  console.log('\n');
+}
+
+/**
  * Main test execution
  */
 async function runFullPipelineVerification() {
@@ -814,6 +925,9 @@ async function runFullPipelineVerification() {
   console.log(`Timestamp: ${testResults.timestamp}`);
   console.log(`Base URL: ${TEST_CONFIG.baseUrl}`);
   console.log(`Test Brands: ${TEST_BRANDS.map(b => b.name).join(', ')}`);
+  
+  // Log environment and configuration
+  logEnvironmentAndConfig();
   
   try {
     // Test each brand
