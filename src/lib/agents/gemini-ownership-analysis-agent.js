@@ -21,11 +21,19 @@ const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
  */
 export function isGeminiOwnershipAnalysisAvailable() {
   const hasKey = !!process.env.GOOGLE_API_KEY
+  console.log('[GEMINI_DEBUG] API Key Detected:', process.env.GOOGLE_API_KEY?.slice(0, 8) || "None")
   console.log('[GEMINI_DEBUG] Checking availability:', {
     hasKey,
     keyLength: process.env.GOOGLE_API_KEY?.length || 0,
     keyPrefix: process.env.GOOGLE_API_KEY?.substring(0, 10) || 'none'
   })
+  
+  if (!hasKey) {
+    console.log('[GEMINI_DEBUG] No API Key Found - Using MOCK Logic')
+  } else {
+    console.log('[GEMINI_DEBUG] Real API Key Found - Using Gemini Verification')
+  }
+  
   return hasKey
 }
 
