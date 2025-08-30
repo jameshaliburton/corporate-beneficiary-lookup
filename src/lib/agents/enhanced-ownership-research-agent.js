@@ -1557,17 +1557,51 @@ Respond in valid JSON format.`)
  * Centralized Gemini verification function
  */
 async function maybeRunGeminiVerification(ownershipResult, brand, product_name, queryId) {
-  console.log("[GEMINI_VERIFICATION] Starting centralized Gemini verification");
+  console.log("[GEMINI_TRIGGER_CHECK] ===== STARTING GEMINI TRIGGER ANALYSIS =====");
+  console.log("[GEMINI_TRIGGER_CHECK] Input ownership result:", {
+    brand,
+    product_name,
+    confidence_score: ownershipResult.confidence_score,
+    financial_beneficiary: ownershipResult.financial_beneficiary,
+    verification_status: ownershipResult.verification_status,
+    verified_at: ownershipResult.verified_at,
+    result_id: ownershipResult.result_id,
+    disambiguation_triggered: ownershipResult.disambiguation_triggered
+  });
   
   // Environment debugging
-  console.log("[ENV] ENABLE_GEMINI_OWNERSHIP_AGENT:", process.env.ENABLE_GEMINI_OWNERSHIP_AGENT);
-  console.log("[ENV] ANTHROPIC_API_KEY present:", !!process.env.ANTHROPIC_API_KEY);
-  console.log("[ENV] GOOGLE_API_KEY present:", !!process.env.GOOGLE_API_KEY);
+  console.log("[GEMINI_TRIGGER_CHECK] Environment variables:", {
+    ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT,
+    ANTHROPIC_API_KEY_present: !!process.env.ANTHROPIC_API_KEY,
+    GOOGLE_API_KEY_present: !!process.env.GOOGLE_API_KEY,
+    DEBUG: process.env.DEBUG
+  });
   
   // Force Gemini for testing
   const forceGeminiForTesting = true;
   
-  // Check if Gemini should run
+  // Check if result already has verification status
+  const hasExistingVerification = !!(
+    ownershipResult.verification_status && 
+    ownershipResult.verification_status !== 'unknown' &&
+    ownershipResult.verified_at
+  );
+  
+  // Check if result has zero confidence (garbage/no result)
+  const isZeroConfidence = ownershipResult.confidence_score === 0;
+  
+  // Check if result was loaded from cache (indicated by existing result_id)
+  const isFromCache = !!ownershipResult.result_id && ownershipResult.result_id.includes('cached');
+  
+  console.log("[GEMINI_TRIGGER_CHECK] Verification status analysis:", {
+    hasExistingVerification,
+    isZeroConfidence,
+    isFromCache,
+    existing_verification_status: ownershipResult.verification_status,
+    existing_verified_at: ownershipResult.verified_at
+  });
+  
+  // Check if Gemini should run based on current logic
   const shouldRunGemini = (
     forceGeminiForTesting ||
     ownershipResult.confidence_score < 50 ||
@@ -1575,13 +1609,26 @@ async function maybeRunGeminiVerification(ownershipResult, brand, product_name, 
     ownershipResult.disambiguation_triggered === true
   );
   
-  console.log("[GEMINI_VERIFICATION] Trigger conditions:", {
+  console.log("[GEMINI_TRIGGER_CHECK] Current trigger logic evaluation:", {
     forceGeminiForTesting,
     confidence_score: ownershipResult.confidence_score,
+    confidence_under_50: ownershipResult.confidence_score < 50,
     financial_beneficiary: ownershipResult.financial_beneficiary,
+    beneficiary_is_unknown: ownershipResult.financial_beneficiary?.toLowerCase() === "unknown",
     disambiguation_triggered: ownershipResult.disambiguation_triggered,
-    shouldRunGemini
+    shouldRunGemini_current_logic: shouldRunGemini
   });
+  
+  // What the logic SHOULD be according to requirements
+  const shouldRunGeminiCorrect = !hasExistingVerification && !isZeroConfidence;
+  
+  console.log("[GEMINI_TRIGGER_CHECK] Correct logic evaluation:", {
+    shouldRunGemini_correct: shouldRunGeminiCorrect,
+    reason_not_run: hasExistingVerification ? 'has_existing_verification' : 
+                   isZeroConfidence ? 'zero_confidence' : 'should_run'
+  });
+  
+  console.log("[GEMINI_TRIGGER_CHECK] ===== TRIGGER ANALYSIS COMPLETE =====");
   
   if (shouldRunGemini) {
     try {
