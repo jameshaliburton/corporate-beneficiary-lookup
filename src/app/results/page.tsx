@@ -257,6 +257,13 @@ export default function ResultsPage() {
   }
 
   // Transform the result to match the new ProductResultV2 interface
+  console.log('[ResultsPage] Raw result data:', {
+    verification_status: result?.verification_status,
+    verified_at: result?.verified_at,
+    confidence_assessment: result?.confidence_assessment,
+    verification_evidence: result?.verification_evidence
+  });
+  
   const ownershipResult = {
     brand_name: result?.brand,
     brand_country: result?.brand_country,

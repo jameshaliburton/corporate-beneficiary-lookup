@@ -237,6 +237,17 @@ export default function ProductResultV2({
   const [showBehindTheScenes, setShowBehindTheScenes] = useState(false);
   const router = useRouter();
 
+  // Debug logging for verification fields
+  console.log('[ProductResultV2] Verification fields:', {
+    verification_status: result.verification_status,
+    verified_at: result.verified_at,
+    verification_method: result.verification_method,
+    verification_notes: result.verification_notes,
+    confidence_assessment: result.confidence_assessment,
+    verification_evidence: result.verification_evidence,
+    verification_confidence_change: result.verification_confidence_change
+  });
+
   // Get country flag emoji
   const getCountryFlag = (country?: string): string => {
     if (!country || country === 'Unknown') return '🏳️';
@@ -349,26 +360,6 @@ export default function ProductResultV2({
               </div>
             </div>
             
-                  {/* Verification Status Badge */}
-      {result.verification_status && (
-        <div className="flex flex-col items-center gap-4">
-          <VerificationStatusBadge
-            status={result.verification_status}
-            confidenceChange={result.verification_confidence_change}
-            evidence={result.verification_evidence}
-          />
-          
-          {/* Verification Evidence Panel */}
-          {result.verification_status !== 'inconclusive' && result.verification_evidence && (
-            <VerificationEvidencePanel
-              status={result.verification_status}
-              evidence={result.verification_evidence}
-              confidenceChange={result.verification_confidence_change}
-            />
-          )}
-        </div>
-      )}
-            
             {/* Revenue Flow */}
             <div className="bg-muted/30 p-4 rounded-component border border-border/20">
               <div className="flex items-center gap-3">
@@ -388,6 +379,30 @@ export default function ProductResultV2({
           </div>
         </CardContent>
       </Card>
+
+      {/* Verification Status Badge */}
+      {result.verification_status && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4">
+              <VerificationStatusBadge
+                status={result.verification_status}
+                confidenceChange={result.verification_confidence_change}
+                evidence={result.verification_evidence}
+              />
+              
+              {/* Verification Evidence Panel */}
+              {result.verification_status !== 'inconclusive' && result.verification_evidence && (
+                <VerificationEvidencePanel
+                  status={result.verification_status}
+                  evidence={result.verification_evidence}
+                  confidenceChange={result.verification_confidence_change}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Ownership Notes */}
       {narrative?.ownership_notes && narrative.ownership_notes.length > 0 && (
