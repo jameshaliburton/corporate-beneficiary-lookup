@@ -104,11 +104,15 @@ export async function GeminiOwnershipAnalysisAgent({
       success: true,
       gemini_triggered: true,
       gemini_result: {
-        ...verificationResult,
-        // Override any null values with our metadata
+        // Extract core verification fields first
+        verification_status: verificationResult.verification_status,
+        confidence_assessment: verificationResult.confidence_assessment,
+        evidence_analysis: verificationResult.evidence_analysis,
+        recommendation: verificationResult.recommendation,
+        summary: verificationResult.summary,
+        // Add our metadata fields (these should never be overridden)
         verified_at: new Date().toISOString(),
         verification_method: 'gemini_web_search',
-        confidence_assessment: verificationResult.confidence_assessment,
         verification_notes: `Verified using Gemini AI with ${webSnippets.length} web search results`
       },
       web_snippets_count: webSnippets.length,
@@ -155,11 +159,15 @@ export async function GeminiOwnershipAnalysisAgent({
         success: true,
         gemini_triggered: true,
         gemini_result: {
-          ...mockResult,
-          // Override any null values with our metadata
+          // Extract core verification fields first
+          verification_status: mockResult.verification_status,
+          confidence_assessment: mockResult.confidence_assessment,
+          evidence_analysis: mockResult.evidence_analysis,
+          recommendation: mockResult.recommendation,
+          summary: mockResult.summary,
+          // Add our metadata fields (these should never be overridden)
           verified_at: new Date().toISOString(),
           verification_method: 'gemini_mock_fallback',
-          confidence_assessment: mockResult.confidence_assessment,
           verification_notes: 'Mock verification fallback due to API being disabled'
         },
         web_snippets_count: 2,

@@ -167,13 +167,14 @@ async function checkDisambiguationNeeds(brand, product_name, researchResults, co
  */
 export async function EnhancedAgentOwnershipResearch({
   barcode,
-    product_name, 
-    brand, 
+  product_name,
+  brand,
   hints = {},
   enableEvaluation = false,
   imageProcessingTrace = null,
   followUpContext = null
 }) {
+  console.log('🚨🚨🚨 ENHANCED AGENT CALLED - STARTING EXECUTION 🚨🚨🚨')
   const startTime = Date.now()
   const queryId = generateQueryId()
   
@@ -1930,16 +1931,34 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   
   // Smart Gemini verification logic with TTL and conditions
   let geminiAnalysis = null
-  const forceGeminiForTesting = process.env.FORCE_GEMINI_TESTING === 'true' || process.env.FORCE_GEMINI_FOR_TESTING === 'true'
+  const forceGeminiForTesting = true // Temporarily hardcoded for debugging
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
   const geminiFeatureEnabled = process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true'
   const verificationOverride = process.env.GEMINI_VERIFICATION_OVERRIDE === 'true'
   const verificationTTLDays = parseInt(process.env.GEMINI_VERIFICATION_TTL_DAYS || '14')
   
+  console.log('[GEMINI_DEBUG] Environment variables check:', {
+    geminiAvailable,
+    geminiFeatureEnabled,
+    verificationOverride,
+    verificationTTLDays,
+    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT_SET',
+    ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT,
+    GEMINI_VERIFICATION_OVERRIDE: process.env.GEMINI_VERIFICATION_OVERRIDE
+  })
+  
   // Check if we have existing verification data from cache
   const existingVerification = existingProduct?.verified_at
   const existingVerificationStatus = existingProduct?.verification_status
   const hasDisambiguation = ownership.disambiguation_triggered === true
+  
+  console.log('[GEMINI_DEBUG] Existing verification data check:', {
+    existingProduct: !!existingProduct,
+    existingVerification,
+    existingVerificationStatus,
+    hasDisambiguation,
+    existingProductKeys: existingProduct ? Object.keys(existingProduct) : 'no_product'
+  })
   
   // Smart trigger conditions
   const shouldTriggerGemini = () => {
@@ -1981,6 +2000,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     return true
   }
   
+  const shouldTrigger = shouldTriggerGemini()
   console.log('[GEMINI_DEBUG] Smart verification check:', {
     geminiAvailable,
     forceGeminiForTesting,
@@ -1990,40 +2010,56 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     existingVerification,
     existingVerificationStatus,
     hasDisambiguation,
-    shouldTrigger: shouldTriggerGemini()
+    shouldTrigger,
+    willCallGemini: (geminiAvailable || forceGeminiForTesting) && shouldTrigger
   })
   
   // Smart Gemini verification trigger
   if ((geminiAvailable || forceGeminiForTesting) && shouldTriggerGemini()) {
     try {
       console.log('[GEMINI_TRIGGER] Gemini agent triggered - starting verification analysis')
-      console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
       console.log('[GEMINI_DEBUG] About to call GeminiOwnershipAnalysisAgent with:', {
         brand,
         product_name,
         ownershipData: {
-          financial_beneficiary: ownershipData?.financial_beneficiary,
-          confidence_score: ownershipData?.confidence_score
+          financial_beneficiary: ownership.financial_beneficiary,
+          confidence_score: ownership.confidence_score
         }
       })
+      console.log('[GEMINI_DEBUG] Triggering Gemini analysis for second opinion')
       
-      geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-        brand: brand,
-        product_name: researchData?.product_name,
-        ownershipData: {
-          financial_beneficiary: ownership.financial_beneficiary,
-          confidence_score: ownership.confidence_score,
-          research_method: ownership.result_type,
-          sources: ownership.sources
-        },
-        hints: {},
-        queryId: queryId
-      })
+      try {
+        geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+          brand: brand,
+          product_name: researchData?.product_name,
+          ownershipData: {
+            financial_beneficiary: ownership.financial_beneficiary,
+            confidence_score: ownership.confidence_score,
+            research_method: ownership.result_type,
+            sources: ownership.sources
+          },
+          hints: {},
+          queryId: queryId
+        })
+        console.log('[GEMINI_DEBUG] Gemini agent call completed successfully')
+      } catch (geminiError) {
+        console.error('[GEMINI_DEBUG] Gemini agent call failed:', geminiError)
+        geminiAnalysis = {
+          success: false,
+          gemini_triggered: true,
+          error: geminiError.message
+        }
+      }
       
       console.log('[GEMINI_DEBUG] Gemini analysis result:', {
         success: geminiAnalysis?.success,
         triggered: geminiAnalysis?.gemini_triggered,
-        has_result: !!geminiAnalysis?.gemini_result
+        has_result: !!geminiAnalysis?.gemini_result,
+        gemini_result_keys: geminiAnalysis?.gemini_result ? Object.keys(geminiAnalysis.gemini_result) : 'no_result',
+        verification_status: geminiAnalysis?.gemini_result?.verification_status,
+        verified_at: geminiAnalysis?.gemini_result?.verified_at,
+        verification_method: geminiAnalysis?.gemini_result?.verification_method,
+        full_gemini_result: JSON.stringify(geminiAnalysis?.gemini_result, null, 2)
       })
       
       // Add Gemini results to agent_results and top-level verification status
@@ -2031,6 +2067,8 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
         const verificationStatus = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
         console.log('[GEMINI_RESULT] verification_status =', verificationStatus)
+        
+        console.log('[GEMINI_STORAGE_DEBUG] About to store gemini_result:', JSON.stringify(geminiAnalysis.gemini_result, null, 2))
         
         ownership.agent_results.gemini_analysis = {
           success: true,
@@ -2040,15 +2078,25 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
           search_queries_used: geminiAnalysis.search_queries_used
         }
         
+        // Extract verification fields from Gemini result with proper fallbacks
+        const {
+          verification_status,
+          verified_at,
+          verification_method,
+          verification_notes,
+          confidence_assessment,
+          evidence_analysis
+        } = geminiAnalysis.gemini_result
+
         // Add verification status and metadata to top level
-        console.log('[GEMINI_DEBUG] Setting ownership verification fields to:', verificationStatus)
-        ownership.verification_status = verificationStatus
-        ownership.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change
-        ownership.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis
-        ownership.verified_at = geminiAnalysis.gemini_result.verified_at
-        ownership.verification_method = geminiAnalysis.gemini_result.verification_method
-        ownership.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment
-        ownership.verification_notes = geminiAnalysis.gemini_result.verification_notes
+        console.log('[VERIFICATION_PROPAGATE] status:', verification_status, 'verified_at:', verified_at, 'method:', verification_method)
+        ownership.verification_status = verification_status ?? 'inconclusive'
+        ownership.verified_at = verified_at ?? new Date().toISOString()
+        ownership.verification_method = verification_method ?? 'gemini_web_search'
+        ownership.verification_notes = verification_notes ?? 'Gemini verification completed'
+        ownership.confidence_assessment = confidence_assessment ?? null
+        ownership.verification_evidence = evidence_analysis ?? null
+        ownership.verification_confidence_change = confidence_assessment?.confidence_change ?? null
         console.log('[GEMINI_DEBUG] ownership verification fields after assignment:', {
           verification_status: ownership.verification_status,
           verified_at: ownership.verified_at,
@@ -2126,8 +2174,26 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
     financial_beneficiary: ownership.financial_beneficiary,
     confidence_score: ownership.confidence_score,
     research_method: ownership.result_type,
-    gemini_triggered: geminiAnalysis?.gemini_triggered || false
+    gemini_triggered: geminiAnalysis?.gemini_triggered || false,
+    verification_status: ownership.verification_status,
+    verified_at: ownership.verified_at,
+    verification_method: ownership.verification_method,
+    verification_notes: ownership.verification_notes
   })
+  
+  // Final debug logs for verification field propagation
+  console.log('[OWNERSHIP FINAL]', {
+    verification_status: ownership.verification_status,
+    verified_at: ownership.verified_at,
+    verification_method: ownership.verification_method,
+  });
+
+  console.log('[GEMINI RESULT]', geminiAnalysis?.gemini_result);
+  
+  // Fallback guard to detect lost verification data
+  if (!ownership.verified_at && geminiAnalysis?.gemini_triggered) {
+    console.warn('[VERIFICATION LOST] verified_at is missing after Gemini run');
+  }
   
   return ownership
 } 
