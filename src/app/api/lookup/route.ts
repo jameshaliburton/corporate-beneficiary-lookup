@@ -241,6 +241,15 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
   
   if (cachedResult && cachedResult.financial_beneficiary && cachedResult.financial_beneficiary !== 'Unknown') {
     console.log('✅ [Shared Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
+    console.log("[OWNERSHIP_ROUTING_TRACE]", {
+      brand: cachedResult.brand,
+      reason: "Using cached result",
+      timestamp: new Date().toISOString(),
+      beneficiary: cachedResult.financial_beneficiary,
+      confidence: cachedResult.confidence_score,
+      verification_status: cachedResult.verification_status,
+      enhanced_agent_called: false
+    });
     
     if (queryId) {
       await emitProgress(queryId, 'cache_check', 'completed', { 
@@ -314,6 +323,12 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     };
   } else {
     console.log('❌ [Shared Cache] MISS → Proceeding to ownership research');
+    console.log("[OWNERSHIP_ROUTING_TRACE]", {
+      brand: brand,
+      reason: "Cache miss - proceeding to enhanced agent",
+      timestamp: new Date().toISOString(),
+      enhanced_agent_called: true
+    });
     
     if (queryId) {
       await emitProgress(queryId, 'cache_check', 'completed', { 
@@ -920,6 +935,13 @@ export async function POST(request: NextRequest) {
         ...(currentProductData.hints || {}),
         ...(visionContext?.getHints() || {})
       };
+      
+      console.log("[OWNERSHIP_ROUTING_TRACE]", {
+        brand: currentProductData.brand,
+        reason: "Calling EnhancedAgentOwnershipResearch",
+        timestamp: new Date().toISOString(),
+        enhanced_agent_called: true
+      });
       
       const ownershipResult = await logAgentExecution('EnhancedAgentOwnershipResearch', () => 
         EnhancedAgentOwnershipResearch({
