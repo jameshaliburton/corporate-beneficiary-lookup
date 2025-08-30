@@ -5,6 +5,7 @@ import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
+import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
 
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
@@ -18,6 +19,95 @@ const forceFullTrace = shouldForceFullTrace();
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
+
+/**
+ * Simplified Gemini verification for cache hit results
+ */
+async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand: string, product_name: string, queryId: string) {
+  console.log("[GEMINI_INLINE_CACHE_HIT] Starting Gemini verification for cache hit result");
+  
+  // Check if result already has verification status
+  const hasExistingVerification = Boolean(
+    ownershipResult.verification_status ||
+    ownershipResult.agent_results?.gemini_analysis?.data?.verification_status
+  );
+  
+  // Check if result has zero confidence (garbage/no result)
+  const isGarbageResult = ownershipResult.confidence_score === 0;
+  
+  // Check if Gemini is available
+  const geminiAvailable = isGeminiOwnershipAnalysisAvailable();
+  
+  console.log("[GEMINI_INLINE_CACHE_HIT] Verification check:", {
+    brand,
+    hasExistingVerification,
+    isGarbageResult,
+    geminiAvailable,
+    existing_verification_status: ownershipResult.verification_status
+  });
+  
+  // Determine if Gemini should run
+  const shouldRunGemini = !hasExistingVerification && !isGarbageResult && geminiAvailable;
+  
+  if (shouldRunGemini) {
+    try {
+      console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
+      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+        brand: brand,
+        product_name: product_name,
+        ownershipData: {
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          confidence_score: ownershipResult.confidence_score,
+          research_method: ownershipResult.result_type,
+          sources: ownershipResult.sources
+        },
+        hints: {},
+        queryId: queryId
+      });
+      
+      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+        // Add verification fields to top level
+        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
+        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
+        
+        // Add Gemini results to agent_results
+        if (!ownershipResult.agent_results) {
+          ownershipResult.agent_results = {};
+        }
+        
+        ownershipResult.agent_results.gemini_analysis = {
+          success: true,
+          type: "ownership_verification",
+          agent: "GeminiOwnershipVerificationAgent",
+          data: geminiAnalysis.gemini_result,
+          reasoning: 'Gemini verification completed',
+          web_snippets_count: geminiAnalysis.web_snippets_count,
+          search_queries_used: geminiAnalysis.search_queries_used
+        };
+        
+        // Add agent path tracking
+        if (!ownershipResult.agent_path) {
+          ownershipResult.agent_path = [];
+        }
+        ownershipResult.agent_path.push("gemini_verification_inline_cache");
+        
+        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
+        return true;
+      }
+    } catch (geminiError) {
+      console.error('[GEMINI_INLINE_CACHE_HIT] Gemini agent failed:', geminiError);
+    }
+  } else {
+    console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
+  }
+  
+  return false;
+}
 
 // 🧠 NORMALIZED CACHE KEY FUNCTION
 function makeCacheKey(brand: string, product?: string): string {
@@ -276,6 +366,9 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     });
     console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
     
+    // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
+    await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
+    
     return {
       success: true,
       product_name: cachedResult.product_name,
@@ -319,7 +412,8 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       ownership_notes: narrative.ownership_notes,
       behind_the_scenes: narrative.behind_the_scenes,
       narrative_template_used: narrative.template_used,
-      cache_hit: true
+      cache_hit: true,
+      agent_path: cachedResult.agent_path || []
     };
   } else {
     console.log('❌ [Shared Cache] MISS → Proceeding to ownership research');
