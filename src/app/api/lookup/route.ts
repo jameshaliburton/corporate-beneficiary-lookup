@@ -367,7 +367,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
     
     // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
-    await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
+    const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
+    
+    // 💾 PERSIST ENHANCED RESULT BACK TO CACHE
+    if (geminiVerificationRan) {
+      console.log("[GEMINI_INLINE_CACHE_HIT] Persisting enhanced result back to cache");
+      await saveToCache(cachedResult.brand, cachedResult.product_name, cachedResult);
+    }
     
     return {
       success: true,
@@ -465,6 +471,14 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             reasoning: ownershipResult.reasoning,
             agent_results: ownershipResult.agent_results,
             result_type: ownershipResult.result_type,
+            // Gemini verification fields
+            verification_status: ownershipResult.verification_status,
+            verified_at: ownershipResult.verified_at,
+            verification_method: ownershipResult.verification_method,
+            verification_notes: ownershipResult.verification_notes,
+            confidence_assessment: ownershipResult.confidence_assessment,
+            verification_evidence: ownershipResult.verification_evidence,
+            verification_confidence_change: ownershipResult.verification_confidence_change,
             updated_at: new Date().toISOString()
             })
             .select();
@@ -501,6 +515,14 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           reasoning: ownershipResult.reasoning,
           agent_results: ownershipResult.agent_results,
           result_type: ownershipResult.result_type,
+          // Gemini verification fields
+          verification_status: ownershipResult.verification_status,
+          verified_at: ownershipResult.verified_at,
+          verification_method: ownershipResult.verification_method,
+          verification_notes: ownershipResult.verification_notes,
+          confidence_assessment: ownershipResult.confidence_assessment,
+          verification_evidence: ownershipResult.verification_evidence,
+          verification_confidence_change: ownershipResult.verification_confidence_change,
           updated_at: new Date().toISOString()
           })
           .select();
