@@ -2061,6 +2061,8 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         verification_method: geminiAnalysis?.gemini_result?.verification_method,
         full_gemini_result: JSON.stringify(geminiAnalysis?.gemini_result, null, 2)
       })
+
+      console.log("[GEMINI_AGENT_RESULT_FROM_PIPELINE]", JSON.stringify(geminiAnalysis?.gemini_result, null, 2));
       
       // Add Gemini results to agent_results and top-level verification status
       console.log('[GEMINI_DEBUG] Checking condition: success=', geminiAnalysis?.success, 'has_result=', !!geminiAnalysis?.gemini_result)

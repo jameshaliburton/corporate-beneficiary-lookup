@@ -100,21 +100,25 @@ export async function GeminiOwnershipAnalysisAgent({
     console.log('[GEMINI_DEBUG] Gemini verification completed in', duration, 'ms')
     console.log('[GEMINI_DEBUG] Parsed verification result:', JSON.stringify(verificationResult, null, 2))
     
+    const geminiResult = {
+      // Extract core verification fields first
+      verification_status: verificationResult.verification_status,
+      confidence_assessment: verificationResult.confidence_assessment,
+      evidence_analysis: verificationResult.evidence_analysis,
+      recommendation: verificationResult.recommendation,
+      summary: verificationResult.summary,
+      // Add our metadata fields (these should never be overridden)
+      verified_at: new Date().toISOString(),
+      verification_method: 'gemini_web_search',
+      verification_notes: `Verified using Gemini AI with ${webSnippets.length} web search results`
+    }
+
+    console.log("[GEMINI_AGENT_RETURN]", JSON.stringify(geminiResult, null, 2));
+
     return {
       success: true,
       gemini_triggered: true,
-      gemini_result: {
-        // Extract core verification fields first
-        verification_status: verificationResult.verification_status,
-        confidence_assessment: verificationResult.confidence_assessment,
-        evidence_analysis: verificationResult.evidence_analysis,
-        recommendation: verificationResult.recommendation,
-        summary: verificationResult.summary,
-        // Add our metadata fields (these should never be overridden)
-        verified_at: new Date().toISOString(),
-        verification_method: 'gemini_web_search',
-        verification_notes: `Verified using Gemini AI with ${webSnippets.length} web search results`
-      },
+      gemini_result: geminiResult,
       web_snippets_count: webSnippets.length,
       search_queries_used: searchQueries,
       analysis_duration_ms: duration,
@@ -155,21 +159,25 @@ export async function GeminiOwnershipAnalysisAgent({
         summary: 'Mock Gemini verification confirms the LLM research findings. The ownership claim appears legitimate based on available evidence.'
       }
       
+      const mockGeminiResult = {
+        // Extract core verification fields first
+        verification_status: mockResult.verification_status,
+        confidence_assessment: mockResult.confidence_assessment,
+        evidence_analysis: mockResult.evidence_analysis,
+        recommendation: mockResult.recommendation,
+        summary: mockResult.summary,
+        // Add our metadata fields (these should never be overridden)
+        verified_at: new Date().toISOString(),
+        verification_method: 'gemini_mock_fallback',
+        verification_notes: 'Mock verification fallback due to API being disabled'
+      }
+
+      console.log("[GEMINI_AGENT_RETURN_MOCK]", JSON.stringify(mockGeminiResult, null, 2));
+
       return {
         success: true,
         gemini_triggered: true,
-        gemini_result: {
-          // Extract core verification fields first
-          verification_status: mockResult.verification_status,
-          confidence_assessment: mockResult.confidence_assessment,
-          evidence_analysis: mockResult.evidence_analysis,
-          recommendation: mockResult.recommendation,
-          summary: mockResult.summary,
-          // Add our metadata fields (these should never be overridden)
-          verified_at: new Date().toISOString(),
-          verification_method: 'gemini_mock_fallback',
-          verification_notes: 'Mock verification fallback due to API being disabled'
-        },
+        gemini_result: mockGeminiResult,
         web_snippets_count: 2,
         search_queries_used: buildVerificationQueries(brand, product_name, ownershipData),
         analysis_duration_ms: Date.now() - startTime,
