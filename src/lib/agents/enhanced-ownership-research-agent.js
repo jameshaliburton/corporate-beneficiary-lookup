@@ -2082,6 +2082,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   const geminiFeatureEnabled = process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true'
   const verificationOverride = process.env.GEMINI_VERIFICATION_OVERRIDE === 'true'
   const verificationTTLDays = parseInt(process.env.GEMINI_VERIFICATION_TTL_DAYS || '14')
+  const forceGeminiForTesting = false // Disabled for production
   
   console.log('[GEMINI_DEBUG] Environment variables check:', {
     geminiAvailable,

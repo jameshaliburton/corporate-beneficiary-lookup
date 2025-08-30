@@ -471,14 +471,11 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             reasoning: ownershipResult.reasoning,
             agent_results: ownershipResult.agent_results,
             result_type: ownershipResult.result_type,
-            // Gemini verification fields
+            // Gemini verification fields (only save basic ones for now)
             verification_status: ownershipResult.verification_status,
             verified_at: ownershipResult.verified_at,
             verification_method: ownershipResult.verification_method,
             verification_notes: ownershipResult.verification_notes,
-            confidence_assessment: ownershipResult.confidence_assessment,
-            verification_evidence: ownershipResult.verification_evidence,
-            verification_confidence_change: ownershipResult.verification_confidence_change,
             updated_at: new Date().toISOString()
             })
             .select();
@@ -515,14 +512,11 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           reasoning: ownershipResult.reasoning,
           agent_results: ownershipResult.agent_results,
           result_type: ownershipResult.result_type,
-          // Gemini verification fields
+          // Gemini verification fields (only save basic ones for now)
           verification_status: ownershipResult.verification_status,
           verified_at: ownershipResult.verified_at,
           verification_method: ownershipResult.verification_method,
           verification_notes: ownershipResult.verification_notes,
-          confidence_assessment: ownershipResult.confidence_assessment,
-          verification_evidence: ownershipResult.verification_evidence,
-          verification_confidence_change: ownershipResult.verification_confidence_change,
           updated_at: new Date().toISOString()
           })
           .select();
