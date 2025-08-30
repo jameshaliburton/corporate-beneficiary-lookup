@@ -264,6 +264,9 @@ export async function EnhancedAgentOwnershipResearch({
         await emitProgress(queryId, 'cache_check', 'success', cacheStage.stage.data)
         traceLogger.setFinalResult('cached')
         
+        // Apply centralized Gemini verification to cached results
+        await maybeRunGeminiVerification(cachedResult, brand, product_name, queryId);
+        
         return cachedResult
       }
     }
@@ -326,6 +329,9 @@ export async function EnhancedAgentOwnershipResearch({
         const productData = ownershipResultToProductData(barcode, product_name, brand, result)
         await upsertProduct(productData)
         
+        // Apply centralized Gemini verification to sheets mapping results
+        await maybeRunGeminiVerification(result, brand, product_name, queryId);
+        
         traceLogger.setFinalResult('sheets_mapping')
         return result
       }
@@ -376,6 +382,9 @@ export async function EnhancedAgentOwnershipResearch({
       // Save to database
       const productData = ownershipResultToProductData(barcode, product_name, brand, result)
       await upsertProduct(productData)
+      
+      // Apply centralized Gemini verification to static mapping results
+      await maybeRunGeminiVerification(result, brand, product_name, queryId);
       
       traceLogger.setFinalResult('static_mapping')
       return result
@@ -437,6 +446,9 @@ export async function EnhancedAgentOwnershipResearch({
           } catch (storeError) {
             console.warn('Failed to store RAG result in knowledge base:', storeError)
           }
+          
+          // Apply centralized Gemini verification to RAG retrieval results
+          await maybeRunGeminiVerification(ragResult, brand, product_name, queryId);
           
           return ragResult
         } else {
@@ -688,6 +700,9 @@ Respond in valid JSON format:
           // Save to database
           const productData = ownershipResultToProductData(barcode, product_name, brand, result)
           await upsertProduct(productData)
+          
+          // Apply centralized Gemini verification to LLM first analysis results
+          await maybeRunGeminiVerification(result, brand, product_name, queryId);
           
           traceLogger.setFinalResult('llm_first_analysis')
           return result
@@ -1577,58 +1592,30 @@ async function maybeRunGeminiVerification(ownershipResult, brand, product_name, 
     DEBUG: process.env.DEBUG
   });
   
-  // Force Gemini for testing
-  const forceGeminiForTesting = true;
-  
   // Check if result already has verification status
-  const hasExistingVerification = !!(
-    ownershipResult.verification_status && 
-    ownershipResult.verification_status !== 'unknown' &&
-    ownershipResult.verified_at
+  const hasExistingVerification = Boolean(
+    ownershipResult.verification_status ||
+    ownershipResult.agent_results?.gemini_analysis?.data?.verification_status
   );
   
   // Check if result has zero confidence (garbage/no result)
-  const isZeroConfidence = ownershipResult.confidence_score === 0;
+  const isGarbageResult = ownershipResult.confidence_score === 0;
   
-  // Check if result was loaded from cache (indicated by existing result_id)
-  const isFromCache = !!ownershipResult.result_id && ownershipResult.result_id.includes('cached');
-  
-  console.log("[GEMINI_TRIGGER_CHECK] Verification status analysis:", {
-    hasExistingVerification,
-    isZeroConfidence,
-    isFromCache,
-    existing_verification_status: ownershipResult.verification_status,
-    existing_verified_at: ownershipResult.verified_at
-  });
-  
-  // Check if Gemini should run based on current logic
+  // Determine if Gemini should run
   const shouldRunGemini = (
-    forceGeminiForTesting ||
-    ownershipResult.confidence_score < 50 ||
-    ownershipResult.financial_beneficiary?.toLowerCase() === "unknown" ||
-    ownershipResult.disambiguation_triggered === true
+    !hasExistingVerification &&
+    !isGarbageResult
   );
   
-  console.log("[GEMINI_TRIGGER_CHECK] Current trigger logic evaluation:", {
-    forceGeminiForTesting,
+  console.log("[GEMINI_TRIGGER_CHECK]", {
+    brand: ownershipResult.brand || brand,
     confidence_score: ownershipResult.confidence_score,
-    confidence_under_50: ownershipResult.confidence_score < 50,
-    financial_beneficiary: ownershipResult.financial_beneficiary,
-    beneficiary_is_unknown: ownershipResult.financial_beneficiary?.toLowerCase() === "unknown",
-    disambiguation_triggered: ownershipResult.disambiguation_triggered,
-    shouldRunGemini_current_logic: shouldRunGemini
+    hasExistingVerification,
+    isGarbageResult,
+    willRunGemini: shouldRunGemini,
+    existing_verification_status: ownershipResult.verification_status,
+    existing_gemini_status: ownershipResult.agent_results?.gemini_analysis?.data?.verification_status
   });
-  
-  // What the logic SHOULD be according to requirements
-  const shouldRunGeminiCorrect = !hasExistingVerification && !isZeroConfidence;
-  
-  console.log("[GEMINI_TRIGGER_CHECK] Correct logic evaluation:", {
-    shouldRunGemini_correct: shouldRunGeminiCorrect,
-    reason_not_run: hasExistingVerification ? 'has_existing_verification' : 
-                   isZeroConfidence ? 'zero_confidence' : 'should_run'
-  });
-  
-  console.log("[GEMINI_TRIGGER_CHECK] ===== TRIGGER ANALYSIS COMPLETE =====");
   
   if (shouldRunGemini) {
     try {
