@@ -2070,15 +2070,24 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
         
         console.log('[GEMINI_STORAGE_DEBUG] About to store gemini_result:', JSON.stringify(geminiAnalysis.gemini_result, null, 2))
         
+        // Ensure we store the complete Gemini result with all metadata fields
+        const fullGeminiResult = {
+          ...geminiAnalysis.gemini_result,
+          // Ensure metadata fields are present with fallbacks
+          verified_at: geminiAnalysis.gemini_result.verified_at || new Date().toISOString(),
+          verification_method: geminiAnalysis.gemini_result.verification_method || 'gemini_web_search',
+          verification_notes: geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed'
+        }
+        
         ownership.agent_results.gemini_analysis = {
           success: true,
-          data: geminiAnalysis.gemini_result,
+          data: fullGeminiResult,
           reasoning: 'Gemini verified ownership claim through web search and snippet analysis',
           web_snippets_count: geminiAnalysis.web_snippets_count,
           search_queries_used: geminiAnalysis.search_queries_used
         }
         
-        // Extract verification fields from Gemini result with proper fallbacks
+        // Extract verification fields from the full Gemini result with proper fallbacks
         const {
           verification_status,
           verified_at,
@@ -2086,7 +2095,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
           verification_notes,
           confidence_assessment,
           evidence_analysis
-        } = geminiAnalysis.gemini_result
+        } = fullGeminiResult
 
         // Add verification status and metadata to top level
         console.log('[VERIFICATION_PROPAGATE] status:', verification_status, 'verified_at:', verified_at, 'method:', verification_method)

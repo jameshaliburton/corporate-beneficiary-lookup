@@ -90,14 +90,14 @@ class VerificationPropagationTestSuite {
     
     try {
       // Flush cache first
-      await this.flushCache(['testcogemini']);
+      await this.flushCache(['testcogeminifinal']);
       
-      // Make API call
+      // Make API call with fresh brand to force full pipeline
       const response = await fetch(`${BASE_URL}/api/lookup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          brand: 'TestcoGemini',
+          brand: 'TestcoGeminiFinal',
           product_name: 'Test Product',
           barcode: null,
           hints: {},
