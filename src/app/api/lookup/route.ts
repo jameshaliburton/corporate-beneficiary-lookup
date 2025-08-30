@@ -43,7 +43,13 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
     hasExistingVerification,
     isGarbageResult,
     geminiAvailable,
-    existing_verification_status: ownershipResult.verification_status
+    existing_verification_status: ownershipResult.verification_status,
+    verification_fields_present: {
+      verification_status: !!ownershipResult.verification_status,
+      verified_at: !!ownershipResult.verified_at,
+      verification_method: !!ownershipResult.verification_method,
+      verification_notes: !!ownershipResult.verification_notes
+    }
   });
   
   // Determine if Gemini should run
@@ -372,6 +378,12 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     // 💾 PERSIST ENHANCED RESULT BACK TO CACHE
     if (geminiVerificationRan) {
       console.log("[GEMINI_INLINE_CACHE_HIT] Persisting enhanced result back to cache");
+      console.log("[GEMINI_INLINE_CACHE_HIT] Verification fields being saved:", {
+        verification_status: cachedResult.verification_status,
+        verified_at: cachedResult.verified_at,
+        verification_method: cachedResult.verification_method,
+        verification_notes: cachedResult.verification_notes
+      });
       await saveToCache(cachedResult.brand, cachedResult.product_name, cachedResult);
     }
     
