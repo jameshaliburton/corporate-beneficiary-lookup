@@ -271,7 +271,15 @@ export default function ResultsPage() {
     // Use the new narrative fields if available
     headline: result?.headline,
     tagline: result?.tagline,
-    story: result?.story
+    story: result?.story,
+    // Gemini verification fields
+    verification_status: result?.verification_status,
+    verified_at: result?.verified_at,
+    verification_method: result?.verification_method,
+    verification_notes: result?.verification_notes,
+    confidence_assessment: result?.confidence_assessment,
+    verification_evidence: result?.verification_evidence,
+    verification_confidence_change: result?.confidence_assessment?.confidence_change
   };
 
   return (

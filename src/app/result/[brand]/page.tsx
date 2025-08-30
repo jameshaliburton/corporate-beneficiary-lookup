@@ -346,7 +346,15 @@ export default function ResultPage() {
               ownership_type: productResultProps?.structureType,
               confidence: productResultProps?.confidence,
               ownership_notes: productResultProps?.ownership_notes,
-              behind_the_scenes: productResultProps?.behind_the_scenes
+              behind_the_scenes: productResultProps?.behind_the_scenes,
+              // Gemini verification fields
+              verification_status: productResultProps?.verification_status,
+              verified_at: productResultProps?.verified_at,
+              verification_method: productResultProps?.verification_method,
+              verification_notes: productResultProps?.verification_notes,
+              confidence_assessment: productResultProps?.confidence_assessment,
+              verification_evidence: productResultProps?.verification_evidence,
+              verification_confidence_change: productResultProps?.confidence_assessment?.confidence_change
             }}
             narrative={{
               headline: productResultProps?.headline,
