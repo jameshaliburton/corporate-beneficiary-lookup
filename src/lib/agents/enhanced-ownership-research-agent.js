@@ -174,6 +174,7 @@ export async function EnhancedAgentOwnershipResearch({
   imageProcessingTrace = null,
   followUpContext = null
 }) {
+  console.log('[ENHANCED_AGENT_ENTRY] EnhancedAgentOwnershipResearch called with:', { brand, product_name, barcode })
   console.log('🚨🚨🚨 ENHANCED AGENT CALLED - STARTING EXECUTION 🚨🚨🚨')
   const startTime = Date.now()
   const queryId = generateQueryId()
@@ -765,6 +766,8 @@ Respond in valid JSON format:
     let ownershipChain = null
     
     console.log('[AGENT_ENTRY] Checking if LLM research is available:', isLLMResearchAvailable())
+    console.log('[AGENT_ENTRY] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY)
+    console.log('[AGENT_ENTRY] ANTHROPIC_API_KEY length:', process.env.ANTHROPIC_API_KEY?.length || 0)
     if (isLLMResearchAvailable()) {
       try {
         webStage.reason('LLM-first research available, attempting direct ownership determination', REASONING_TYPES.INFO)
@@ -881,6 +884,7 @@ Respond in valid JSON format:
             researchData.trace.debug.push('[RETURN_CHECK] Disambiguation result:', JSON.stringify(researchData.disambiguation_options))
           }
           
+          console.log('[ENHANCED_AGENT] About to call buildFinalResult with Gemini trigger logic')
           return await buildFinalResult(researchData, ownershipChain, queryAnalysis, traceLogger, queryId, brand)
           
         } else {
@@ -1507,6 +1511,59 @@ Respond in valid JSON format.`)
     
     console.log(`[EnhancedAgentOwnershipResearch] Research complete with result_id: ${resultId}`, validated)
     
+    // TEMPORARY: Always call Gemini agent for testing
+    console.log('[GEMINI_OVERRIDE] Adding Gemini verification to main return path')
+    try {
+      const forceGeminiForTesting = true
+      const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
+      
+      if (forceGeminiForTesting || geminiAvailable) {
+        console.log('[GEMINI_OVERRIDE] Calling Gemini agent from main return path')
+        const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+          brand: brand,
+          product_name: product_name,
+          ownershipData: {
+            financial_beneficiary: validated.financial_beneficiary,
+            confidence_score: validated.confidence_score,
+            research_method: validated.result_type,
+            sources: validated.sources
+          },
+          hints: {},
+          queryId: queryId
+        })
+        
+        console.log('[GEMINI_OVERRIDE] Gemini result:', JSON.stringify(geminiAnalysis, null, 2))
+        
+        if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+          // Add Gemini results to agent_results
+          if (!validated.agent_results) {
+            validated.agent_results = {}
+          }
+          
+          validated.agent_results.gemini_analysis = {
+            success: true,
+            data: geminiAnalysis.gemini_result,
+            reasoning: 'Gemini verification completed',
+            web_snippets_count: geminiAnalysis.web_snippets_count,
+            search_queries_used: geminiAnalysis.search_queries_used
+          }
+          
+          // Add verification fields to top level
+          validated.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
+          validated.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString()
+          validated.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search'
+          validated.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed'
+          validated.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null
+          validated.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null
+          validated.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null
+          
+          console.log('[GEMINI_OVERRIDE] Added verification fields to validated result')
+        }
+      }
+    } catch (geminiError) {
+      console.error('[GEMINI_OVERRIDE] Gemini agent failed:', geminiError)
+    }
+    
     const duration = Date.now() - startTime;
     console.log(`[AgentLog] Completed: EnhancedAgentOwnershipResearch (${duration}ms)`);
     console.timeEnd('[AgentTimer] EnhancedAgentOwnershipResearch');
@@ -1514,6 +1571,11 @@ Respond in valid JSON format.`)
     
   } catch (error) {
     console.error('[EnhancedAgentOwnershipResearch] Research failed:', error)
+    console.error('[ENHANCED_AGENT_ERROR] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    })
     
     const errorStage = new EnhancedStageTracker(traceLogger, 'error_recovery', 'Error recovery and fallback response')
     errorStage.reason(`Research failed: ${error.message}`, REASONING_TYPES.ERROR)
@@ -1528,6 +1590,59 @@ Respond in valid JSON format.`)
     // Generate result ID even for fallback responses
     const resultId = generateCurrentResultId(brand, product_name)
     fallbackResult.result_id = resultId
+    
+    // TEMPORARY: Add Gemini verification to error fallback path too
+    console.log('[GEMINI_OVERRIDE_ERROR] Adding Gemini verification to error fallback path')
+    try {
+      const forceGeminiForTesting = true
+      const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
+      
+      if (forceGeminiForTesting || geminiAvailable) {
+        console.log('[GEMINI_OVERRIDE_ERROR] Calling Gemini agent from error fallback path')
+        const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+          brand: brand,
+          product_name: product_name,
+          ownershipData: {
+            financial_beneficiary: fallbackResult.financial_beneficiary,
+            confidence_score: fallbackResult.confidence_score,
+            research_method: fallbackResult.result_type,
+            sources: fallbackResult.sources
+          },
+          hints: {},
+          queryId: queryId
+        })
+        
+        console.log('[GEMINI_OVERRIDE_ERROR] Gemini result:', JSON.stringify(geminiAnalysis, null, 2))
+        
+        if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+          // Add Gemini results to agent_results
+          if (!fallbackResult.agent_results) {
+            fallbackResult.agent_results = {}
+          }
+          
+          fallbackResult.agent_results.gemini_analysis = {
+            success: true,
+            data: geminiAnalysis.gemini_result,
+            reasoning: 'Gemini verification completed',
+            web_snippets_count: geminiAnalysis.web_snippets_count,
+            search_queries_used: geminiAnalysis.search_queries_used
+          }
+          
+          // Add verification fields to top level
+          fallbackResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
+          fallbackResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString()
+          fallbackResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search'
+          fallbackResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed'
+          fallbackResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null
+          fallbackResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null
+          fallbackResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null
+          
+          console.log('[GEMINI_OVERRIDE_ERROR] Added verification fields to fallback result')
+        }
+      }
+    } catch (geminiError) {
+      console.error('[GEMINI_OVERRIDE_ERROR] Gemini agent failed:', geminiError)
+    }
     
     const duration = Date.now() - startTime;
     console.log(`[AgentLog] Error in EnhancedAgentOwnershipResearch (${duration}ms):`, error.message);
@@ -1865,6 +1980,7 @@ function combineTraces(imageProcessingTrace, ownershipResearchTrace) {
  * Build final result object for short-circuit return when LLM research succeeds
  */
 async function buildFinalResult(researchData, ownershipChain, queryAnalysis, traceLogger, queryId, brand) {
+  console.log('[BUILD_FINAL_RESULT] Starting buildFinalResult function - Gemini trigger logic should run here')
   console.log('[DEBUG] Building final result from LLM research:', {
     researchData_success: researchData?.success,
     ownership_chain_length: ownershipChain?.length,
@@ -1962,6 +2078,12 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   
   // Smart trigger conditions
   const shouldTriggerGemini = () => {
+    // TEMPORARY OVERRIDE: Always run Gemini for testing
+    if (forceGeminiForTesting) {
+      console.log('[VERIFICATION_TRIGGER] reason = force_gemini_for_testing')
+      return true
+    }
+    
     // Override flag always triggers
     if (verificationOverride) {
       console.log('[VERIFICATION_TRIGGER] reason = override')
@@ -2042,6 +2164,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
           queryId: queryId
         })
         console.log('[GEMINI_DEBUG] Gemini agent call completed successfully')
+        console.log("[GEMINI_AGENT_CALLED]", JSON.stringify(geminiAnalysis, null, 2));
       } catch (geminiError) {
         console.error('[GEMINI_DEBUG] Gemini agent call failed:', geminiError)
         geminiAnalysis = {

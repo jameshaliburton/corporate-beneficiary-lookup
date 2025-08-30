@@ -422,6 +422,13 @@ export async function POST(request: NextRequest) {
       ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
     });
     
+    // Debug environment variables
+    console.log('🔧 Environment Variables:', {
+      ANTHROPIC_API_KEY_PRESENT: !!process.env.ANTHROPIC_API_KEY,
+      ANTHROPIC_API_KEY_LENGTH: process.env.ANTHROPIC_API_KEY?.length || 0,
+      NODE_ENV: process.env.NODE_ENV
+    });
+    
     let body;
     try {
       body = await request.json();
