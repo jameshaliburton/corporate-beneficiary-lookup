@@ -30,6 +30,7 @@
     "test:smart:verification": "npx tsx tests/e2e/test-smart-verification.ts",
     "test:verification:propagation": "npx tsx tests/e2e/verification-propagation.test.ts",
     "test:gemini:metadata": "npx tsx tests/e2e/gemini-agent-metadata-test.ts",
+    "test:gemini:final": "npx tsx tests/e2e/test-gemini-verification-final.ts",
     "inspect:product": "npx tsx scripts/inspectProductData.ts",
     "debug:api": "npx tsx scripts/debug-api-response.ts",
     "debug:api:single": "npx tsx tests/e2e/debug-api.ts"

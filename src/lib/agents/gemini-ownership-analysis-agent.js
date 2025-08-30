@@ -113,7 +113,9 @@ export async function GeminiOwnershipAnalysisAgent({
       verification_notes: `Verified using Gemini AI with ${webSnippets.length} web search results`
     }
 
-    console.log("[GEMINI_AGENT_RETURN]", JSON.stringify(geminiResult, null, 2));
+    if (process.env.DEBUG === 'true') {
+      console.log("[GEMINI_AGENT_RETURN]", JSON.stringify(geminiResult, null, 2));
+    }
 
     return {
       success: true,
@@ -172,7 +174,9 @@ export async function GeminiOwnershipAnalysisAgent({
         verification_notes: 'Mock verification fallback due to API being disabled'
       }
 
-      console.log("[GEMINI_AGENT_RETURN_MOCK]", JSON.stringify(mockGeminiResult, null, 2));
+      if (process.env.DEBUG === 'true') {
+        console.log("[GEMINI_AGENT_RETURN_MOCK]", JSON.stringify(mockGeminiResult, null, 2));
+      }
 
       return {
         success: true,

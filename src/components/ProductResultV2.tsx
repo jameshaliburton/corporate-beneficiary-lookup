@@ -36,6 +36,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           tooltip: 'Gemini found evidence that contradicts this result.'
         };
       case 'inconclusive':
+      case 'insufficient_evidence':
       default:
         return {
           icon: HelpCircle,

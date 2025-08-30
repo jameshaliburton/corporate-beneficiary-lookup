@@ -1156,7 +1156,7 @@ Respond in valid JSON format:
       analysisStage.reason('Using structured ownership chain from web-search-powered research', REASONING_TYPES.INFO)
       
       // Convert structured ownership chain to the expected format
-      ownership = convertStructuredOwnershipChain(ownershipChain, brand, researchData)
+      ownership = await convertStructuredOwnershipChain(ownershipChain, brand, researchData)
       
       analysisStage.reason(`Converted ownership chain with ${ownershipChain.length} entities`, REASONING_TYPES.SUCCESS)
       
@@ -1511,61 +1511,12 @@ Respond in valid JSON format.`)
     
     console.log(`[EnhancedAgentOwnershipResearch] Research complete with result_id: ${resultId}`, validated)
     
-    // TEMPORARY: Always call Gemini agent for testing
-    console.log('[GEMINI_OVERRIDE] Adding Gemini verification to main return path')
-    try {
-      const forceGeminiForTesting = true
-      const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
-      
-      if (forceGeminiForTesting || geminiAvailable) {
-        console.log('[GEMINI_OVERRIDE] Calling Gemini agent from main return path')
-        const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-          brand: brand,
-          product_name: product_name,
-          ownershipData: {
-            financial_beneficiary: validated.financial_beneficiary,
-            confidence_score: validated.confidence_score,
-            research_method: validated.result_type,
-            sources: validated.sources
-          },
-          hints: {},
-          queryId: queryId
-        })
-        
-        console.log('[GEMINI_OVERRIDE] Gemini result:', JSON.stringify(geminiAnalysis, null, 2))
-        
-        if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
-          // Add Gemini results to agent_results
-          if (!validated.agent_results) {
-            validated.agent_results = {}
-          }
-          
-          validated.agent_results.gemini_analysis = {
-            success: true,
-            data: geminiAnalysis.gemini_result,
-            reasoning: 'Gemini verification completed',
-            web_snippets_count: geminiAnalysis.web_snippets_count,
-            search_queries_used: geminiAnalysis.search_queries_used
-          }
-          
-          // Add verification fields to top level
-          validated.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
-          validated.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString()
-          validated.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search'
-          validated.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed'
-          validated.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null
-          validated.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null
-          validated.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null
-          
-          console.log('[GEMINI_OVERRIDE] Added verification fields to validated result')
-        }
-      }
-    } catch (geminiError) {
-      console.error('[GEMINI_OVERRIDE] Gemini agent failed:', geminiError)
-    }
+    // Apply centralized Gemini verification
+    await maybeRunGeminiVerification(validated, brand, product_name, queryId);
     
     const duration = Date.now() - startTime;
     console.log(`[AgentLog] Completed: EnhancedAgentOwnershipResearch (${duration}ms)`);
+    console.log("[RETURN_PATH] EnhancedAgent → Main Return");
     console.timeEnd('[AgentTimer] EnhancedAgentOwnershipResearch');
     return validated
     
@@ -1591,71 +1542,111 @@ Respond in valid JSON format.`)
     const resultId = generateCurrentResultId(brand, product_name)
     fallbackResult.result_id = resultId
     
-    // TEMPORARY: Add Gemini verification to error fallback path too
-    console.log('[GEMINI_OVERRIDE_ERROR] Adding Gemini verification to error fallback path')
-    try {
-      const forceGeminiForTesting = true
-      const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
-      
-      if (forceGeminiForTesting || geminiAvailable) {
-        console.log('[GEMINI_OVERRIDE_ERROR] Calling Gemini agent from error fallback path')
-        const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-          brand: brand,
-          product_name: product_name,
-          ownershipData: {
-            financial_beneficiary: fallbackResult.financial_beneficiary,
-            confidence_score: fallbackResult.confidence_score,
-            research_method: fallbackResult.result_type,
-            sources: fallbackResult.sources
-          },
-          hints: {},
-          queryId: queryId
-        })
-        
-        console.log('[GEMINI_OVERRIDE_ERROR] Gemini result:', JSON.stringify(geminiAnalysis, null, 2))
-        
-        if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
-          // Add Gemini results to agent_results
-          if (!fallbackResult.agent_results) {
-            fallbackResult.agent_results = {}
-          }
-          
-          fallbackResult.agent_results.gemini_analysis = {
-            success: true,
-            data: geminiAnalysis.gemini_result,
-            reasoning: 'Gemini verification completed',
-            web_snippets_count: geminiAnalysis.web_snippets_count,
-            search_queries_used: geminiAnalysis.search_queries_used
-          }
-          
-          // Add verification fields to top level
-          fallbackResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive'
-          fallbackResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString()
-          fallbackResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search'
-          fallbackResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed'
-          fallbackResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null
-          fallbackResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null
-          fallbackResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null
-          
-          console.log('[GEMINI_OVERRIDE_ERROR] Added verification fields to fallback result')
-        }
-      }
-    } catch (geminiError) {
-      console.error('[GEMINI_OVERRIDE_ERROR] Gemini agent failed:', geminiError)
-    }
+    // Apply centralized Gemini verification to error fallback path
+    await maybeRunGeminiVerification(fallbackResult, brand, product_name, queryId);
     
     const duration = Date.now() - startTime;
     console.log(`[AgentLog] Error in EnhancedAgentOwnershipResearch (${duration}ms):`, error.message);
+    console.log("[RETURN_PATH] EnhancedAgent → Error Fallback");
     console.timeEnd('[AgentTimer] EnhancedAgentOwnershipResearch');
     return fallbackResult
   }
 }
 
 /**
+ * Centralized Gemini verification function
+ */
+async function maybeRunGeminiVerification(ownershipResult, brand, product_name, queryId) {
+  console.log("[GEMINI_VERIFICATION] Starting centralized Gemini verification");
+  
+  // Environment debugging
+  console.log("[ENV] ENABLE_GEMINI_OWNERSHIP_AGENT:", process.env.ENABLE_GEMINI_OWNERSHIP_AGENT);
+  console.log("[ENV] ANTHROPIC_API_KEY present:", !!process.env.ANTHROPIC_API_KEY);
+  console.log("[ENV] GOOGLE_API_KEY present:", !!process.env.GOOGLE_API_KEY);
+  
+  // Force Gemini for testing
+  const forceGeminiForTesting = true;
+  
+  // Check if Gemini should run
+  const shouldRunGemini = (
+    forceGeminiForTesting ||
+    ownershipResult.confidence_score < 50 ||
+    ownershipResult.financial_beneficiary?.toLowerCase() === "unknown" ||
+    ownershipResult.disambiguation_triggered === true
+  );
+  
+  console.log("[GEMINI_VERIFICATION] Trigger conditions:", {
+    forceGeminiForTesting,
+    confidence_score: ownershipResult.confidence_score,
+    financial_beneficiary: ownershipResult.financial_beneficiary,
+    disambiguation_triggered: ownershipResult.disambiguation_triggered,
+    shouldRunGemini
+  });
+  
+  if (shouldRunGemini) {
+    try {
+      console.log("[GEMINI_VERIFICATION] Calling Gemini agent");
+      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+        brand: brand,
+        product_name: product_name,
+        ownershipData: {
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          confidence_score: ownershipResult.confidence_score,
+          research_method: ownershipResult.result_type,
+          sources: ownershipResult.sources
+        },
+        hints: {},
+        queryId: queryId
+      });
+      
+      console.log("[GEMINI_AGENT_CALLED]", geminiAnalysis?.gemini_result?.verification_status);
+      
+      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+        // Add verification fields to top level
+        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
+        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
+        
+        // Add Gemini results to agent_results
+        if (!ownershipResult.agent_results) {
+          ownershipResult.agent_results = {};
+        }
+        
+        ownershipResult.agent_results.gemini_analysis = {
+          success: true,
+          type: "ownership_verification",
+          agent: "GeminiOwnershipVerificationAgent",
+          data: geminiAnalysis.gemini_result,
+          reasoning: 'Gemini verification completed',
+          web_snippets_count: geminiAnalysis.web_snippets_count,
+          search_queries_used: geminiAnalysis.search_queries_used
+        };
+        
+        console.log("[GEMINI_VERIFICATION] Successfully added verification fields");
+        return true;
+      }
+    } catch (geminiError) {
+      console.error('[GEMINI_VERIFICATION] Gemini agent failed:', geminiError);
+    }
+  } else {
+    console.log("[GEMINI_VERIFICATION] Skipped - conditions not met");
+  }
+  
+  return false;
+}
+
+/**
  * Convert structured ownership chain to the expected format
  */
-function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData) {
+async function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData) {
+  console.log("[CHAIN_ENTER] convertStructuredOwnershipChain");
+  
   if (!ownershipChain || ownershipChain.length === 0) {
+    console.log("[CHAIN_EXIT] convertStructuredOwnershipChain → fallback");
     return createFallbackResponse(brand, 'No ownership chain available')
   }
   
@@ -1718,6 +1709,12 @@ function convertStructuredOwnershipChain(ownershipChain, brand, webResearchData)
   }
   
   const validatedResult = safeParseOwnershipData(EnhancedAgentResultSchema, rawResult, 'EnhancedAgentOwnershipResearch')
+  
+  // Apply centralized Gemini verification
+  await maybeRunGeminiVerification(validatedResult, brand, product_name, queryId);
+  
+  console.log("[CHAIN_EXIT] convertStructuredOwnershipChain → success");
+  console.log("[RETURN_PATH] EnhancedAgent → convertStructuredOwnershipChain");
   return validatedResult
 }
 
@@ -1988,7 +1985,7 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   })
   
   // Convert structured ownership chain to the expected format
-  const ownership = convertStructuredOwnershipChain(ownershipChain, brand, researchData)
+  const ownership = await convertStructuredOwnershipChain(ownershipChain, brand, researchData)
   
   // Add metadata
   ownership.beneficiary_flag = getCountryFlag(ownership.beneficiary_country)
@@ -2047,7 +2044,6 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   
   // Smart Gemini verification logic with TTL and conditions
   let geminiAnalysis = null
-  const forceGeminiForTesting = true // Temporarily hardcoded for debugging
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable()
   const geminiFeatureEnabled = process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true'
   const verificationOverride = process.env.GEMINI_VERIFICATION_OVERRIDE === 'true'
@@ -2078,21 +2074,41 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
   
   // Smart trigger conditions
   const shouldTriggerGemini = () => {
-    // TEMPORARY OVERRIDE: Always run Gemini for testing
-    if (forceGeminiForTesting) {
-      console.log('[VERIFICATION_TRIGGER] reason = force_gemini_for_testing')
+    // Override flag always triggers
+    if (verificationOverride) {
+      if (process.env.DEBUG === 'true') {
+        console.log('[VERIFICATION_TRIGGER] reason = override')
+      }
       return true
     }
     
-    // Override flag always triggers
-    if (verificationOverride) {
-      console.log('[VERIFICATION_TRIGGER] reason = override')
+    // Check if Gemini verification is enabled
+    if (!geminiFeatureEnabled && !verificationOverride) {
+      if (process.env.DEBUG === 'true') {
+        console.log('[VERIFICATION_SKIP] reason = feature_disabled')
+      }
+      return false
+    }
+    
+    // Smart trigger conditions based on ownership result quality
+    const shouldRunGemini = (
+      ownership.confidence_score < 50 ||
+      ownership.financial_beneficiary?.toLowerCase() === "unknown" ||
+      ownership.disambiguation_triggered === true
+    )
+    
+    if (shouldRunGemini) {
+      if (process.env.DEBUG === 'true') {
+        console.log('[VERIFICATION_TRIGGER] Gemini verification triggered due to low confidence, unknown beneficiary, or disambiguation')
+      }
       return true
     }
     
     // No verification status present
     if (!existingVerificationStatus || existingVerificationStatus === 'unknown') {
-      console.log('[VERIFICATION_TRIGGER] reason = missing')
+      if (process.env.DEBUG === 'true') {
+        console.log('[VERIFICATION_TRIGGER] reason = missing')
+      }
       return true
     }
     
@@ -2103,22 +2119,22 @@ async function buildFinalResult(researchData, ownershipChain, queryAnalysis, tra
       const daysSinceVerification = (now.getTime() - verifiedDate.getTime()) / (1000 * 60 * 60 * 24)
       
       if (daysSinceVerification > verificationTTLDays) {
-        console.log('[VERIFICATION_TRIGGER] reason = expired (', daysSinceVerification.toFixed(1), 'days old)')
+        if (process.env.DEBUG === 'true') {
+          console.log('[VERIFICATION_TRIGGER] reason = expired (', daysSinceVerification.toFixed(1), 'days old)')
+        }
         return true
       } else {
-        console.log('[VERIFICATION_SKIP] verified_at =', existingVerification, '(', daysSinceVerification.toFixed(1), 'days old, TTL =', verificationTTLDays, 'days)')
+        if (process.env.DEBUG === 'true') {
+          console.log('[VERIFICATION_SKIP] verified_at =', existingVerification, '(', daysSinceVerification.toFixed(1), 'days old, TTL =', verificationTTLDays, 'days)')
+        }
         return false
       }
     }
     
-    // Disambiguation was manually selected - skip verification
-    if (hasDisambiguation) {
-      console.log('[VERIFICATION_SKIP] reason = disambiguation_manual_selection')
-      return false
-    }
-    
     // Default to trigger if no existing verification
-    console.log('[VERIFICATION_TRIGGER] reason = no_existing_verification')
+    if (process.env.DEBUG === 'true') {
+      console.log('[VERIFICATION_TRIGGER] reason = no_existing_verification')
+    }
     return true
   }
   
