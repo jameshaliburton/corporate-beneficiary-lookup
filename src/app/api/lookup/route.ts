@@ -38,11 +38,15 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   // Check if Gemini is available
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable();
   
+  // Check if existing verification is insufficient (should re-run)
+  const hasInsufficientVerification = ownershipResult.verification_status === 'insufficient_evidence';
+  
   console.log("[GEMINI_INLINE_CACHE_HIT] Verification check:", {
     brand,
     hasExistingVerification,
     isGarbageResult,
     geminiAvailable,
+    hasInsufficientVerification,
     existing_verification_status: ownershipResult.verification_status,
     verification_fields_present: {
       verification_status: !!ownershipResult.verification_status,
@@ -53,7 +57,8 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   });
   
   // Determine if Gemini should run
-  const shouldRunGemini = !hasExistingVerification && !isGarbageResult && geminiAvailable;
+  // Run if: no existing verification OR existing verification is insufficient
+  const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification) && !isGarbageResult && geminiAvailable;
   
   if (shouldRunGemini) {
     try {

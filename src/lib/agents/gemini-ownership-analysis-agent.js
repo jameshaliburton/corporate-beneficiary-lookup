@@ -80,8 +80,10 @@ export async function GeminiOwnershipAnalysisAgent({
     
     // Step 2: Perform web searches to get snippets
     console.log('[GEMINI_DEBUG] Performing web searches for verification')
+    console.log('[GEMINI_DEBUG] Search queries:', searchQueries)
     const webSnippets = await performWebSearches(searchQueries)
     console.log('[GEMINI_DEBUG] Retrieved web snippets:', webSnippets.length, 'results')
+    console.log('[GEMINI_DEBUG] First snippet title:', webSnippets[0]?.title || 'No snippets')
     
     // Step 3: Use Gemini to analyze snippets and verify ownership claim
     console.log('[GEMINI_DEBUG] Analyzing snippets with Gemini for verification')
