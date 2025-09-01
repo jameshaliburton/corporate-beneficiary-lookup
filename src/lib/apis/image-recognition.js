@@ -297,7 +297,7 @@ Image: {{image_base64}}`
       // Step 1.7: Run Gemini verification for cached result
       let geminiVerification = null;
       try {
-        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route');
         if (maybeRunGeminiVerificationForCacheHit) {
           console.log('🔍 Running Gemini verification for cached result...');
           geminiVerification = await maybeRunGeminiVerificationForCacheHit(
@@ -379,7 +379,7 @@ Image: {{image_base64}}`
       // Step 1.7: Run Gemini verification for ownership mapping result
       let geminiVerification = null;
       try {
-        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route');
         if (maybeRunGeminiVerificationForCacheHit) {
           console.log('🔍 Running Gemini verification for ownership mapping result...');
           geminiVerification = await maybeRunGeminiVerificationForCacheHit(
@@ -488,7 +488,7 @@ Image: {{image_base64}}`
     // Step 4: Run Gemini verification for new analysis result
     let geminiVerification = null;
     try {
-      const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+              const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route');
       if (maybeRunGeminiVerificationForCacheHit) {
         console.log('🔍 Running Gemini verification for new analysis result...');
         geminiVerification = await maybeRunGeminiVerificationForCacheHit(
