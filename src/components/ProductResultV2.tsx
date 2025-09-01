@@ -5,220 +5,25 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Camera, ChevronDown, ChevronUp, Building2, MapPin, TrendingUp, CheckCircle, AlertTriangle, HelpCircle, ExternalLink } from "lucide-react";
+import { Share2, Camera, ChevronDown, ChevronUp, Building2, MapPin, TrendingUp, ExternalLink } from "lucide-react";
 import { OwnershipResult, NarrativeFields } from '@/lib/services/narrative-generator-v3';
+import { VerificationBadge } from './VerificationBadge';
+import { VerificationDetailsPanel } from './VerificationDetailsPanel';
+import { normalizeVerificationStatus } from '@/lib/utils/verificationUtils';
 
+// Legacy interface - kept for backward compatibility
 interface VerificationStatusBadgeProps {
   status: string;
   confidenceChange?: string;
   evidence?: any;
 }
 
-const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
-  status, 
-  confidenceChange, 
-  evidence 
-}) => {
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'confirmed':
-        return {
-          icon: CheckCircle,
-          label: 'Verified by Gemini',
-          className: 'bg-green-100 text-green-800 border-green-200',
-          tooltip: 'Gemini AI has verified this ownership claim with supporting evidence.'
-        };
-      case 'contradicted':
-        return {
-          icon: AlertTriangle,
-          label: '⚠️ Verification failed',
-          className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          tooltip: 'Gemini found evidence that contradicts this result.'
-        };
-      case 'inconclusive':
-      case 'insufficient_evidence':
-      default:
-        return {
-          icon: HelpCircle,
-          label: 'Could not verify',
-          className: 'bg-gray-100 text-gray-600 border-gray-200',
-          tooltip: 'Gemini couldn\'t confirm or deny the claim based on available data.'
-        };
-    }
-  };
-
-  const config = getStatusConfig();
-  const Icon = config.icon;
-
-  return (
-    <div className="flex items-center gap-2">
-      <div 
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${config.className}`}
-        title={config.tooltip}
-      >
-        <Icon className="w-4 h-4" />
-        {config.label}
-      </div>
-      {confidenceChange && (
-        <span className="text-xs text-gray-500">
-          ({confidenceChange})
-        </span>
-      )}
-    </div>
-  );
-};
-
+// Legacy interface - kept for backward compatibility
 interface VerificationEvidencePanelProps {
   status: string;
   evidence?: any;
   confidenceChange?: string;
 }
-
-const VerificationEvidencePanel: React.FC<VerificationEvidencePanelProps> = ({ 
-  status, 
-  evidence, 
-  confidenceChange 
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const getPanelConfig = () => {
-    switch (status) {
-      case 'confirmed':
-        return {
-          title: 'How do we verify this?',
-          icon: CheckCircle,
-          className: 'bg-green-50 border-green-200',
-          headerClassName: 'text-green-800',
-          iconClassName: 'text-green-600'
-        };
-      case 'contradicted':
-        return {
-          title: 'Verification Details',
-          icon: AlertTriangle,
-          className: 'bg-yellow-50 border-yellow-200',
-          headerClassName: 'text-yellow-800',
-          iconClassName: 'text-yellow-600'
-        };
-      default:
-        return {
-          title: 'Verification Details',
-          icon: HelpCircle,
-          className: 'bg-gray-50 border-gray-200',
-          headerClassName: 'text-gray-800',
-          iconClassName: 'text-gray-600'
-        };
-    }
-  };
-
-  const config = getPanelConfig();
-  const Icon = config.icon;
-
-  if (!evidence) return null;
-
-  const supportingEvidence = evidence.supporting_evidence || [];
-  const contradictingEvidence = evidence.contradicting_evidence || [];
-  const missingEvidence = evidence.missing_evidence || [];
-
-  return (
-    <div className={`w-full max-w-2xl border rounded-lg ${config.className}`}>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-opacity-80 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <Icon className={`w-5 h-5 ${config.iconClassName}`} />
-          <span className={`font-medium ${config.headerClassName}`}>
-            {config.title}
-          </span>
-        </div>
-        {isExpanded ? (
-          <ChevronUp className="w-4 h-4" />
-        ) : (
-          <ChevronDown className="w-4 h-4" />
-        )}
-      </button>
-      
-      {isExpanded && (
-        <div className="px-4 pb-4 border-t border-opacity-20">
-          <div className="pt-4 space-y-4">
-            {/* Confidence Change */}
-            {confidenceChange && (
-              <div className="text-sm">
-                <span className="font-medium">Confidence Change:</span>
-                <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                  confidenceChange === 'increased' ? 'bg-green-100 text-green-800' :
-                  confidenceChange === 'decreased' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {confidenceChange}
-                </span>
-              </div>
-            )}
-
-            {/* Supporting Evidence */}
-            {supportingEvidence.length > 0 && (
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  Supporting Evidence
-                </h4>
-                <ul className="space-y-2">
-                  {supportingEvidence.map((item: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700 bg-white p-2 rounded border">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Contradicting Evidence */}
-            {contradictingEvidence.length > 0 && (
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  Contradicting Evidence
-                </h4>
-                <ul className="space-y-2">
-                  {contradictingEvidence.map((item: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-700 bg-white p-2 rounded border">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Missing Evidence */}
-            {missingEvidence.length > 0 && (
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-gray-600" />
-                  Missing Evidence
-                </h4>
-                <ul className="space-y-2">
-                  {missingEvidence.map((item: string, index: number) => (
-                    <li key={index} className="text-sm text-gray-600 bg-white p-2 rounded border">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Summary */}
-            {evidence.summary && (
-              <div className="bg-white p-3 rounded border">
-                <h4 className="font-medium text-sm mb-2">Summary</h4>
-                <p className="text-sm text-gray-700">{evidence.summary}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 interface ProductResultV2Props {
   result: OwnershipResult;
@@ -385,16 +190,15 @@ export default function ProductResultV2({
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center gap-4">
-              <VerificationStatusBadge
-                status={result.verification_status}
+              <VerificationBadge
+                status={normalizeVerificationStatus(result.verification_status)}
                 confidenceChange={result.verification_confidence_change}
-                evidence={result.verification_evidence}
               />
               
-              {/* Verification Evidence Panel */}
-              {result.verification_status !== 'inconclusive' && result.verification_evidence && (
-                <VerificationEvidencePanel
-                  status={result.verification_status}
+              {/* Verification Details Panel */}
+              {result.verification_evidence && (
+                <VerificationDetailsPanel
+                  status={normalizeVerificationStatus(result.verification_status)}
                   evidence={result.verification_evidence}
                   confidenceChange={result.verification_confidence_change}
                 />
