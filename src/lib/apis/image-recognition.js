@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { supabase } from '../supabase.ts';
+import { getServiceClient } from '../database/service-client.js';
 import { createEnhancedTraceLogger, EnhancedStageTracker, REASONING_TYPES } from '../agents/enhanced-trace-logging.js';
 
 const openai = new OpenAI({
@@ -12,6 +12,12 @@ const openai = new OpenAI({
 async function checkSupabaseCache(brand, product_name) {
   try {
     if (!brand || brand === 'Unknown Brand') {
+      return null;
+    }
+
+    const supabase = getServiceClient();
+    if (!supabase) {
+      console.log('⚠️ Supabase client not available, skipping cache check');
       return null;
     }
 
@@ -59,6 +65,12 @@ async function checkSupabaseCache(brand, product_name) {
 async function checkOwnershipMappings(brand) {
   try {
     if (!brand || brand === 'Unknown Brand') {
+      return null;
+    }
+
+    const supabase = getServiceClient();
+    if (!supabase) {
+      console.log('⚠️ Supabase client not available, skipping ownership mappings check');
       return null;
     }
 
