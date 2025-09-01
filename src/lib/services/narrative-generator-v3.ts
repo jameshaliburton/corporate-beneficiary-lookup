@@ -82,9 +82,29 @@ OUTPUT FORMAT (JSON):
     const content = response.content[0];
     if (content.type === 'text') {
       try {
-        return JSON.parse(content.text);
+        // Clean the response text before parsing JSON
+        let cleanedText = content.text.trim();
+        
+        // Remove any markdown code blocks if present
+        if (cleanedText.startsWith('```json')) {
+          cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanedText.startsWith('```')) {
+          cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        // Clean control characters that break JSON parsing
+        cleanedText = cleanedText
+          .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+          .replace(/\n/g, '\\n') // Escape newlines
+          .replace(/\r/g, '\\r') // Escape carriage returns
+          .replace(/\t/g, '\\t'); // Escape tabs
+        
+        console.log('Cleaned narrative JSON text:', cleanedText.substring(0, 200) + '...');
+        
+        return JSON.parse(cleanedText);
       } catch (parseError) {
         console.error('Failed to parse narrative JSON:', parseError);
+        console.error('Raw response text:', content.text.substring(0, 500));
         return getFallbackNarrative(result);
       }
     }
