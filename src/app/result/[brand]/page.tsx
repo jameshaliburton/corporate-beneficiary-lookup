@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
-import { ProductResult } from '@/components/ProductResult';
+import ProductResultV2 from '@/components/ProductResultV2';
 import { transformPipelineData, type PipelineResult } from '@/lib/utils/pipeline-transformer';
 import Head from 'next/head';
 
@@ -52,6 +52,13 @@ export default function ResultPage() {
           confidence: parsedResult.confidence_score,
           hasGeneratedCopy: !!parsedResult.generated_copy,
           generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
+        });
+        
+        console.log('🔍 Result page - verification fields retrieved:', {
+          verification_status: parsedResult.verification_status,
+          verified_at: parsedResult.verified_at,
+          confidence_assessment: parsedResult.confidence_assessment,
+          verification_evidence: parsedResult.verification_evidence
         });
         
         // Log the actual generated_copy content
@@ -335,7 +342,38 @@ export default function ResultPage() {
       <div className="min-h-screen bg-background dark-gradient">
         <AppHeader />
         <div className="container mx-auto max-w-md px-4 pt-4">
-          <ProductResult {...productResultProps} />
+          <ProductResultV2
+            result={{
+              brand_name: productResultProps?.brand,
+              brand_country: productResultProps?.brandCountry,
+              ultimate_owner: productResultProps?.owner,
+              ultimate_owner_country: productResultProps?.ownerCountry,
+              financial_beneficiary: productResultProps?.owner,
+              financial_beneficiary_country: productResultProps?.ownerCountry,
+              ownership_type: productResultProps?.structureType,
+              confidence: productResultProps?.confidence,
+              ownership_notes: productResultProps?.ownership_notes,
+              behind_the_scenes: productResultProps?.behind_the_scenes,
+              // Gemini verification fields
+              verification_status: productResultProps?.verification_status,
+              verified_at: productResultProps?.verified_at,
+              verification_method: productResultProps?.verification_method,
+              verification_notes: productResultProps?.verification_notes,
+              confidence_assessment: productResultProps?.confidence_assessment,
+              verification_evidence: productResultProps?.verification_evidence,
+              verification_confidence_change: productResultProps?.confidence_assessment?.confidence_change
+            }}
+            narrative={{
+              headline: productResultProps?.headline,
+              tagline: productResultProps?.tagline,
+              story: productResultProps?.story,
+              ownership_notes: productResultProps?.ownership_notes || [],
+              behind_the_scenes: productResultProps?.behind_the_scenes || [],
+              template_used: productResultProps?.narrative_template_used || 'fallback'
+            }}
+            onScanAnother={() => window.location.href = '/'}
+            onShare={() => console.log('Share functionality')}
+          />
         </div>
       </div>
     </>

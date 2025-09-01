@@ -1,0 +1,191 @@
+{
+  "timestamp": "2025-08-29T08:34:54.514Z",
+  "testResults": [
+    {
+      "brand": "Lipton",
+      "error": "Cannot find module '/Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/utils/runtime-config' imported from /Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/database/service-client.ts",
+      "analysis": {
+        "hasError": true,
+        "errorType": "Error",
+        "isSilentFailure": false
+      }
+    },
+    {
+      "brand": "IKEA",
+      "error": "Cannot find module '/Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/utils/runtime-config' imported from /Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/database/service-client.ts",
+      "analysis": {
+        "hasError": true,
+        "errorType": "Error",
+        "isSilentFailure": false
+      }
+    },
+    {
+      "brand": "MooseMilk",
+      "error": "Cannot find module '/Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/utils/runtime-config' imported from /Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/database/service-client.ts",
+      "analysis": {
+        "hasError": true,
+        "errorType": "Error",
+        "isSilentFailure": false
+      }
+    },
+    {
+      "brand": "InvalidBrand_###",
+      "error": "Cannot find module '/Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/utils/runtime-config' imported from /Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/database/service-client.ts",
+      "analysis": {
+        "hasError": true,
+        "errorType": "Error",
+        "isSilentFailure": false
+      }
+    },
+    {
+      "test": "narrative_generation",
+      "result": {
+        "headline": "Test Brand's ownership journey revealed",
+        "tagline": "Owned by Test Owner with 85% confidence",
+        "story": "Our research shows Test Brand is owned by Test Owner, though some details of their corporate structure remain under investigation.",
+        "ownership_notes": [
+          "85% confidence in ownership data",
+          "Ultimate owner location: Test Country",
+          "Ownership type needs verification",
+          "Brand's original country unknown"
+        ],
+        "behind_the_scenes": [
+          "Limited historical data available",
+          "Ownership structure requires additional research",
+          "Country connections need verification",
+          "Confidence level suggests reliable but incomplete data"
+        ],
+        "template_used": "limited_data_creative"
+      },
+      "analysis": {
+        "hasFallbackContent": false,
+        "fallbackIndicators": [],
+        "missingFields": []
+      }
+    }
+  ],
+  "fallbackAnalysis": [],
+  "schemaValidationResults": [
+    {
+      "testCase": "Valid data",
+      "input": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US"
+          }
+        ],
+        "sources": [
+          "source1"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "ultimate_owner": "Test Owner"
+      },
+      "result": {
+        "ownership_chain": [
+          {
+            "name": "Test Brand",
+            "role": "Brand",
+            "country": "US",
+            "flag": "🏳️",
+            "ultimate": false,
+            "sources": []
+          }
+        ],
+        "sources": [
+          "source1"
+        ],
+        "confidence": 0.85,
+        "brand_name": "Test Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Test Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true
+    },
+    {
+      "testCase": "Null data",
+      "input": null,
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true
+    },
+    {
+      "testCase": "Undefined data",
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true
+    },
+    {
+      "testCase": "Empty object",
+      "input": {},
+      "result": {
+        "ownership_chain": [],
+        "sources": [],
+        "confidence": 0,
+        "brand_name": "Unknown Brand",
+        "brand_country": "Unknown",
+        "brand_flag": "🏳️",
+        "ultimate_owner": "Unknown Owner",
+        "ultimate_owner_country": "Unknown",
+        "ultimate_owner_flag": "🏳️",
+        "research_method": "unknown",
+        "final_confidence": 0,
+        "success": false,
+        "disambiguation_options": [],
+        "disambiguation_triggered": false,
+        "ownership_type": "Unknown",
+        "acquisition_history": [],
+        "ethical_concerns": []
+      },
+      "success": true
+    }
+  ],
+  "silentFailureAnalysis": []
+}

@@ -30,6 +30,13 @@ function cleanPipelineResult(result: any) {
     user_contributed: result.user_contributed,
     // Include the LLM-generated copy
     generated_copy: result.generated_copy,
+    // Include the new narrative fields
+    headline: result.headline,
+    tagline: result.tagline,
+    story: result.story,
+    ownership_notes: result.ownership_notes,
+    behind_the_scenes: result.behind_the_scenes,
+    narrative_template_used: result.narrative_template_used,
     // Simplify the agent_execution_trace to avoid circular references
     agent_execution_trace: result.agent_execution_trace ? {
       sections: result.agent_execution_trace.sections?.map((section: any) => ({

@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "brand": "Nike",
+  "financial_beneficiary": "Nike Inc.",
+  "beneficiary_country": "United States",
+  "confidence_score": 85,
+  "ownership_flow": [
+    {
+      "name": "Nike",
+      "type": "Brand/Product",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": false
+    },
+    {
+      "name": "Nike Inc.",
+      "type": "Ultimate Owner",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": true
+    }
+  ],
+  "narrative": {
+    "headline": "Nike owned by Nike Inc. in United States",
+    "what_we_found": "Nike is owned by Nike Inc., a US-based company.",
+    "how_we_figured_it_out": "AI analysis was used to determine the ownership structure.",
+    "tldr": "Nike is owned by its parent company Nike Inc.",
+    "stage_labels": [
+      "AI analysis"
+    ],
+    "emoji": "🧠",
+    "risk_flags": [
+      "Unverified"
+    ],
+    "story": "The story of Nike: This iconic brand is part of the Nike family, created by the American company Nike Inc. From their headquarters in the United States, they've been building their brand presence and market share.",
+    "used_sources": [],
+    "safety_flags": {
+      "truncated": false,
+      "removed_unverifiable": false
+    }
+  },
+  "trace": {
+    "trace_id": "mock-trace-id",
+    "start_time": "2025-08-11T09:08:42.095Z",
+    "stages": [
+      {
+        "name": "cache_check",
+        "status": "success"
+      },
+      {
+        "name": "llm_first_analysis",
+        "status": "success"
+      }
+    ],
+    "result_type": "llm_first_analysis",
+    "cache_hit": false
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "timestamp": "2025-08-29T08:32:00.052Z",
+  "schemaViolations": [
+    {
+      "testCase": "Schema import",
+      "error": "Cannot find package 'zod' imported from /Users/jameshaliburton/Desktop/corporate-beneficiary-testing/src/lib/schemas/ownership-schema.ts",
+      "success": false
+    },
+    {
+      "agent": "narrative-generator-v3",
+      "issue": "Missing schema import",
+      "description": "Agent does not import schema validation functions",
+      "recommendation": "Add schema validation imports and usage"
+    },
+    {
+      "agent": "narrative-generator-v3",
+      "issue": "Missing schema validation",
+      "description": "Agent does not validate return values against schemas",
+      "recommendation": "Add schema validation before returning results"
+    }
+  ],
+  "fallbackTriggers": [],
+  "silentFailures": [
+    {
+      "agent": "enhanced-web-search-ownership-agent",
+      "pattern": "Silent null returns",
+      "count": 6,
+      "examples": [
+        "return null",
+        "return null",
+        "return null"
+      ]
+    }
+  ],
+  "agentIssues": [
+    {
+      "file": "pipeline-trace-report.json",
+      "issue": "Error occurrences",
+      "count": 2,
+      "severity": "low"
+    },
+    {
+      "file": "pipeline-trace-report.json",
+      "issue": "Failure occurrences",
+      "count": 3,
+      "severity": "low"
+    },
+    {
+      "file": "pipeline-trace-report.json",
+      "issue": "Null/undefined values",
+      "count": 2,
+      "severity": "low"
+    },
+    {
+      "file": "e2e-test-results.json",
+      "issue": "Error occurrences",
+      "count": 74,
+      "severity": "high"
+    },
+    {
+      "file": "e2e-test-results.json",
+      "issue": "Failure occurrences",
+      "count": 9,
+      "severity": "medium"
+    },
+    {
+      "file": "e2e-test-results.json",
+      "issue": "Null/undefined values",
+      "count": 352,
+      "severity": "high"
+    },
+    {
+      "file": "e2e-test-results.json",
+      "issue": "Fallback usage",
+      "count": 9,
+      "severity": "medium"
+    },
+    {
+      "file": "e2e-test-results.json",
+      "issue": "Unknown values",
+      "count": 38,
+      "severity": "high"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "Silent Failures",
+      "recommendation": "Replace 1 silent failure patterns with explicit error logging",
+      "details": "Add proper error handling and logging instead of silent null/undefined returns"
+    },
+    {
+      "priority": "high",
+      "category": "Schema Validation",
+      "recommendation": "Fix 3 schema validation issues",
+      "details": "Ensure all agents properly validate and structure their return values"
+    },
+    {
+      "priority": "medium",
+      "category": "Monitoring",
+      "recommendation": "Add fallback frequency metrics to track system health",
+      "details": "Monitor how often fallback content is generated to identify systemic issues"
+    },
+    {
+      "priority": "low",
+      "category": "User Experience",
+      "recommendation": "Add fallback indicators in the frontend",
+      "details": "Show users when fallback content is displayed so they understand data limitations"
+    }
+  ]
+}
