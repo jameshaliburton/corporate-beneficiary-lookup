@@ -22,30 +22,30 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         return {
           icon: CheckCircle,
           label: 'Verified by AI',
-          className: 'bg-green-100 text-green-900',
-          iconClassName: 'text-green-900'
+          className: 'bg-green-900/20 text-green-400 border-green-500/30',
+          iconClassName: 'text-green-400'
         };
       case 'contradicted':
         return {
           icon: AlertTriangle,
           label: 'Contradictory evidence',
-          className: 'bg-blue-100 text-blue-900',
-          iconClassName: 'text-blue-900'
+          className: 'bg-blue-900/20 text-blue-400 border-blue-500/30',
+          iconClassName: 'text-blue-400'
         };
       case 'mixed_evidence':
         return {
           icon: AlertTriangle,
           label: 'Conflicting sources',
-          className: 'bg-blue-100 text-blue-900',
-          iconClassName: 'text-blue-900'
+          className: 'bg-blue-900/20 text-blue-400 border-blue-500/30',
+          iconClassName: 'text-blue-400'
         };
       case 'insufficient_evidence':
       default:
         return {
           icon: HelpCircle,
           label: 'Not enough info',
-          className: 'bg-gray-100 text-gray-700',
-          iconClassName: 'text-gray-700'
+          className: 'bg-gray-900/20 text-gray-400 border-gray-500/30',
+          iconClassName: 'text-gray-400'
         };
     }
   };
@@ -71,7 +71,7 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       <Badge 
         variant="outline"
         className={cn(
-          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-0 transition-colors",
+          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
           config.className
         )}
         title={confidenceChange ? getConfidenceChangeText() : undefined}

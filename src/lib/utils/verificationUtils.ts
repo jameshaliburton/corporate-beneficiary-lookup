@@ -29,38 +29,38 @@ export function getVerificationConfig(status: VerificationStatus): VerificationC
       return {
         label: 'Verified by AI',
         icon: 'CheckCircle',
-        color: 'text-green-900',
-        bgColor: 'bg-green-100',
-        borderColor: 'border-green-200',
-        iconColor: 'text-green-900'
+        color: 'text-green-400',
+        bgColor: 'bg-green-900/20',
+        borderColor: 'border-green-500/30',
+        iconColor: 'text-green-400'
       };
     case 'contradicted':
       return {
         label: 'Contradictory evidence',
         icon: 'AlertTriangle',
-        color: 'text-blue-900',
-        bgColor: 'bg-blue-100',
-        borderColor: 'border-blue-200',
-        iconColor: 'text-blue-900'
+        color: 'text-blue-400',
+        bgColor: 'bg-blue-900/20',
+        borderColor: 'border-blue-500/30',
+        iconColor: 'text-blue-400'
       };
     case 'mixed_evidence':
       return {
         label: 'Conflicting sources',
         icon: 'AlertTriangle',
-        color: 'text-blue-900',
-        bgColor: 'bg-blue-100',
-        borderColor: 'border-blue-200',
-        iconColor: 'text-blue-900'
+        color: 'text-blue-400',
+        bgColor: 'bg-blue-900/20',
+        borderColor: 'border-blue-500/30',
+        iconColor: 'text-blue-400'
       };
     case 'insufficient_evidence':
     default:
       return {
         label: 'Not enough info',
         icon: 'HelpCircle',
-        color: 'text-gray-700',
-        bgColor: 'bg-gray-100',
-        borderColor: 'border-gray-200',
-        iconColor: 'text-gray-700'
+        color: 'text-gray-400',
+        bgColor: 'bg-gray-900/20',
+        borderColor: 'border-gray-500/30',
+        iconColor: 'text-gray-400'
       };
   }
 }

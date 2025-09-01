@@ -38,9 +38,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
         return {
           title: 'How do we verify this?',
           icon: CheckCircle,
-          className: 'bg-green-100 border-green-200',
-          headerClassName: 'text-green-900',
-          iconClassName: 'text-green-900'
+          className: 'bg-green-900/10 border-green-500/30',
+          headerClassName: 'text-green-400',
+          iconClassName: 'text-green-400'
         };
       case 'contradicted':
       case 'insufficient_evidence':
@@ -48,9 +48,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
         return {
           title: 'Verification Details',
           icon: AlertTriangle,
-          className: 'bg-blue-100 border-blue-200',
-          headerClassName: 'text-blue-900',
-          iconClassName: 'text-blue-900'
+          className: 'bg-blue-900/10 border-blue-500/30',
+          headerClassName: 'text-blue-400',
+          iconClassName: 'text-blue-400'
         };
     }
   };
@@ -98,13 +98,13 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Supporting Evidence */}
           {supportingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-green-900">
-                <CheckCircle className="w-4 h-4 text-green-900" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-green-400">
+                <CheckCircle className="w-4 h-4 text-green-400" />
                 Supporting Evidence
               </h4>
               <ul className="space-y-2">
                 {supportingEvidence.map((item, index) => (
-                  <li key={index} className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-gray-200">
+                  <li key={index} className="text-sm text-gray-300 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                     {item}
                   </li>
                 ))}
@@ -115,13 +115,13 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Contradicting Evidence */}
           {contradictingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-blue-900">
-                <AlertTriangle className="w-4 h-4 text-blue-900" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-blue-400">
+                <AlertTriangle className="w-4 h-4 text-blue-400" />
                 Contradicting Evidence
               </h4>
               <ul className="space-y-2">
                 {contradictingEvidence.map((item, index) => (
-                  <li key={index} className="text-sm text-gray-700 bg-white p-3 rounded-lg border border-gray-200">
+                  <li key={index} className="text-sm text-gray-300 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                     {item}
                   </li>
                 ))}
@@ -132,13 +132,13 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Neutral Evidence */}
           {neutralEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-700">
-                <HelpCircle className="w-4 h-4 text-gray-700" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-400">
+                <HelpCircle className="w-4 h-4 text-gray-400" />
                 Neutral Evidence
               </h4>
               <ul className="space-y-2">
                 {neutralEvidence.map((item, index) => (
-                  <li key={index} className="text-sm text-gray-600 bg-white p-3 rounded-lg border border-gray-200">
+                  <li key={index} className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded-lg border border-gray-700">
                     {item}
                   </li>
                 ))}
@@ -149,13 +149,13 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Missing Evidence */}
           {missingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-700">
-                <HelpCircle className="w-4 h-4 text-gray-700" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-400">
+                <HelpCircle className="w-4 h-4 text-gray-400" />
                 Missing Evidence
               </h4>
               <ul className="space-y-2">
                 {missingEvidence.map((item, index) => (
-                  <li key={index} className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <li key={index} className="text-sm text-gray-500 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
                     {item}
                   </li>
                 ))}
