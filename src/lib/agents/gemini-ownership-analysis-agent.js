@@ -227,11 +227,12 @@ export function isGeminiOwnershipAnalysisAvailable() {
 
 export class GeminiOwnershipAnalysisAgent {
   constructor() {
-    this.isAvailable = isGeminiOwnershipAnalysisAvailable();
+    // Don't check availability at construction time
   }
   
   async analyze(brand, productName, existingResult) {
-    if (!this.isAvailable) {
+    // Check availability at runtime
+    if (!isGeminiOwnershipAnalysisAvailable()) {
       throw new Error('Gemini API key not available');
     }
     return performGeminiOwnershipAnalysis(brand, productName, existingResult);
