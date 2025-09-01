@@ -108,6 +108,12 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         ownershipResult.agent_path.push("gemini_verification_inline_cache");
         
         console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
+        
+        // Gemini verification marker
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`[GEMINI_VERIFIED] brand=${brand}, status=${ownershipResult.verification_status || 'unknown'}, confidence=${ownershipResult.confidence_score || 'unknown'}`);
+        }
+        
         return true;
       }
     } catch (geminiError) {
@@ -453,6 +459,9 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       agent_path: cachedResult.agent_path || []
     };
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
+    }
     console.log('❌ [Shared Cache] MISS → Proceeding to ownership research');
     console.log("[OWNERSHIP_ROUTING_TRACE]", {
       brand: brand,
@@ -603,6 +612,15 @@ export async function POST(request: NextRequest) {
     
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null } = body;
     
+    // Extract request metadata for logging
+    const ip_country = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+    const lang_hint = request.headers.get('accept-language')?.split(',')[0] || 'unknown';
+    
+    // Top-level request marker
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[OWNERSHIP_REQUEST] brand=${brand || 'unknown'}, product=${product_name || 'unknown'}, ip_country=${ip_country}, lang_hint=${lang_hint}`);
+    }
+    
     // 🧠 FEATURE FLAG LOGGING
     logFeatureFlags();
     
@@ -663,6 +681,9 @@ export async function POST(request: NextRequest) {
         const cachedResult = await lookupWithCache(brand || '', product_name, queryId);
         
         if (cachedResult && cachedResult.cache_hit) {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_HIT] brand=${brand || 'unknown'}`);
+          }
           console.log('✅ [Early Cache] HIT → Returning cached result for manual entry');
           
           // Build structured trace for early cache hit
@@ -685,6 +706,9 @@ export async function POST(request: NextRequest) {
             query_id: queryId
               });
             } else {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
+          }
           console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for manual entry');
         }
       }
@@ -968,6 +992,9 @@ export async function POST(request: NextRequest) {
         );
         
         if (cachedResult && cachedResult.cache_hit) {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_HIT] brand=${currentProductData.brand || 'unknown'}`);
+          }
           console.log('✅ [Early Cache] HIT → Returning cached result for image-extracted data');
           
           // Build structured trace for early cache hit with vision stages
@@ -1004,6 +1031,9 @@ export async function POST(request: NextRequest) {
             query_id: queryId
           });
         } else {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_MISS] brand=${currentProductData.brand || 'unknown'}`);
+          }
           console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for image-extracted data');
         }
       }
@@ -1336,6 +1366,18 @@ export async function POST(request: NextRequest) {
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
         agentExecutionStages: mergedResult.agent_execution_trace?.sections?.reduce((total: number, section: any) => total + section.stages.length, 0) || 0
       });
+
+      // Disambiguation trigger marker
+      if (ownershipResult.disambiguation_options && ownershipResult.disambiguation_options.length > 0) {
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`[DISAMBIGUATION_TRIGGERED] brand=${currentProductData.brand || 'unknown'}, candidates=${ownershipResult.disambiguation_options.length}`);
+        }
+      }
+
+      // Final result marker
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`[RESULT_READY] brand=${currentProductData.brand || 'unknown'}, owner=${ownershipResult.financial_beneficiary || 'unknown'}, verified=${!!ownershipResult.verification_status}`);
+      }
 
       // 🧠 TRACE SUMMARY LOGGING
       logTraceSummary(mergedResult);
