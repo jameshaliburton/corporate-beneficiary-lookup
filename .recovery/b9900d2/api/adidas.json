@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "brand": "Adidas",
+  "financial_beneficiary": "Adidas Inc.",
+  "beneficiary_country": "United States",
+  "confidence_score": 85,
+  "ownership_flow": [
+    {
+      "name": "Adidas",
+      "type": "Brand/Product",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": false
+    },
+    {
+      "name": "Adidas Inc.",
+      "type": "Ultimate Owner",
+      "country": "United States",
+      "flag": "🇺🇸",
+      "ultimate": true
+    }
+  ],
+  "narrative": {
+    "headline": "Adidas owned by Adidas Inc. in United States",
+    "what_we_found": "Adidas is owned by Adidas Inc., a US-based company.",
+    "how_we_figured_it_out": "AI analysis was used to determine the ownership structure.",
+    "tldr": "Adidas is owned by its parent company Adidas Inc.",
+    "stage_labels": [
+      "AI analysis"
+    ],
+    "emoji": "🧠",
+    "risk_flags": [
+      "Unverified"
+    ],
+    "story": "The story of Adidas: This iconic brand is part of the Adidas family, created by the American company Adidas Inc. From their headquarters in the United States, they've been building their brand presence and market share.",
+    "used_sources": [],
+    "safety_flags": {
+      "truncated": false,
+      "removed_unverifiable": false
+    }
+  },
+  "trace": {
+    "trace_id": "mock-trace-id",
+    "start_time": "2025-08-11T09:08:36.650Z",
+    "stages": [
+      {
+        "name": "cache_check",
+        "status": "success"
+      },
+      {
+        "name": "llm_first_analysis",
+        "status": "success"
+      }
+    ],
+    "result_type": "llm_first_analysis",
+    "cache_hit": false
+  }
+}

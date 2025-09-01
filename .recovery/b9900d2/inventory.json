@@ -1,0 +1,66 @@
+{
+  "commit": "b9900d2",
+  "timestamp": "2025-08-11T10:12:04Z",
+  "files": {
+    "src/app/api/lookup/route.ts": {
+      "exists": true,
+      "exports": ["POST"]
+    },
+    "src/components/ProductResult.tsx": {
+      "exists": true,
+      "exports": ["ProductResult"]
+    },
+    "src/components/phase5-ui/BehindTheScenes.tsx": {
+      "exists": true,
+      "exports": ["BehindTheScenes"]
+    },
+    "src/lib/trace/traceLogger.ts": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents": {
+      "exists": true,
+      "files": []
+    },
+    "src/lib/agents/web-research-agent": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/webResearch/registryIndex": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents/companiesHouse": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents/cvr": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents/brreg": {
+      "exists": false,
+      "exports": []
+    },
+    "src/types/OwnershipResultMetadata": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents/storyGenerator": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/agents/narrativeGenerator": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/utils/metadataFormatter": {
+      "exists": false,
+      "exports": []
+    },
+    "src/lib/utils/breadcrumbBuilder": {
+      "exists": false,
+      "exports": []
+    }
+  }
+}

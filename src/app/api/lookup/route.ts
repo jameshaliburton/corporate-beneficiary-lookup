@@ -5,18 +5,126 @@ import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
+import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
 
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
 import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
-import { generateOwnershipCopy } from '@/lib/services/copy-generator';
+import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
+import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
+
+/**
+ * Simplified Gemini verification for cache hit results
+ */
+async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand: string, product_name: string, queryId: string) {
+  console.log("[GEMINI_INLINE_CACHE_HIT] Starting Gemini verification for cache hit result");
+  
+  // Check if result already has verification status
+  const hasExistingVerification = Boolean(
+    ownershipResult.verification_status ||
+    ownershipResult.agent_results?.gemini_analysis?.data?.verification_status
+  );
+  
+  // Check if result has zero confidence (garbage/no result)
+  const isGarbageResult = ownershipResult.confidence_score === 0;
+  
+  // Check if Gemini is available
+  const geminiAvailable = isGeminiOwnershipAnalysisAvailable();
+  
+  // Check if existing verification is insufficient (should re-run)
+  const hasInsufficientVerification = ownershipResult.verification_status === 'insufficient_evidence';
+  
+  console.log("[GEMINI_INLINE_CACHE_HIT] Verification check:", {
+    brand,
+    hasExistingVerification,
+    isGarbageResult,
+    geminiAvailable,
+    hasInsufficientVerification,
+    existing_verification_status: ownershipResult.verification_status,
+    verification_fields_present: {
+      verification_status: !!ownershipResult.verification_status,
+      verified_at: !!ownershipResult.verified_at,
+      verification_method: !!ownershipResult.verification_method,
+      verification_notes: !!ownershipResult.verification_notes
+    }
+  });
+  
+  // Determine if Gemini should run
+  // Run if: no existing verification OR existing verification is insufficient
+  const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification) && !isGarbageResult && geminiAvailable;
+  
+  if (shouldRunGemini) {
+    try {
+      console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
+      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+        brand: brand,
+        product_name: product_name,
+        ownershipData: {
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          confidence_score: ownershipResult.confidence_score,
+          research_method: ownershipResult.result_type,
+          sources: ownershipResult.sources
+        },
+        hints: {},
+        queryId: queryId
+      });
+      
+      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+        // Add verification fields to top level
+        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
+        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
+        
+        // Add Gemini results to agent_results
+        if (!ownershipResult.agent_results) {
+          ownershipResult.agent_results = {};
+        }
+        
+        ownershipResult.agent_results.gemini_analysis = {
+          success: true,
+          type: "ownership_verification",
+          agent: "GeminiOwnershipVerificationAgent",
+          data: geminiAnalysis.gemini_result,
+          reasoning: 'Gemini verification completed',
+          web_snippets_count: geminiAnalysis.web_snippets_count,
+          search_queries_used: geminiAnalysis.search_queries_used
+        };
+        
+        // Add agent path tracking
+        if (!ownershipResult.agent_path) {
+          ownershipResult.agent_path = [];
+        }
+        ownershipResult.agent_path.push("gemini_verification_inline_cache");
+        
+        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
+        
+        // Gemini verification marker
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`[GEMINI_VERIFIED] brand=${brand}, status=${ownershipResult.verification_status || 'unknown'}, confidence=${ownershipResult.confidence_score || 'unknown'}`);
+        }
+        
+        return true;
+      }
+    } catch (geminiError) {
+      console.error('[GEMINI_INLINE_CACHE_HIT] Gemini agent failed:', geminiError);
+    }
+  } else {
+    console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
+  }
+  
+  return false;
+}
 
 // 🧠 NORMALIZED CACHE KEY FUNCTION
 function makeCacheKey(brand: string, product?: string): string {
@@ -185,6 +293,7 @@ function isProductDataMeaningful(productData: any): boolean {
 async function lookupWithCache(brand: string, productName?: string, queryId?: string) {
   const cacheKey = makeCacheKey(brand, productName);
   console.log('🧠 [Shared Cache] Looking up key:', cacheKey);
+  console.log('[CACHE_DEBUG] Starting cache lookup for:', { brand, productName, cacheKey });
   
   const cachedResult = await logAgentExecution('CacheLookup', async () => {
     const normalizedBrand = brand?.toLowerCase().trim();
@@ -195,9 +304,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       return null;
     }
     
+    // Import service client for cache reads (to bypass RLS)
+    const { getServiceClient } = await import('@/lib/database/service-client');
+    const serviceClient = getServiceClient();
+    
     // Try brand + product name first
     if (normalizedProductName) {
-      const { data: brandProductData, error: brandProductError } = await supabase
+      const { data: brandProductData, error: brandProductError } = await serviceClient
         .from('products')
         .select('*')
         .eq('brand', normalizedBrand)
@@ -205,36 +318,59 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         .limit(1);
       
       if (brandProductError) {
-        console.error('[Shared Cache] Database error:', brandProductError);
+        console.error('[CACHE_ERROR] Database error:', brandProductError);
       } else if (brandProductData && brandProductData.length > 0) {
-        console.log('🧠 [Shared Cache] HIT → Brand + Product:', normalizedBrand, '+', normalizedProductName);
+        console.log('[CACHE_HIT] Brand + Product:', normalizedBrand, '+', normalizedProductName);
+        console.log('[CACHE_DEBUG] Retrieved verification fields:', {
+          verification_status: brandProductData[0].verification_status,
+          verified_at: brandProductData[0].verified_at,
+          verification_method: brandProductData[0].verification_method,
+          verification_notes: brandProductData[0].verification_notes,
+          agent_path: brandProductData[0].agent_path
+        });
         return brandProductData[0];
       }
     }
     
     // Fallback to brand-only lookup
-    const { data: brandData, error: brandError } = await supabase
+    const { data: brandData, error: brandError } = await serviceClient
       .from('products')
       .select('*')
       .eq('brand', normalizedBrand)
       .limit(1);
     
     if (brandError) {
-      console.error('[Shared Cache] Database error:', brandError);
+      console.error('[CACHE_ERROR] Database error:', brandError);
       return null;
     }
     
     if (brandData && brandData.length > 0) {
-      console.log('🧠 [Shared Cache] HIT → Brand only:', normalizedBrand);
+      console.log('[CACHE_HIT] Brand only:', normalizedBrand);
+      console.log('[CACHE_DEBUG] Retrieved verification fields (brand-only):', {
+        verification_status: brandData[0].verification_status,
+        verified_at: brandData[0].verified_at,
+        verification_method: brandData[0].verification_method,
+        verification_notes: brandData[0].verification_notes,
+        agent_path: brandData[0].agent_path
+      });
       return brandData[0];
     }
     
-    console.log('🧠 [Shared Cache] MISS → No cached data found');
+    console.log('[CACHE_MISS] No cached data found');
     return null;
   });
   
   if (cachedResult && cachedResult.financial_beneficiary && cachedResult.financial_beneficiary !== 'Unknown') {
     console.log('✅ [Shared Cache] HIT → Brand:', cachedResult.brand, 'Product:', cachedResult.product_name);
+    console.log("[OWNERSHIP_ROUTING_TRACE]", {
+      brand: cachedResult.brand,
+      reason: "Using cached result",
+      timestamp: new Date().toISOString(),
+      beneficiary: cachedResult.financial_beneficiary,
+      confidence: cachedResult.confidence_score,
+      verification_status: cachedResult.verification_status,
+      enhanced_agent_called: false
+    });
     
     if (queryId) {
       await emitProgress(queryId, 'cache_check', 'completed', { 
@@ -245,20 +381,36 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       });
     }
     
-    // 🎨 ALWAYS GENERATE FRESH COPY (even on cache hit)
-    console.log('🎨 [Shared Cache] Generating fresh copy for cached ownership data...');
-    const generatedCopy = await generateOwnershipCopy({
-      brand: cachedResult.brand,
-      ultimateOwner: cachedResult.financial_beneficiary,
-      ultimateCountry: cachedResult.beneficiary_country,
-      ownershipChain: cachedResult.ownership_flow || [],
+    // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
+    console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
+    const narrative = await generateNarrativeFromResult({
+      brand_name: cachedResult.brand,
+      brand_country: cachedResult.brand_country,
+      ultimate_owner: cachedResult.financial_beneficiary,
+      ultimate_owner_country: cachedResult.beneficiary_country,
+      financial_beneficiary: cachedResult.financial_beneficiary,
+      financial_beneficiary_country: cachedResult.beneficiary_country,
+      ownership_type: cachedResult.ownership_structure_type,
       confidence: cachedResult.confidence_score || 0,
-      ownershipStructureType: cachedResult.ownership_structure_type,
-      sources: cachedResult.sources || [],
-      reasoning: cachedResult.reasoning,
-      beneficiaryFlag: cachedResult.beneficiary_flag
+      ownership_notes: cachedResult.ownership_notes,
+      behind_the_scenes: cachedResult.behind_the_scenes
     });
-    console.log('✅ [Shared Cache] Generated fresh copy:', generatedCopy);
+    console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
+    
+    // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
+    const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
+    
+    // 💾 PERSIST ENHANCED RESULT BACK TO CACHE
+    if (geminiVerificationRan) {
+      console.log("[GEMINI_INLINE_CACHE_HIT] Persisting enhanced result back to cache");
+      console.log("[GEMINI_INLINE_CACHE_HIT] Verification fields being saved:", {
+        verification_status: cachedResult.verification_status,
+        verified_at: cachedResult.verified_at,
+        verification_method: cachedResult.verification_method,
+        verification_notes: cachedResult.verification_notes
+      });
+      await saveToCache(cachedResult.brand, cachedResult.product_name, cachedResult);
+    }
     
     return {
       success: true,
@@ -288,11 +440,35 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       agent_execution_trace: cachedResult.agent_execution_trace,
       result_type: cachedResult.result_type || 'cache_hit',
       pipeline_type: 'cache_hit',
-      generated_copy: generatedCopy,
-      cache_hit: true
+      // Gemini verification fields
+      verification_status: cachedResult.verification_status || 'unknown',
+      verification_confidence_change: cachedResult.verification_confidence_change || null,
+      verification_evidence: cachedResult.verification_evidence || null,
+      verified_at: cachedResult.verified_at || null,
+      verification_method: cachedResult.verification_method || null,
+      confidence_assessment: cachedResult.confidence_assessment || null,
+      verification_notes: cachedResult.verification_notes || null,
+      // New narrative fields for engaging storytelling
+      headline: narrative.headline,
+      tagline: narrative.tagline,
+      story: narrative.story,
+      ownership_notes: narrative.ownership_notes,
+      behind_the_scenes: narrative.behind_the_scenes,
+      narrative_template_used: narrative.template_used,
+      cache_hit: true,
+      agent_path: cachedResult.agent_path || []
     };
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
+    }
     console.log('❌ [Shared Cache] MISS → Proceeding to ownership research');
+    console.log("[OWNERSHIP_ROUTING_TRACE]", {
+      brand: brand,
+      reason: "Cache miss - proceeding to enhanced agent",
+      timestamp: new Date().toISOString(),
+      enhanced_agent_called: true
+    });
     
     if (queryId) {
       await emitProgress(queryId, 'cache_check', 'completed', { 
@@ -313,13 +489,18 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       const cacheKey = makeCacheKey(brand, productName);
       console.log('💾 [Shared Cache] Saving to cache with key:', cacheKey);
 
+      // Import service client for cache writes
+      const { safeCacheWrite } = await import('@/lib/database/service-client');
+
       // Save brand + product name entry
       if (productName) {
-        const { error: saveError } = await supabase
+        const saveResult = await safeCacheWrite(async (client) => {
+          const { data, error } = await client
           .from('products')
           .upsert({
-            brand: brand?.toLowerCase().trim(),
-            product_name: productName?.toLowerCase().trim(),
+              barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
+              brand: brand?.toLowerCase().trim(),
+              product_name: productName?.toLowerCase().trim(),
             financial_beneficiary: ownershipResult.financial_beneficiary,
             beneficiary_country: ownershipResult.beneficiary_country,
             beneficiary_flag: ownershipResult.beneficiary_flag,
@@ -330,13 +511,25 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             reasoning: ownershipResult.reasoning,
             agent_results: ownershipResult.agent_results,
             result_type: ownershipResult.result_type,
+            // Gemini verification fields
+            verification_status: ownershipResult.verification_status,
+            verified_at: ownershipResult.verified_at,
+            verification_method: ownershipResult.verification_method,
+            verification_notes: ownershipResult.verification_notes,
+            confidence_assessment: ownershipResult.confidence_assessment,
+            agent_path: ownershipResult.agent_path,
             updated_at: new Date().toISOString()
-          });
+            })
+            .select();
 
-        if (saveError) {
-          console.error('💾 [Shared Cache] Error saving brand+product entry:', saveError);
+          if (error) throw error;
+          return data;
+        }, 'BrandProductCacheWrite');
+
+        if (saveResult.success) {
+          console.log('[CACHE_WRITE_SUCCESS] Brand+product entry:', cacheKey);
         } else {
-          console.log('💾 [Shared Cache] Saved brand+product entry:', cacheKey);
+          console.error('[CACHE_WRITE_ERROR] Brand+product entry:', saveResult.error);
         }
       }
 
@@ -344,10 +537,12 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       const brandKey = makeCacheKey(brand);
       console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
 
-      const { error: brandSaveError } = await supabase
+      const brandSaveResult = await safeCacheWrite(async (client) => {
+        const { data, error } = await client
         .from('products')
         .upsert({
-          brand: brand?.toLowerCase().trim(),
+            barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
+            brand: brand?.toLowerCase().trim(),
           product_name: null, // Brand-only entry
           financial_beneficiary: ownershipResult.financial_beneficiary,
           beneficiary_country: ownershipResult.beneficiary_country,
@@ -359,13 +554,25 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           reasoning: ownershipResult.reasoning,
           agent_results: ownershipResult.agent_results,
           result_type: ownershipResult.result_type,
+          // Gemini verification fields
+          verification_status: ownershipResult.verification_status,
+          verified_at: ownershipResult.verified_at,
+          verification_method: ownershipResult.verification_method,
+          verification_notes: ownershipResult.verification_notes,
+          confidence_assessment: ownershipResult.confidence_assessment,
+          agent_path: ownershipResult.agent_path,
           updated_at: new Date().toISOString()
-        });
+          })
+          .select();
 
-      if (brandSaveError) {
-        console.error('💾 [Shared Cache] Error saving brand-only entry:', brandSaveError);
-      } else {
-        console.log('💾 [Shared Cache] Saved brand-only entry:', brandKey);
+        if (error) throw error;
+        return data;
+      }, 'BrandOnlyCacheWrite');
+
+      if (brandSaveResult.success) {
+        console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', brandKey);
+            } else {
+        console.error('[CACHE_WRITE_ERROR] Brand-only entry:', brandSaveResult.error);
       }
 
     } catch (cacheError) {
@@ -376,6 +583,21 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
 export async function POST(request: NextRequest) {
   try {
+    // Log feature flags at the start of each request
+    console.log('🔧 Feature Flags:', {
+      ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
+      ENABLE_DISAMBIGUATION_AGENT: process.env.ENABLE_DISAMBIGUATION_AGENT === 'true',
+      ENABLE_AGENT_REPORTS: process.env.ENABLE_AGENT_REPORTS === 'true',
+      ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
+    });
+    
+    // Debug environment variables
+    console.log('🔧 Environment Variables:', {
+      ANTHROPIC_API_KEY_PRESENT: !!process.env.ANTHROPIC_API_KEY,
+      ANTHROPIC_API_KEY_LENGTH: process.env.ANTHROPIC_API_KEY?.length || 0,
+      NODE_ENV: process.env.NODE_ENV
+    });
+    
     let body;
     try {
       body = await request.json();
@@ -390,8 +612,20 @@ export async function POST(request: NextRequest) {
     
     const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null } = body;
     
+    // Extract request metadata for logging
+    const ip_country = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+    const lang_hint = request.headers.get('accept-language')?.split(',')[0] || 'unknown';
+    
+    // Top-level request marker
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[OWNERSHIP_REQUEST] brand=${brand || 'unknown'}, product=${product_name || 'unknown'}, ip_country=${ip_country}, lang_hint=${lang_hint}`);
+    }
+    
     // 🧠 FEATURE FLAG LOGGING
     logFeatureFlags();
+    
+    // 🧠 RUNTIME CONFIG LOGGING
+    printMinimalRuntimeConfig('API_LOOKUP_HANDLER');
     
     // 🧠 PIPELINE TRIGGER LOGGING
     logPipelineTrigger({ barcode, product_name, brand, image_base64, evaluation_mode });
@@ -447,6 +681,9 @@ export async function POST(request: NextRequest) {
         const cachedResult = await lookupWithCache(brand || '', product_name, queryId);
         
         if (cachedResult && cachedResult.cache_hit) {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_HIT] brand=${brand || 'unknown'}`);
+          }
           console.log('✅ [Early Cache] HIT → Returning cached result for manual entry');
           
           // Build structured trace for early cache hit
@@ -467,8 +704,11 @@ export async function POST(request: NextRequest) {
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
             query_id: queryId
-          });
-        } else {
+              });
+            } else {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
+          }
           console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for manual entry');
         }
       }
@@ -516,7 +756,7 @@ export async function POST(request: NextRequest) {
         // Prepare user data if provided
         const userData = (product_name || brand) ? {
           product_name,
-          brand,
+    brand,
           region_hint: hints.country_of_origin
         } : null;
         
@@ -533,7 +773,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
-            success: false,
+      success: false, 
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
             product_data: {
@@ -609,7 +849,7 @@ export async function POST(request: NextRequest) {
           };
           
           await emitProgress(queryId, 'manual_entry', 'completed', currentProductData);
-        } else {
+  } else {
           // Only image provided - we'll handle this in the vision analysis section below
           currentProductData = {
             product_name: null,
@@ -664,7 +904,7 @@ export async function POST(request: NextRequest) {
           } else {
             console.log('❌ [Vision-First] No fallback data available');
             return NextResponse.json({
-              success: false,
+      success: false, 
               requires_manual_entry: true,
               reason: 'vision_extraction_failed_no_fallback',
               vision_context: visionContext,
@@ -752,6 +992,9 @@ export async function POST(request: NextRequest) {
         );
         
         if (cachedResult && cachedResult.cache_hit) {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_HIT] brand=${currentProductData.brand || 'unknown'}`);
+          }
           console.log('✅ [Early Cache] HIT → Returning cached result for image-extracted data');
           
           // Build structured trace for early cache hit with vision stages
@@ -788,6 +1031,9 @@ export async function POST(request: NextRequest) {
             query_id: queryId
           });
         } else {
+          if (process.env.NODE_ENV === 'production') {
+            console.log(`[CACHE_MISS] brand=${currentProductData.brand || 'unknown'}`);
+          }
           console.log('❌ [Early Cache] MISS → Proceeding with full pipeline for image-extracted data');
         }
       }
@@ -865,6 +1111,13 @@ export async function POST(request: NextRequest) {
         ...(visionContext?.getHints() || {})
       };
       
+      console.log("[OWNERSHIP_ROUTING_TRACE]", {
+        brand: currentProductData.brand,
+        reason: "Calling EnhancedAgentOwnershipResearch",
+        timestamp: new Date().toISOString(),
+        enhanced_agent_called: true
+      });
+      
       const ownershipResult = await logAgentExecution('EnhancedAgentOwnershipResearch', () => 
         EnhancedAgentOwnershipResearch({
           barcode: identifier,
@@ -901,12 +1154,17 @@ export async function POST(request: NextRequest) {
         console.log('✅ [Pipeline] Database save confirmed - ownership result persisted');
         
         // 💾 SHARED CACHE SAVING - Save successful ownership results to cache
+        console.log('[CACHE_DEBUG] About to save to cache:', { 
+          brand: currentProductData.brand, 
+          product: currentProductData.product_name,
+          beneficiary: ownershipResult.financial_beneficiary 
+        });
         await saveToCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
         
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
-          success: false,
+      success: false,
           reason: 'no_valid_ownership_result'
         });
         
@@ -1027,10 +1285,24 @@ export async function POST(request: NextRequest) {
         beneficiaryFlag: ownershipResult.beneficiary_flag
       };
       
-      console.log('🎨 Starting copy generation...');
-      console.log('🎨 Ownership data:', JSON.stringify(ownershipData, null, 2));
-      const generatedCopy = await generateOwnershipCopy(ownershipData);
-      console.log('✅ Generated copy:', JSON.stringify(generatedCopy, null, 2));
+      console.log('🎨 Starting narrative generation...');
+      const narrative = await generateNarrativeFromResult({
+        brand_name: currentProductData.brand,
+        brand_country: ownershipResult.brand_country,
+        ultimate_owner: ownershipResult.financial_beneficiary,
+        ultimate_owner_country: ownershipResult.beneficiary_country,
+        financial_beneficiary: ownershipResult.financial_beneficiary,
+        financial_beneficiary_country: ownershipResult.beneficiary_country,
+        ownership_type: ownershipResult.ownership_structure_type,
+        confidence: ownershipResult.confidence_score || 0,
+        acquisition_year: ownershipResult.acquisition_year,
+        previous_owner: ownershipResult.previous_owner,
+        vision_context: visionContext,
+        disambiguation_options: ownershipResult.disambiguation_options,
+        ownership_notes: ownershipResult.ownership_notes,
+        behind_the_scenes: ownershipResult.behind_the_scenes
+      });
+      console.log('✅ Generated narrative:', narrative);
       
       const mergedResult = {
         success: true,
@@ -1057,6 +1329,14 @@ export async function POST(request: NextRequest) {
         result_type: mapToExternalResultType(currentProductData.result_type, ownershipResult.result_type),
         user_contributed: !!(product_name || brand),
         agent_execution_trace: sharedTrace,
+        // Gemini verification fields
+        verification_status: ownershipResult.verification_status || 'unknown',
+        verification_confidence_change: ownershipResult.verification_confidence_change || null,
+        verification_evidence: ownershipResult.verification_evidence || null,
+        verified_at: ownershipResult.verified_at || null,
+        verification_method: ownershipResult.verification_method || null,
+        confidence_assessment: ownershipResult.confidence_assessment || null,
+        verification_notes: ownershipResult.verification_notes || null,
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,
@@ -1070,8 +1350,13 @@ export async function POST(request: NextRequest) {
           reasoning: visionContext.reasoning
         } : null,
         pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
-        // LLM-generated copy for engaging storytelling
-        generated_copy: generatedCopy,
+        // New narrative fields for engaging storytelling
+        headline: narrative.headline,
+        tagline: narrative.tagline,
+        story: narrative.story,
+        ownership_notes: narrative.ownership_notes,
+        behind_the_scenes: narrative.behind_the_scenes,
+        narrative_template_used: narrative.template_used,
         query_id: queryId
       };
 
@@ -1081,6 +1366,18 @@ export async function POST(request: NextRequest) {
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
         agentExecutionStages: mergedResult.agent_execution_trace?.sections?.reduce((total: number, section: any) => total + section.stages.length, 0) || 0
       });
+
+      // Disambiguation trigger marker
+      if (ownershipResult.disambiguation_options && ownershipResult.disambiguation_options.length > 0) {
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`[DISAMBIGUATION_TRIGGERED] brand=${currentProductData.brand || 'unknown'}, candidates=${ownershipResult.disambiguation_options.length}`);
+        }
+      }
+
+      // Final result marker
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`[RESULT_READY] brand=${currentProductData.brand || 'unknown'}, owner=${ownershipResult.financial_beneficiary || 'unknown'}, verified=${!!ownershipResult.verification_status}`);
+      }
 
       // 🧠 TRACE SUMMARY LOGGING
       logTraceSummary(mergedResult);
