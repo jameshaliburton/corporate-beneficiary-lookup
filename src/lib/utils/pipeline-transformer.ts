@@ -69,6 +69,14 @@ export interface PipelineResult {
       mapping: string;
     };
   };
+  // Gemini verification fields
+  verification_status?: string;
+  verification_confidence_change?: string;
+  verification_evidence?: any;
+  verified_at?: string;
+  verification_method?: string;
+  confidence_assessment?: any;
+  verification_notes?: string;
 }
 
 export interface OwnershipNode {
@@ -115,6 +123,14 @@ export interface ProductResultProps {
       mapping: string;
     };
   };
+  // Gemini verification fields
+  verificationStatus?: string;
+  verificationConfidenceChange?: string;
+  verificationEvidence?: any;
+  verifiedAt?: string;
+  verificationMethod?: string;
+  confidenceAssessment?: any;
+  verificationNotes?: string;
 }
 
 export async function transformPipelineData(pipelineResult: PipelineResult): Promise<ProductResultProps> {
@@ -254,6 +270,14 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     sources: pipelineResult.sources,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
+    // Gemini verification fields
+    verificationStatus: pipelineResult.verification_status,
+    verificationConfidenceChange: pipelineResult.verification_confidence_change,
+    verificationEvidence: pipelineResult.verification_evidence,
+    verifiedAt: pipelineResult.verified_at,
+    verificationMethod: pipelineResult.verification_method,
+    confidenceAssessment: pipelineResult.confidence_assessment,
+    verificationNotes: pipelineResult.verification_notes,
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline

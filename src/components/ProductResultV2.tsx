@@ -192,7 +192,7 @@ export default function ProductResultV2({
             <div className="flex flex-col items-center gap-4">
               <VerificationBadge
                 status={normalizeVerificationStatus(result.verification_status)}
-                confidenceChange={result.verification_confidence_change}
+                confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
               />
               
               {/* Verification Details Panel */}
@@ -200,7 +200,7 @@ export default function ProductResultV2({
                 <VerificationDetailsPanel
                   status={normalizeVerificationStatus(result.verification_status)}
                   evidence={result.verification_evidence}
-                  confidenceChange={result.verification_confidence_change}
+                  confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
                 />
               )}
             </div>
