@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { getServiceClient } from '../database/service-client.js';
+import { getServiceClient } from '../database/service-client';
 import { createEnhancedTraceLogger, EnhancedStageTracker, REASONING_TYPES } from '../agents/enhanced-trace-logging.js';
 
 const openai = new OpenAI({
