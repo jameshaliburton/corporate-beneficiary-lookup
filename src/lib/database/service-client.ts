@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 let supabase: any = null;
 
 // Only initialize Supabase if environment variables are available
-if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 }
 
 export async function safeCacheWrite<T>(
