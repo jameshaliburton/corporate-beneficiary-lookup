@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 export async function performGeminiOwnershipAnalysis(brand, productName, existingResult) {
   try {
@@ -222,7 +222,7 @@ function removeDuplicateSnippets(snippets) {
 }
 
 export function isGeminiOwnershipAnalysisAvailable() {
-  return !!process.env.GEMINI_API_KEY;
+  return !!process.env.GOOGLE_API_KEY;
 }
 
 export class GeminiOwnershipAnalysisAgent {
