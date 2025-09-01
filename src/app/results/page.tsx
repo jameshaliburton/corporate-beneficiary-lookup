@@ -64,6 +64,14 @@ interface PipelineResult {
   };
   result_type?: string;
   user_contributed?: boolean;
+  // Gemini verification fields
+  verification_status?: string;
+  verification_confidence_change?: string;
+  verification_evidence?: any;
+  verified_at?: string;
+  verification_method?: string;
+  confidence_assessment?: any;
+  verification_notes?: string;
 }
 
 interface OwnershipNode {

@@ -63,28 +63,18 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   if (shouldRunGemini) {
     try {
       console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
-      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-        brand: brand,
-        product_name: product_name,
-        ownershipData: {
-          financial_beneficiary: ownershipResult.financial_beneficiary,
-          confidence_score: ownershipResult.confidence_score,
-          research_method: ownershipResult.result_type,
-          sources: ownershipResult.sources
-        },
-        hints: {},
-        queryId: queryId
-      });
+      const geminiAgent = new GeminiOwnershipAnalysisAgent();
+      const geminiAnalysis = await geminiAgent.analyze(brand, product_name, ownershipResult);
       
-      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
+      if (geminiAnalysis) {
         // Add verification fields to top level
-        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
-        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
-        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
-        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
-        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
-        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
-        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
+        ownershipResult.verification_status = geminiAnalysis.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.verification_method || 'gemini_web_search';
+        ownershipResult.verification_notes = geminiAnalysis.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.verification_evidence || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change || null;
         
         // Add Gemini results to agent_results
         if (!ownershipResult.agent_results) {
@@ -92,13 +82,11 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         
         ownershipResult.agent_results.gemini_analysis = {
-          success: true,
+    success: true,
           type: "ownership_verification",
           agent: "GeminiOwnershipVerificationAgent",
-          data: geminiAnalysis.gemini_result,
-          reasoning: 'Gemini verification completed',
-          web_snippets_count: geminiAnalysis.web_snippets_count,
-          search_queries_used: geminiAnalysis.search_queries_used
+          data: geminiAnalysis,
+          reasoning: 'Gemini verification completed'
         };
         
         // Add agent path tracking
@@ -773,7 +761,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
-      success: false, 
+      success: false,
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
             product_data: {
@@ -962,11 +950,11 @@ export async function POST(request: NextRequest) {
         }
 
 
-      } else {
+          } else {
         // No meaningful data available
         console.log('❌ [Vision-First] No meaningful product data available');
         return NextResponse.json({
-          success: false,
+      success: false, 
           requires_manual_entry: true,
           reason: 'no_meaningful_data_vision_first',
           product_data: currentProductData,
@@ -1030,7 +1018,7 @@ export async function POST(request: NextRequest) {
             agent_execution_trace: structuredTrace,
             query_id: queryId
           });
-        } else {
+      } else {
           if (process.env.NODE_ENV === 'production') {
             console.log(`[CACHE_MISS] brand=${currentProductData.brand || 'unknown'}`);
           }
@@ -1164,7 +1152,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
-      success: false,
+        success: false,
           reason: 'no_valid_ownership_result'
         });
         
