@@ -301,9 +301,10 @@ Image: {{image_base64}}`
         if (maybeRunGeminiVerificationForCacheHit) {
           console.log('🔍 Running Gemini verification for cached result...');
           geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+            cachedData,
             initialAnalysis.brand_name,
             initialAnalysis.product_name,
-            cachedData
+            `img_${Date.now()}`
           );
           console.log('✅ Gemini verification completed:', geminiVerification);
         }
@@ -383,9 +384,10 @@ Image: {{image_base64}}`
         if (maybeRunGeminiVerificationForCacheHit) {
           console.log('🔍 Running Gemini verification for ownership mapping result...');
           geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+            ownershipData,
             initialAnalysis.brand_name,
             initialAnalysis.product_name,
-            ownershipData
+            `img_${Date.now()}`
           );
           console.log('✅ Gemini verification completed:', geminiVerification);
         }
@@ -491,15 +493,16 @@ Image: {{image_base64}}`
               const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route');
       if (maybeRunGeminiVerificationForCacheHit) {
         console.log('🔍 Running Gemini verification for new analysis result...');
-        geminiVerification = await maybeRunGeminiVerificationForCacheHit(
-          finalAnalysis.brand_name,
-          finalAnalysis.product_name,
-          {
-            brand: finalAnalysis.brand_name,
-            product_name: finalAnalysis.product_name,
-            confidence_score: finalAnalysis.confidence
-          }
-        );
+                  geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+            {
+              brand: finalAnalysis.brand_name,
+              product_name: finalAnalysis.product_name,
+              confidence_score: finalAnalysis.confidence
+            },
+            finalAnalysis.brand_name,
+            finalAnalysis.product_name,
+            `img_${Date.now()}`
+          );
         console.log('✅ Gemini verification completed:', geminiVerification);
       }
     } catch (error) {
