@@ -614,7 +614,7 @@ export async function POST(request: NextRequest) {
   try {
     // Log feature flags at the start of each request
     console.log('🔧 Feature Flags:', {
-      ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
+      ENABLE_GEMINI_OWNERSHIP_AGENT: true, // Temporarily hardcoded for testing
       ENABLE_DISAMBIGUATION_AGENT: process.env.ENABLE_DISAMBIGUATION_AGENT === 'true',
       ENABLE_AGENT_REPORTS: process.env.ENABLE_AGENT_REPORTS === 'true',
       ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
