@@ -29,38 +29,38 @@ export function getVerificationConfig(status: VerificationStatus): VerificationC
       return {
         label: 'Verified by AI',
         icon: 'CheckCircle',
-        color: 'text-green-700',
-        bgColor: 'bg-green-50',
+        color: 'text-green-900',
+        bgColor: 'bg-green-100',
         borderColor: 'border-green-200',
-        iconColor: 'text-green-600'
+        iconColor: 'text-green-900'
       };
     case 'contradicted':
       return {
         label: 'Contradictory evidence',
         icon: 'AlertTriangle',
-        color: 'text-blue-700',
-        bgColor: 'bg-blue-50',
+        color: 'text-blue-900',
+        bgColor: 'bg-blue-100',
         borderColor: 'border-blue-200',
-        iconColor: 'text-blue-600'
+        iconColor: 'text-blue-900'
       };
     case 'mixed_evidence':
       return {
         label: 'Conflicting sources',
         icon: 'AlertTriangle',
-        color: 'text-blue-700',
-        bgColor: 'bg-blue-50',
+        color: 'text-blue-900',
+        bgColor: 'bg-blue-100',
         borderColor: 'border-blue-200',
-        iconColor: 'text-blue-600'
+        iconColor: 'text-blue-900'
       };
     case 'insufficient_evidence':
     default:
       return {
         label: 'Not enough info',
         icon: 'HelpCircle',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-50',
+        color: 'text-gray-700',
+        bgColor: 'bg-gray-100',
         borderColor: 'border-gray-200',
-        iconColor: 'text-gray-500'
+        iconColor: 'text-gray-700'
       };
   }
 }

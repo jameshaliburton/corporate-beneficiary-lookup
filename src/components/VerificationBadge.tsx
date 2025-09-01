@@ -22,44 +22,31 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         return {
           icon: CheckCircle,
           label: 'Verified by AI',
-          className: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
-          iconClassName: 'text-green-600'
+          className: 'bg-green-100 text-green-900',
+          iconClassName: 'text-green-900'
         };
       case 'contradicted':
         return {
           icon: AlertTriangle,
           label: 'Contradictory evidence',
-          className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-          iconClassName: 'text-blue-600'
+          className: 'bg-blue-100 text-blue-900',
+          iconClassName: 'text-blue-900'
         };
       case 'mixed_evidence':
         return {
           icon: AlertTriangle,
           label: 'Conflicting sources',
-          className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-          iconClassName: 'text-blue-600'
+          className: 'bg-blue-100 text-blue-900',
+          iconClassName: 'text-blue-900'
         };
       case 'insufficient_evidence':
       default:
         return {
           icon: HelpCircle,
           label: 'Not enough info',
-          className: 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100',
-          iconClassName: 'text-gray-500'
+          className: 'bg-gray-100 text-gray-700',
+          iconClassName: 'text-gray-700'
         };
-    }
-  };
-
-  const getConfidenceChangeIcon = () => {
-    switch (confidenceChange) {
-      case 'increased':
-        return <TrendingUp className="w-3 h-3 text-green-600" />;
-      case 'decreased':
-        return <TrendingDown className="w-3 h-3 text-red-600" />;
-      case 'unchanged':
-        return <Minus className="w-3 h-3 text-gray-500" />;
-      default:
-        return null;
     }
   };
 
@@ -84,7 +71,7 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       <Badge 
         variant="outline"
         className={cn(
-          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors",
+          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-0 transition-colors",
           config.className
         )}
         title={confidenceChange ? getConfidenceChangeText() : undefined}
@@ -92,13 +79,6 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
         <Icon className={cn("w-4 h-4", config.iconClassName)} />
         {config.label}
       </Badge>
-      
-      {confidenceChange && (
-        <div className="flex items-center gap-1 text-xs text-gray-500">
-          {getConfidenceChangeIcon()}
-          <span className="hidden sm:inline">({confidenceChange})</span>
-        </div>
-      )}
     </div>
   );
 };

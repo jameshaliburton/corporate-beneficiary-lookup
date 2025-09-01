@@ -24,16 +24,12 @@ export const VerificationBadgePreview: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-center">
-            <VerificationBadge
-              status="confirmed"
-              confidenceChange="increased"
-            />
+            <VerificationBadge status="confirmed" />
           </div>
-          <VerificationDetailsPanel
-            status="confirmed"
-            evidence={verificationTestData.confirmed.verification_evidence}
-            confidenceChange="increased"
-          />
+                      <VerificationDetailsPanel
+              status="confirmed"
+              evidence={verificationTestData.confirmed.verification_evidence}
+            />
         </CardContent>
       </Card>
 
@@ -47,16 +43,12 @@ export const VerificationBadgePreview: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-center">
-            <VerificationBadge
-              status="contradicted"
-              confidenceChange="decreased"
-            />
+            <VerificationBadge status="contradicted" />
           </div>
-          <VerificationDetailsPanel
-            status="contradicted"
-            evidence={verificationTestData.contradicted.verification_evidence}
-            confidenceChange="decreased"
-          />
+                      <VerificationDetailsPanel
+              status="contradicted"
+              evidence={verificationTestData.contradicted.verification_evidence}
+            />
         </CardContent>
       </Card>
 
@@ -70,16 +62,12 @@ export const VerificationBadgePreview: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-center">
-            <VerificationBadge
-              status="mixed_evidence"
-              confidenceChange="unchanged"
-            />
+            <VerificationBadge status="mixed_evidence" />
           </div>
-          <VerificationDetailsPanel
-            status="mixed_evidence"
-            evidence={verificationTestData.mixed_evidence.verification_evidence}
-            confidenceChange="unchanged"
-          />
+                      <VerificationDetailsPanel
+              status="mixed_evidence"
+              evidence={verificationTestData.mixed_evidence.verification_evidence}
+            />
         </CardContent>
       </Card>
 
@@ -93,66 +81,64 @@ export const VerificationBadgePreview: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-center">
-            <VerificationBadge
+            <VerificationBadge status="insufficient_evidence" />
+          </div>
+                      <VerificationDetailsPanel
               status="insufficient_evidence"
-              confidenceChange="unchanged"
+              evidence={verificationTestData.insufficient_evidence.verification_evidence}
             />
-          </div>
-          <VerificationDetailsPanel
-            status="insufficient_evidence"
-            evidence={verificationTestData.insufficient_evidence.verification_evidence}
-            confidenceChange="unchanged"
-          />
         </CardContent>
       </Card>
 
-      {/* Confidence Change Examples */}
+      {/* Badge Design System */}
       <Card>
         <CardHeader>
-          <CardTitle>Confidence Change Indicators</CardTitle>
+          <CardTitle>Badge Design System</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="text-center">
-              <VerificationBadge
-                status="confirmed"
-                confidenceChange="increased"
-              />
-              <p className="text-sm text-gray-600 mt-2">Increased</p>
+              <VerificationBadge status="confirmed" />
+              <p className="text-sm text-gray-600 mt-2">Green • Verified</p>
             </div>
             <div className="text-center">
-              <VerificationBadge
-                status="contradicted"
-                confidenceChange="decreased"
-              />
-              <p className="text-sm text-gray-600 mt-2">Decreased</p>
+              <VerificationBadge status="contradicted" />
+              <p className="text-sm text-gray-600 mt-2">Blue • Contradicted</p>
             </div>
             <div className="text-center">
-              <VerificationBadge
-                status="mixed_evidence"
-                confidenceChange="unchanged"
-              />
-              <p className="text-sm text-gray-600 mt-2">Unchanged</p>
+              <VerificationBadge status="mixed_evidence" />
+              <p className="text-sm text-gray-600 mt-2">Blue • Mixed</p>
+            </div>
+            <div className="text-center">
+              <VerificationBadge status="insufficient_evidence" />
+              <p className="text-sm text-gray-600 mt-2">Gray • Insufficient</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Mobile Responsive Test */}
+      {/* Lovable Design System */}
       <Card>
         <CardHeader>
-          <CardTitle>Mobile Responsive Layout</CardTitle>
+          <CardTitle>Lovable Design System Integration</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <p className="text-sm text-gray-600 mb-4">
-              On mobile devices, confidence change text is hidden and only icons are shown.
-            </p>
-            <div className="flex justify-center">
-              <VerificationBadge
-                status="confirmed"
-                confidenceChange="increased"
-              />
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <VerificationBadge status="confirmed" />
+              <span className="text-sm text-gray-600">Clean pill design with rounded-full</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <VerificationBadge status="contradicted" />
+              <span className="text-sm text-gray-600">Consistent text-xs font-medium</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <VerificationBadge status="mixed_evidence" />
+              <span className="text-sm text-gray-600">Proper spacing with gap-1.5</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <VerificationBadge status="insufficient_evidence" />
+              <span className="text-sm text-gray-600">Border-0 for clean appearance</span>
             </div>
           </div>
         </CardContent>

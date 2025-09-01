@@ -38,9 +38,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
         return {
           title: 'How do we verify this?',
           icon: CheckCircle,
-          className: 'bg-green-50 border-green-200',
-          headerClassName: 'text-green-800',
-          iconClassName: 'text-green-600'
+          className: 'bg-green-100 border-green-200',
+          headerClassName: 'text-green-900',
+          iconClassName: 'text-green-900'
         };
       case 'contradicted':
       case 'insufficient_evidence':
@@ -48,9 +48,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
         return {
           title: 'Verification Details',
           icon: AlertTriangle,
-          className: 'bg-blue-50 border-blue-200',
-          headerClassName: 'text-blue-800',
-          iconClassName: 'text-blue-600'
+          className: 'bg-blue-100 border-blue-200',
+          headerClassName: 'text-blue-900',
+          iconClassName: 'text-blue-900'
         };
     }
   };
@@ -98,8 +98,8 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Supporting Evidence */}
           {supportingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-green-700">
-                <CheckCircle className="w-4 h-4 text-green-600" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-green-900">
+                <CheckCircle className="w-4 h-4 text-green-900" />
                 Supporting Evidence
               </h4>
               <ul className="space-y-2">
@@ -115,8 +115,8 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Contradicting Evidence */}
           {contradictingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-red-700">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-blue-900">
+                <AlertTriangle className="w-4 h-4 text-blue-900" />
                 Contradicting Evidence
               </h4>
               <ul className="space-y-2">
@@ -133,7 +133,7 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {neutralEvidence.length > 0 && (
             <div>
               <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-700">
-                <HelpCircle className="w-4 h-4 text-gray-600" />
+                <HelpCircle className="w-4 h-4 text-gray-700" />
                 Neutral Evidence
               </h4>
               <ul className="space-y-2">
@@ -149,8 +149,8 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
           {/* Missing Evidence */}
           {missingEvidence.length > 0 && (
             <div>
-              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-600">
-                <HelpCircle className="w-4 h-4 text-gray-500" />
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-gray-700">
+                <HelpCircle className="w-4 h-4 text-gray-700" />
                 Missing Evidence
               </h4>
               <ul className="space-y-2">
