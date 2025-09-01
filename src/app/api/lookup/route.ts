@@ -60,6 +60,19 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   // Run if: no existing verification OR existing verification is insufficient
   const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification) && !isGarbageResult && geminiAvailable;
   
+  // Production logging checkpoints
+  if (process.env.NODE_ENV === 'production') {
+    console.log("[GEMINI_REQUEST_TRIGGERED]", {
+      brand,
+      product_name,
+      shouldRunGemini,
+      hasExistingVerification,
+      hasInsufficientVerification,
+      isGarbageResult,
+      geminiAvailable
+    });
+  }
+  
   if (shouldRunGemini) {
     try {
       console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
@@ -97,18 +110,46 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         
         console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
         
-        // Gemini verification marker
+        // Production logging checkpoints
         if (process.env.NODE_ENV === 'production') {
-          console.log(`[GEMINI_VERIFIED] brand=${brand}, status=${ownershipResult.verification_status || 'unknown'}, confidence=${ownershipResult.confidence_score || 'unknown'}`);
+          console.log("[GEMINI_COMPLETED]", {
+            brand,
+            verification_status: ownershipResult.verification_status || 'unknown',
+            confidence: ownershipResult.confidence_score || 'unknown',
+            verification_method: ownershipResult.verification_method,
+            verification_notes: ownershipResult.verification_notes
+          });
         }
         
         return true;
       }
     } catch (geminiError) {
       console.error('[GEMINI_INLINE_CACHE_HIT] Gemini agent failed:', geminiError);
+      
+      // Production error logging
+      if (process.env.NODE_ENV === 'production') {
+        console.log("[GEMINI_ERROR_CAUGHT]", {
+          brand,
+          error: geminiError.message,
+          stack: geminiError.stack
+        });
+      }
     }
   } else {
     console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
+    
+    // Production skip logging
+    if (process.env.NODE_ENV === 'production') {
+      console.log("[GEMINI_SKIPPED]", {
+        brand,
+        reason: {
+          hasExistingVerification,
+          hasInsufficientVerification,
+          isGarbageResult,
+          geminiAvailable
+        }
+      });
+    }
   }
   
   return false;
@@ -603,6 +644,18 @@ export async function POST(request: NextRequest) {
     // Extract request metadata for logging
     const ip_country = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
     const lang_hint = request.headers.get('accept-language')?.split(',')[0] || 'unknown';
+    
+    // Production pipeline entry logging
+    if (process.env.NODE_ENV === 'production') {
+      console.log("[PIPELINE_ENTRY]", {
+        brand: brand || 'unknown',
+        product: product_name || 'unknown',
+        barcode: barcode || 'none',
+        source: image_base64 ? 'image' : 'manual',
+        ip_country,
+        lang_hint
+      });
+    }
     
     // Top-level request marker
     if (process.env.NODE_ENV === 'production') {
@@ -1369,6 +1422,17 @@ export async function POST(request: NextRequest) {
 
       // 🧠 TRACE SUMMARY LOGGING
       logTraceSummary(mergedResult);
+
+      // Production result return logging
+      if (process.env.NODE_ENV === 'production') {
+        console.log("[RESULT_RETURNED]", {
+          brand: mergedResult.brand || 'unknown',
+          has_verification: !!mergedResult.verification_status,
+          verification_status: mergedResult.verification_status || 'none',
+          has_verification_notes: !!mergedResult.verification_notes,
+          result_type: mergedResult.result_type || 'unknown'
+        });
+      }
 
       if (forceFullTrace) {
         return NextResponse.json(mergedResult);
