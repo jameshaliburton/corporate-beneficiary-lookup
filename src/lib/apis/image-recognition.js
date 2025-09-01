@@ -293,6 +293,24 @@ Image: {{image_base64}}`
     
     if (cachedData) {
       console.log('✅ Found cached data, returning with ownership data');
+      
+      // Step 1.7: Run Gemini verification for cached result
+      let geminiVerification = null;
+      try {
+        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+        if (maybeRunGeminiVerificationForCacheHit) {
+          console.log('🔍 Running Gemini verification for cached result...');
+          geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+            initialAnalysis.brand_name,
+            initialAnalysis.product_name,
+            cachedData
+          );
+          console.log('✅ Gemini verification completed:', geminiVerification);
+        }
+      } catch (error) {
+        console.log('⚠️ Gemini verification not available:', error.message);
+      }
+      
       return {
         success: true,
         data: {
@@ -302,14 +320,24 @@ Image: {{image_base64}}`
           beneficiary_flag: cachedData.beneficiary_flag,
           ownership_flow: cachedData.ownership_flow,
           confidence: 85, // High confidence for cached data
-          reasoning: 'Found cached ownership data'
+          reasoning: 'Found cached ownership data',
+          // Add Gemini verification fields if available
+          verification_status: geminiVerification?.verification_status || 'confirmed',
+          verification_confidence_change: geminiVerification?.verification_confidence_change || 'unchanged',
+          verification_evidence: geminiVerification?.verification_evidence || null,
+          verified_at: geminiVerification?.verified_at || new Date().toISOString(),
+          verification_method: geminiVerification?.verification_method || 'cache_hit',
+          confidence_assessment: geminiVerification?.confidence_assessment || null,
+          verification_notes: geminiVerification?.verification_notes || null
         },
         source: 'enhanced_image_recognition_with_cache',
         flow: {
           step1: 'ocr_lightweight_extractor',
           step1_5: 'cache_check_success',
+          step1_7: geminiVerification ? 'gemini_verification_completed' : 'gemini_verification_skipped',
           final_confidence: 85,
-          cache_hit: true
+          cache_hit: true,
+          gemini_verification: !!geminiVerification
         },
         // Store contextual clues in the result for UI display
         contextual_clues: {
@@ -323,7 +351,7 @@ Image: {{image_base64}}`
             reasoning: initialAnalysis.reasoning,
             language_indicators: initialAnalysis.language_indicators,
             country_indicators: initialAnalysis.country_indicators,
-            product_style: initialAnalysis.product_style,
+            product_style: initialAnalysis.product_type,
             packaging_characteristics: initialAnalysis.packaging_characteristics,
             regional_clues: initialAnalysis.regional_clues,
             certification_marks: initialAnalysis.certification_marks,
@@ -347,6 +375,24 @@ Image: {{image_base64}}`
     
     if (ownershipData) {
       console.log('✅ Found ownership mapping, returning with ownership data');
+      
+      // Step 1.7: Run Gemini verification for ownership mapping result
+      let geminiVerification = null;
+      try {
+        const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+        if (maybeRunGeminiVerificationForCacheHit) {
+          console.log('🔍 Running Gemini verification for ownership mapping result...');
+          geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+            initialAnalysis.brand_name,
+            initialAnalysis.product_name,
+            ownershipData
+          );
+          console.log('✅ Gemini verification completed:', geminiVerification);
+        }
+      } catch (error) {
+        console.log('⚠️ Gemini verification not available:', error.message);
+      }
+      
       return {
         success: true,
         data: {
@@ -356,15 +402,25 @@ Image: {{image_base64}}`
           beneficiary_flag: ownershipData.beneficiary_flag,
           ownership_flow: ownershipData.ownership_flow,
           confidence: 85, // High confidence for ownership mapping
-          reasoning: 'Found ownership mapping in database'
+          reasoning: 'Found ownership mapping in database',
+          // Add Gemini verification fields if available
+          verification_status: geminiVerification?.verification_status || 'confirmed',
+          verification_confidence_change: geminiVerification?.verification_confidence_change || 'unchanged',
+          verification_evidence: geminiVerification?.verification_evidence || null,
+          verified_at: geminiVerification?.verified_at || new Date().toISOString(),
+          verification_method: geminiVerification?.verification_method || 'ownership_mapping',
+          confidence_assessment: geminiVerification?.confidence_assessment || null,
+          verification_notes: geminiVerification?.verification_notes || null
         },
         source: 'enhanced_image_recognition_with_ownership_mapping',
         flow: {
           step1: 'ocr_lightweight_extractor',
           step1_5: 'cache_check_failed',
           step1_6: 'ownership_mapping_success',
+          step1_7: geminiVerification ? 'gemini_verification_completed' : 'gemini_verification_skipped',
           final_confidence: 85,
-          ownership_mapping_hit: true
+          ownership_mapping_hit: true,
+          gemini_verification: !!geminiVerification
         },
         // Store contextual clues in the result for UI display
         contextual_clues: {
@@ -378,7 +434,7 @@ Image: {{image_base64}}`
             reasoning: initialAnalysis.reasoning,
             language_indicators: initialAnalysis.language_indicators,
             country_indicators: initialAnalysis.country_indicators,
-            product_style: initialAnalysis.product_style,
+            product_style: initialAnalysis.product_type,
             packaging_characteristics: initialAnalysis.packaging_characteristics,
             regional_clues: initialAnalysis.regional_clues,
             certification_marks: initialAnalysis.certification_marks,
@@ -429,9 +485,40 @@ Image: {{image_base64}}`
     
     console.log('🎯 Final analysis result:', finalAnalysis);
     
+    // Step 4: Run Gemini verification for new analysis result
+    let geminiVerification = null;
+    try {
+      const { maybeRunGeminiVerificationForCacheHit } = await import('../../app/api/lookup/route.js');
+      if (maybeRunGeminiVerificationForCacheHit) {
+        console.log('🔍 Running Gemini verification for new analysis result...');
+        geminiVerification = await maybeRunGeminiVerificationForCacheHit(
+          finalAnalysis.brand_name,
+          finalAnalysis.product_name,
+          {
+            brand: finalAnalysis.brand_name,
+            product_name: finalAnalysis.product_name,
+            confidence_score: finalAnalysis.confidence
+          }
+        );
+        console.log('✅ Gemini verification completed:', geminiVerification);
+      }
+    } catch (error) {
+      console.log('⚠️ Gemini verification not available:', error.message);
+    }
+    
     return {
       success: true,
-      data: finalAnalysis,
+      data: {
+        ...finalAnalysis,
+        // Add Gemini verification fields if available
+        verification_status: geminiVerification?.verification_status || 'insufficient_evidence',
+        verification_confidence_change: geminiVerification?.verification_confidence_change || 'unchanged',
+        verification_evidence: geminiVerification?.verification_evidence || null,
+        verified_at: geminiVerification?.verified_at || new Date().toISOString(),
+        verification_method: geminiVerification?.verification_method || 'new_analysis',
+        confidence_assessment: geminiVerification?.confidence_assessment || null,
+        verification_notes: geminiVerification?.verification_notes || null
+      },
       source: visionAgentUsed ? 'enhanced_image_recognition_with_vision' : 'enhanced_image_recognition',
       flow: {
         step1: 'ocr_lightweight_extractor',
@@ -439,8 +526,10 @@ Image: {{image_base64}}`
         step1_6: 'ownership_mapping_failed',
         step2: 'quality_assessment',
         step3: visionAgentUsed ? 'vision_agent_used' : 'vision_agent_skipped',
+        step4: geminiVerification ? 'gemini_verification_completed' : 'gemini_verification_skipped',
         final_confidence: finalAnalysis.confidence,
-        vision_agent_used: visionAgentUsed
+        vision_agent_used: visionAgentUsed,
+        gemini_verification: !!geminiVerification
       },
       // Store contextual clues in the result for UI display
       contextual_clues: {
