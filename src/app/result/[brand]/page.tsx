@@ -54,6 +54,13 @@ export default function ResultPage() {
           generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
         });
         
+        console.log('🔍 Result page - verification fields retrieved:', {
+          verification_status: parsedResult.verification_status,
+          verified_at: parsedResult.verified_at,
+          confidence_assessment: parsedResult.confidence_assessment,
+          verification_evidence: parsedResult.verification_evidence
+        });
+        
         // Log the actual generated_copy content
         if (parsedResult.generated_copy) {
           console.log('🎨 Retrieved generated copy content:', JSON.stringify(parsedResult.generated_copy, null, 2));

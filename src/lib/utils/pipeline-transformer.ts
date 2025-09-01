@@ -76,6 +76,14 @@ export interface PipelineResult {
   ownership_notes?: string[];
   behind_the_scenes?: string[];
   narrative_template_used?: string;
+  // Gemini verification fields
+  verification_status?: string;
+  verified_at?: string;
+  verification_method?: string;
+  verification_notes?: string;
+  confidence_assessment?: any;
+  verification_evidence?: any;
+  agent_path?: string[];
 }
 
 export interface OwnershipNode {
@@ -132,6 +140,14 @@ export interface ProductResultProps {
   ownership_notes?: string[];
   behind_the_scenes?: string[];
   narrative_template_used?: string;
+  // Gemini verification fields
+  verification_status?: string;
+  verified_at?: string;
+  verification_method?: string;
+  verification_notes?: string;
+  confidence_assessment?: any;
+  verification_evidence?: any;
+  agent_path?: string[];
 }
 
 export async function transformPipelineData(pipelineResult: PipelineResult): Promise<ProductResultProps> {
@@ -281,6 +297,14 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     ownership_notes: pipelineResult.ownership_notes,
     behind_the_scenes: pipelineResult.behind_the_scenes,
     narrative_template_used: pipelineResult.narrative_template_used,
+    // Gemini verification fields
+    verification_status: pipelineResult.verification_status,
+    verified_at: pipelineResult.verified_at,
+    verification_method: pipelineResult.verification_method,
+    verification_notes: pipelineResult.verification_notes,
+    confidence_assessment: pipelineResult.confidence_assessment,
+    verification_evidence: pipelineResult.verification_evidence,
+    agent_path: pipelineResult.agent_path,
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline

@@ -71,6 +71,12 @@ export default function ManualPage() {
         
         const sessionData = JSON.stringify(rawPipelineResult);
         console.log('💾 Session data size:', sessionData.length, 'characters');
+        console.log('🔍 Manual search - verification fields being stored:', {
+          verification_status: rawPipelineResult.verification_status,
+          verified_at: rawPipelineResult.verified_at,
+          confidence_assessment: rawPipelineResult.confidence_assessment,
+          verification_evidence: rawPipelineResult.verification_evidence
+        });
         
         sessionStorage.setItem('pipelineResult', sessionData);
         
@@ -118,7 +124,15 @@ export default function ManualPage() {
       confidence_score: result.confidence_score,
       generated_copy: result.generated_copy, // Ensure generated_copy is included
       traces: result.traces || [],
-      ownership_flow: result.ownership_flow || []
+      ownership_flow: result.ownership_flow || [],
+      // Gemini verification fields
+      verification_status: result.verification_status,
+      verified_at: result.verified_at,
+      verification_method: result.verification_method,
+      verification_notes: result.verification_notes,
+      confidence_assessment: result.confidence_assessment,
+      verification_evidence: result.verification_evidence,
+      agent_path: result.agent_path
     };
   }
 
