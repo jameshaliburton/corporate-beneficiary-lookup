@@ -1327,23 +1327,38 @@ export async function POST(request: NextRequest) {
       };
       
       console.log('🎨 Starting narrative generation...');
-      const narrative = await generateNarrativeFromResult({
-        brand_name: currentProductData.brand,
-        brand_country: ownershipResult.brand_country,
-        ultimate_owner: ownershipResult.financial_beneficiary,
-        ultimate_owner_country: ownershipResult.beneficiary_country,
-        financial_beneficiary: ownershipResult.financial_beneficiary,
-        financial_beneficiary_country: ownershipResult.beneficiary_country,
-        ownership_type: ownershipResult.ownership_structure_type,
-        confidence: ownershipResult.confidence_score || 0,
-        acquisition_year: ownershipResult.acquisition_year,
-        previous_owner: ownershipResult.previous_owner,
-        vision_context: visionContext,
-        disambiguation_options: ownershipResult.disambiguation_options,
-        ownership_notes: ownershipResult.ownership_notes,
-        behind_the_scenes: ownershipResult.behind_the_scenes
-      });
-      console.log('✅ Generated narrative:', narrative);
+      let narrative;
+      try {
+        narrative = await generateNarrativeFromResult({
+          brand_name: currentProductData.brand,
+          brand_country: ownershipResult.brand_country,
+          ultimate_owner: ownershipResult.financial_beneficiary,
+          ultimate_owner_country: ownershipResult.beneficiary_country,
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          financial_beneficiary_country: ownershipResult.beneficiary_country,
+          ownership_type: ownershipResult.ownership_structure_type,
+          confidence: ownershipResult.confidence_score || 0,
+          acquisition_year: ownershipResult.acquisition_year,
+          previous_owner: ownershipResult.previous_owner,
+          vision_context: visionContext,
+          disambiguation_options: ownershipResult.disambiguation_options,
+          ownership_notes: ownershipResult.ownership_notes,
+          behind_the_scenes: ownershipResult.behind_the_scenes
+        });
+        console.log('✅ Generated narrative:', narrative);
+      } catch (narrativeError) {
+        console.error('❌ Critical narrative generation error:', narrativeError);
+        // Emergency fallback - create minimal narrative
+        narrative = {
+          headline: `${currentProductData.brand} is owned by ${ownershipResult.financial_beneficiary}`,
+          tagline: "Discover the corporate connections behind your favorite brands",
+          story: `${currentProductData.brand} is ultimately owned by ${ownershipResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
+          ownership_notes: `Ownership: ${ownershipResult.financial_beneficiary} | Country: ${ownershipResult.beneficiary_country || 'Unknown'} | Confidence: ${ownershipResult.confidence_score || 0}%`,
+          behind_the_scenes: "Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership.",
+          template_used: "emergency_fallback"
+        };
+        console.log('🚨 Using emergency fallback narrative:', narrative);
+      }
       
       // Production logging for narrative generation
       if (process.env.NODE_ENV === 'production') {

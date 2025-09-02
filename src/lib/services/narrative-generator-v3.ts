@@ -118,16 +118,36 @@ OUTPUT FORMAT (JSON):
     
   } catch (error) {
     console.error('Narrative generation failed:', error);
-    return getFallbackNarrative(result);
+    console.log('🔄 Falling back to fallback narrative for:', result.brand_name);
+    const fallbackNarrative = getFallbackNarrative(result);
+    console.log('✅ Fallback narrative generated:', {
+      headline: fallbackNarrative.headline,
+      tagline: fallbackNarrative.tagline,
+      story: fallbackNarrative.story ? fallbackNarrative.story.substring(0, 100) + '...' : 'none',
+      template_used: fallbackNarrative.template_used
+    });
+    return fallbackNarrative;
   }
 }
 
 function getFallbackNarrative(result: any) {
+  const brandName = result.brand_name || 'Unknown Brand';
+  const ultimateOwner = result.ultimate_owner || 'Unknown Owner';
+  const ownerCountry = result.ultimate_owner_country || 'Unknown';
+  const confidence = result.confidence || 0;
+  
+  console.log('🔧 [Fallback] Generating fallback narrative with:', {
+    brandName,
+    ultimateOwner,
+    ownerCountry,
+    confidence
+  });
+  
   return {
-    headline: `${result.brand_name} is owned by ${result.ultimate_owner}`,
+    headline: `${brandName} is owned by ${ultimateOwner}`,
     tagline: "Discover the corporate connections behind your favorite brands",
-    story: `${result.brand_name} is part of a larger corporate network. The brand is ultimately owned by ${result.ultimate_owner}, a major player in the industry. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
-    ownership_notes: `Ownership: ${result.ultimate_owner} | Country: ${result.ultimate_owner_country || 'Unknown'} | Confidence: ${result.confidence || 0}%`,
+    story: `${brandName} is part of a larger corporate network. The brand is ultimately owned by ${ultimateOwner}, a major player in the industry. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
+    ownership_notes: `Ownership: ${ultimateOwner} | Country: ${ownerCountry} | Confidence: ${confidence}%`,
     behind_the_scenes: "Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership.",
     template_used: "fallback_narrative"
   };
