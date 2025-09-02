@@ -35,6 +35,18 @@ export interface NarrativeFields {
   template_used: string;
 }
 
+// Helper function to sanitize narrative fields
+function sanitizeNarrativeField(str: string | null | undefined): string {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/[\u0000-\u001F\u007F]/g, ' ').trim();
+}
+
+// Helper function to sanitize narrative array fields
+function sanitizeNarrativeArray(arr: string[] | null | undefined): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => sanitizeNarrativeField(item)).filter(item => item.length > 0);
+}
+
 export async function generateNarrativeFromResult(result: any) {
   try {
     const prompt = `
@@ -106,7 +118,19 @@ OUTPUT FORMAT (JSON):
         
         const parsed = JSON.parse(cleanedText);
         console.log('✅ Successfully parsed narrative JSON');
-        return parsed;
+        
+        // Sanitize all narrative fields to prevent JSON parsing issues
+        const sanitizedNarrative = {
+          headline: sanitizeNarrativeField(parsed.headline),
+          tagline: sanitizeNarrativeField(parsed.tagline),
+          story: sanitizeNarrativeField(parsed.story),
+          ownership_notes: sanitizeNarrativeArray(parsed.ownership_notes),
+          behind_the_scenes: sanitizeNarrativeArray(parsed.behind_the_scenes),
+          template_used: sanitizeNarrativeField(parsed.template_used) || 'narrative_v3'
+        };
+        
+        console.log('🧹 Sanitized narrative fields for safe JSON serialization');
+        return sanitizedNarrative;
       } catch (parseError) {
         console.error('❌ Failed to parse narrative JSON:', parseError);
         console.error('Raw response text length:', content.text.length);
@@ -127,7 +151,19 @@ OUTPUT FORMAT (JSON):
             const extractedJson = jsonMatch[0];
             const parsed = JSON.parse(extractedJson);
             console.log('✅ Successfully parsed extracted JSON');
-            return parsed;
+            
+            // Sanitize all narrative fields to prevent JSON parsing issues
+            const sanitizedNarrative = {
+              headline: sanitizeNarrativeField(parsed.headline),
+              tagline: sanitizeNarrativeField(parsed.tagline),
+              story: sanitizeNarrativeField(parsed.story),
+              ownership_notes: sanitizeNarrativeArray(parsed.ownership_notes),
+              behind_the_scenes: sanitizeNarrativeArray(parsed.behind_the_scenes),
+              template_used: sanitizeNarrativeField(parsed.template_used) || 'narrative_v3'
+            };
+            
+            console.log('🧹 Sanitized extracted narrative fields for safe JSON serialization');
+            return sanitizedNarrative;
           } catch (extractError) {
             console.error('❌ Failed to parse extracted JSON:', extractError);
           }
@@ -167,12 +203,22 @@ function getFallbackNarrative(result: any) {
     confidence
   });
   
-  return {
+  const fallbackNarrative = {
     headline: `${brandName} is owned by ${ultimateOwner}`,
     tagline: "Discover the corporate connections behind your favorite brands",
     story: `${brandName} is part of a larger corporate network. The brand is ultimately owned by ${ultimateOwner}, a major player in the industry. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
     ownership_notes: `Ownership: ${ultimateOwner} | Country: ${ownerCountry} | Confidence: ${confidence}%`,
     behind_the_scenes: "Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership.",
     template_used: "fallback_narrative"
+  };
+  
+  // Sanitize all fallback narrative fields to prevent JSON parsing issues
+  return {
+    headline: sanitizeNarrativeField(fallbackNarrative.headline),
+    tagline: sanitizeNarrativeField(fallbackNarrative.tagline),
+    story: sanitizeNarrativeField(fallbackNarrative.story),
+    ownership_notes: sanitizeNarrativeArray([fallbackNarrative.ownership_notes]),
+    behind_the_scenes: sanitizeNarrativeArray([fallbackNarrative.behind_the_scenes]),
+    template_used: sanitizeNarrativeField(fallbackNarrative.template_used)
   };
 }

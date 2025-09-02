@@ -101,7 +101,18 @@ export default function ResultsPage() {
         console.log('📊 Loaded pipeline result:', parsedResult);
         setResult(parsedResult);
       } catch (error) {
-        console.error('❌ Error parsing stored result:', error);
+        console.error('❌ [NARRATIVE_PARSE_ERROR] Error parsing stored result:', error);
+        console.error('❌ [NARRATIVE_PARSE_ERROR] Raw stored data:', storedResult.substring(0, 500));
+        
+        // Try to recover by sanitizing the data
+        try {
+          const sanitizedData = storedResult.replace(/[\u0000-\u001F\u007F]/g, ' ');
+          const recoveredResult = JSON.parse(sanitizedData);
+          console.log('🔄 [NARRATIVE_RECOVERY] Successfully recovered result after sanitization');
+          setResult(recoveredResult);
+        } catch (recoveryError) {
+          console.error('❌ [NARRATIVE_RECOVERY] Failed to recover result:', recoveryError);
+        }
       }
     } else {
       console.log('⚠️ No stored result found in sessionStorage');
