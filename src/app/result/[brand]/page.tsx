@@ -17,6 +17,11 @@ export default function ResultPage() {
   const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
   const hasProcessed = useRef(false);
 
+  // DEBUG: Log initial state
+  console.log("[SSR] ResultPage initialized with params:", params);
+  console.log("[SSR] Initial pipelineResult state:", pipelineResult);
+  console.log("[SSR] Initial productResultProps state:", productResultProps);
+
   // useEffect to handle sessionStorage writes when pipelineResult changes
   useEffect(() => {
     if (typeof window !== 'undefined' && pipelineResult && pipelineResult.brand) {
@@ -90,6 +95,16 @@ export default function ResultPage() {
             behind_the_scenes: !!parsedResult.behind_the_scenes
           }
         });
+
+        // DEBUG: Log actual narrative field values
+        console.log("[SESSION_STORAGE] Narrative fields from sessionStorage:", {
+          headline: parsedResult.headline,
+          tagline: parsedResult.tagline,
+          story: parsedResult.story,
+          ownership_notes: parsedResult.ownership_notes,
+          behind_the_scenes: parsedResult.behind_the_scenes,
+          narrative_template_used: parsedResult.narrative_template_used
+        });
         
         console.log('🔍 Result page - verification fields retrieved:', {
           verification_status: parsedResult.verification_status,
@@ -108,6 +123,15 @@ export default function ResultPage() {
         // Transform the data asynchronously
         transformPipelineData(parsedResult)
           .then(transformedProps => {
+            // DEBUG: Log transformed props
+            console.log("[TRANSFORM] Transformed props narrative fields:", {
+              headline: transformedProps.headline,
+              tagline: transformedProps.tagline,
+              story: transformedProps.story,
+              ownership_notes: transformedProps.ownership_notes,
+              behind_the_scenes: transformedProps.behind_the_scenes,
+              narrative_template_used: transformedProps.narrative_template_used
+            });
             setProductResultProps(transformedProps);
             setIsLoading(false);
           })
@@ -390,6 +414,23 @@ export default function ResultPage() {
   // Transform the pipeline data to ProductResult props
   // This useEffect handles the transformation, so we can remove it from here.
   // The productResultProps state will be updated by the useEffect.
+
+  // DEBUG: Log props being passed to ProductResultV2
+  console.log("[PROPS_TO_UI] Props being passed to ProductResultV2:", {
+    result: {
+      brand_name: productResultProps?.brand,
+      ultimate_owner: productResultProps?.owner,
+      confidence: productResultProps?.confidence
+    },
+    narrative: {
+      headline: productResultProps?.headline,
+      tagline: productResultProps?.tagline,
+      story: productResultProps?.story,
+      ownership_notes: productResultProps?.ownership_notes,
+      behind_the_scenes: productResultProps?.behind_the_scenes,
+      template_used: productResultProps?.narrative_template_used
+    }
+  });
 
   return (
     <>
