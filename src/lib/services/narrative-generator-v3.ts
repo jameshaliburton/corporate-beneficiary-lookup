@@ -81,23 +81,23 @@ OUTPUT FORMAT (JSON):
 
     const content = response.content[0];
     if (content.type === 'text') {
+      // Clean the response text before parsing JSON
+      let cleanedText = content.text.trim();
+      
+      // Remove any markdown code blocks if present
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      // Clean control characters that break JSON parsing
+      cleanedText = cleanedText
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove problematic control characters but keep \n, \r, \t
+        .replace(/\r\n/g, '\n') // Normalize line endings
+        .replace(/\r/g, '\n'); // Convert remaining \r to \n
+      
       try {
-        // Clean the response text before parsing JSON
-        let cleanedText = content.text.trim();
-        
-        // Remove any markdown code blocks if present
-        if (cleanedText.startsWith('```json')) {
-          cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleanedText.startsWith('```')) {
-          cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        
-        // Clean control characters that break JSON parsing
-        cleanedText = cleanedText
-          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove problematic control characters but keep \n, \r, \t
-          .replace(/\r\n/g, '\n') // Normalize line endings
-          .replace(/\r/g, '\n'); // Convert remaining \r to \n
-        
         console.log('Cleaned narrative JSON text:', cleanedText.substring(0, 200) + '...');
         
         return JSON.parse(cleanedText);
