@@ -48,6 +48,13 @@ function sanitizeNarrativeArray(arr: string[] | null | undefined): string[] {
 }
 
 export async function generateNarrativeFromResult(result: any) {
+  console.log('[COPY_AGENT] Starting narrative generation for:', {
+    brand: result.brand_name,
+    owner: result.ultimate_owner,
+    confidence: result.confidence,
+    country: result.ultimate_owner_country
+  });
+
   try {
     const prompt = `
 You are an expert storyteller creating engaging narratives about corporate ownership. Create a compelling story about ${result.brand_name} and its ownership.
@@ -79,6 +86,7 @@ OUTPUT FORMAT (JSON):
 }
 `;
 
+    console.log('[COPY_AGENT] Calling Anthropic API for narrative generation...');
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1000,
@@ -91,6 +99,7 @@ OUTPUT FORMAT (JSON):
       ]
     });
 
+    console.log('[COPY_AGENT] Received response from Anthropic API');
     const content = response.content[0];
     if (content.type === 'text') {
       // Clean the response text before parsing JSON
@@ -130,6 +139,15 @@ OUTPUT FORMAT (JSON):
         };
         
         console.log('🧹 Sanitized narrative fields for safe JSON serialization');
+        console.log('[COPY_AGENT] Successfully generated narrative:', {
+          headline: sanitizedNarrative.headline,
+          tagline: sanitizedNarrative.tagline,
+          story: sanitizedNarrative.story ? sanitizedNarrative.story.substring(0, 100) + '...' : 'none',
+          ownership_notes: sanitizedNarrative.ownership_notes,
+          behind_the_scenes: sanitizedNarrative.behind_the_scenes,
+          template_used: sanitizedNarrative.template_used
+        });
+        console.log('[COPY_AGENT] Done ✅');
         return sanitizedNarrative;
       } catch (parseError) {
         console.error('❌ Failed to parse narrative JSON:', parseError);
@@ -163,6 +181,15 @@ OUTPUT FORMAT (JSON):
             };
             
             console.log('🧹 Sanitized extracted narrative fields for safe JSON serialization');
+            console.log('[COPY_AGENT] Successfully generated narrative from extracted JSON:', {
+              headline: sanitizedNarrative.headline,
+              tagline: sanitizedNarrative.tagline,
+              story: sanitizedNarrative.story ? sanitizedNarrative.story.substring(0, 100) + '...' : 'none',
+              ownership_notes: sanitizedNarrative.ownership_notes,
+              behind_the_scenes: sanitizedNarrative.behind_the_scenes,
+              template_used: sanitizedNarrative.template_used
+            });
+            console.log('[COPY_AGENT] Done ✅ (extracted JSON)');
             return sanitizedNarrative;
           } catch (extractError) {
             console.error('❌ Failed to parse extracted JSON:', extractError);
@@ -170,22 +197,45 @@ OUTPUT FORMAT (JSON):
         }
         
         console.log('🔄 Falling back to fallback narrative due to JSON parsing failure');
-        return getFallbackNarrative(result);
+        const fallbackNarrative = getFallbackNarrative(result);
+        console.log('[COPY_AGENT] Using fallback narrative:', {
+          headline: fallbackNarrative.headline,
+          tagline: fallbackNarrative.tagline,
+          story: fallbackNarrative.story ? fallbackNarrative.story.substring(0, 100) + '...' : 'none',
+          ownership_notes: fallbackNarrative.ownership_notes,
+          behind_the_scenes: fallbackNarrative.behind_the_scenes,
+          template_used: fallbackNarrative.template_used
+        });
+        console.log('[COPY_AGENT] Done ✅ (fallback)');
+        return fallbackNarrative;
       }
     }
     
-    return getFallbackNarrative(result);
+    const finalFallbackNarrative = getFallbackNarrative(result);
+    console.log('[COPY_AGENT] Using final fallback narrative (no text content):', {
+      headline: finalFallbackNarrative.headline,
+      tagline: finalFallbackNarrative.tagline,
+      story: finalFallbackNarrative.story ? finalFallbackNarrative.story.substring(0, 100) + '...' : 'none',
+      ownership_notes: finalFallbackNarrative.ownership_notes,
+      behind_the_scenes: finalFallbackNarrative.behind_the_scenes,
+      template_used: finalFallbackNarrative.template_used
+    });
+    console.log('[COPY_AGENT] Done ✅ (final fallback)');
+    return finalFallbackNarrative;
     
   } catch (error) {
     console.error('Narrative generation failed:', error);
     console.log('🔄 Falling back to fallback narrative for:', result.brand_name);
     const fallbackNarrative = getFallbackNarrative(result);
-    console.log('✅ Fallback narrative generated:', {
+    console.log('[COPY_AGENT] Using error fallback narrative:', {
       headline: fallbackNarrative.headline,
       tagline: fallbackNarrative.tagline,
       story: fallbackNarrative.story ? fallbackNarrative.story.substring(0, 100) + '...' : 'none',
+      ownership_notes: fallbackNarrative.ownership_notes,
+      behind_the_scenes: fallbackNarrative.behind_the_scenes,
       template_used: fallbackNarrative.template_used
     });
+    console.log('[COPY_AGENT] Done ✅ (error fallback)');
     return fallbackNarrative;
   }
 }
