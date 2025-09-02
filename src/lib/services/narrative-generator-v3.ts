@@ -94,10 +94,9 @@ OUTPUT FORMAT (JSON):
         
         // Clean control characters that break JSON parsing
         cleanedText = cleanedText
-          .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
-          .replace(/\n/g, '\\n') // Escape newlines
-          .replace(/\r/g, '\\r') // Escape carriage returns
-          .replace(/\t/g, '\\t'); // Escape tabs
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove problematic control characters but keep \n, \r, \t
+          .replace(/\r\n/g, '\n') // Normalize line endings
+          .replace(/\r/g, '\n'); // Convert remaining \r to \n
         
         console.log('Cleaned narrative JSON text:', cleanedText.substring(0, 200) + '...');
         
@@ -105,6 +104,12 @@ OUTPUT FORMAT (JSON):
       } catch (parseError) {
         console.error('Failed to parse narrative JSON:', parseError);
         console.error('Raw response text:', content.text.substring(0, 500));
+        console.error('Cleaned text that failed to parse:', cleanedText.substring(0, 500));
+        console.error('Parse error details:', {
+          message: parseError.message,
+          position: parseError.message.match(/position (\d+)/)?.[1],
+          line: parseError.message.match(/line (\d+)/)?.[1]
+        });
         return getFallbackNarrative(result);
       }
     }
