@@ -92,6 +92,36 @@ interface TraceData {
 export default function ResultsPage() {
   const [result, setResult] = useState<PipelineResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
+
+  // useEffect to handle sessionStorage writes when result changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && result && result.brand) {
+      try {
+        const sessionData = JSON.stringify(result);
+        const key = `pipelineResult_${result.brand}`;
+        
+        console.log('🔥 [HOTFIX_SESSION_WRITE] Writing to sessionStorage from results page:', {
+          key,
+          dataSize: sessionData.length,
+          hasStory: !!result.story,
+          hasHeadline: !!result.headline,
+          hasTagline: !!result.tagline
+        });
+        
+        sessionStorage.setItem(key, sessionData);
+        console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result from results page');
+        setSessionStorageStatus('✅ sessionStorage write succeeded');
+        
+        // Also store with generic key for backward compatibility
+        sessionStorage.setItem('pipelineResult', sessionData);
+        
+      } catch (err) {
+        console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: result.brand, result: result });
+        setSessionStorageStatus('❌ sessionStorage write failed');
+      }
+    }
+  }, [result]);
 
   useEffect(() => {
     const storedResult = sessionStorage.getItem('pipelineResult');
@@ -335,6 +365,13 @@ export default function ResultsPage() {
           onScanAnother={() => window.location.href = '/'}
           onShare={() => console.log('Share functionality')}
         />
+        
+        {/* Temporary sessionStorage status indicator */}
+        {sessionStorageStatus && (
+          <div className="mt-4 p-3 rounded-lg bg-blue-100 border border-blue-300 text-sm">
+            <strong>SessionStorage Status:</strong> {sessionStorageStatus}
+          </div>
+        )}
       </div>
     </div>
   );
