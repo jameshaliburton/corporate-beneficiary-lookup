@@ -37,6 +37,13 @@ function cleanPipelineResult(result: any) {
     ownership_notes: result.ownership_notes,
     behind_the_scenes: result.behind_the_scenes,
     narrative_template_used: result.narrative_template_used,
+    // Include verification fields
+    verification_status: result.verification_status,
+    verified_at: result.verified_at,
+    verification_method: result.verification_method,
+    confidence_assessment: result.confidence_assessment,
+    verification_evidence: result.verification_evidence,
+    verification_notes: result.verification_notes,
     // Simplify the agent_execution_trace to avoid circular references
     agent_execution_trace: result.agent_execution_trace ? {
       sections: result.agent_execution_trace.sections?.map((section: any) => ({
