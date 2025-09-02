@@ -51,7 +51,14 @@ export default function ResultPage() {
           brand: parsedResult.brand,
           confidence: parsedResult.confidence_score,
           hasGeneratedCopy: !!parsedResult.generated_copy,
-          generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
+          generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : [],
+          hasNarrativeFields: {
+            headline: !!parsedResult.headline,
+            tagline: !!parsedResult.tagline,
+            story: !!parsedResult.story,
+            ownership_notes: !!parsedResult.ownership_notes,
+            behind_the_scenes: !!parsedResult.behind_the_scenes
+          }
         });
         
         console.log('🔍 Result page - verification fields retrieved:', {
