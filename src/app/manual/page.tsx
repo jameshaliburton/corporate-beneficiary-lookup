@@ -6,6 +6,62 @@ import { AppHeader } from "@/components/AppHeader";
 import { ManualInput } from "@/components/ManualInput";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
+// Function to clean API response and remove circular references
+function cleanPipelineResult(result: any) {
+  return {
+    success: result.success,
+    product_name: result.product_name,
+    brand: result.brand,
+    barcode: result.barcode,
+    financial_beneficiary: result.financial_beneficiary,
+    beneficiary_country: result.beneficiary_country,
+    beneficiary_flag: result.beneficiary_flag,
+    confidence_score: result.confidence_score,
+    confidence_level: result.confidence_level,
+    confidence_factors: result.confidence_factors,
+    confidence_breakdown: result.confidence_breakdown,
+    confidence_reasoning: result.confidence_reasoning,
+    ownership_structure_type: result.ownership_structure_type,
+    ownership_flow: result.ownership_flow,
+    sources: result.sources,
+    reasoning: result.reasoning,
+    result_type: result.result_type,
+    user_contributed: result.user_contributed,
+    // Include the LLM-generated copy
+    generated_copy: result.generated_copy,
+    // Include the new narrative fields
+    headline: result.headline,
+    tagline: result.tagline,
+    story: result.story,
+    ownership_notes: result.ownership_notes,
+    behind_the_scenes: result.behind_the_scenes,
+    narrative_template_used: result.narrative_template_used,
+    // Include verification fields
+    verification_status: result.verification_status,
+    verified_at: result.verified_at,
+    verification_method: result.verification_method,
+    confidence_assessment: result.confidence_assessment,
+    verification_evidence: result.verification_evidence,
+    verification_notes: result.verification_notes,
+    // Simplify the agent_execution_trace to avoid circular references
+    agent_execution_trace: result.agent_execution_trace ? {
+      sections: result.agent_execution_trace.sections?.map((section: any) => ({
+        id: section.id,
+        title: section.title,
+        label: section.label,
+        stages: section.stages?.map((stage: any) => ({
+          id: stage.id,
+          stage: stage.stage,
+          status: stage.status,
+          details: stage.details,
+          duration: stage.duration,
+          durationMs: stage.durationMs
+        }))
+      }))
+    } : undefined
+  };
+}
+
 export default function ManualPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [showContextAfterFailure, setShowContextAfterFailure] = useState(false);
@@ -74,11 +130,11 @@ export default function ManualPage() {
           result: pipelineResult,
           brand: pipelineResult.brand,
           hasNarrativeFields: {
-            headline: !!pipelineResult.headline,
-            tagline: !!pipelineResult.tagline,
-            story: !!pipelineResult.story,
-            ownership_notes: !!pipelineResult.ownership_notes,
-            behind_the_scenes: !!pipelineResult.behind_the_scenes
+            headline: !!(pipelineResult as any).headline,
+            tagline: !!(pipelineResult as any).tagline,
+            story: !!(pipelineResult as any).story,
+            ownership_notes: !!(pipelineResult as any).ownership_notes,
+            behind_the_scenes: !!(pipelineResult as any).behind_the_scenes
           }
         });
         
