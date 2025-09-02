@@ -98,7 +98,18 @@ export default function ResultsPage() {
     if (storedResult) {
       try {
         const parsedResult = JSON.parse(storedResult);
-        console.log('📊 Loaded pipeline result:', parsedResult);
+        console.log('📊 Loaded pipeline result:', {
+          success: parsedResult.success,
+          brand: parsedResult.brand,
+          confidence: parsedResult.confidence_score,
+          hasNarrativeFields: {
+            headline: !!parsedResult.headline,
+            tagline: !!parsedResult.tagline,
+            story: !!parsedResult.story,
+            ownership_notes: !!parsedResult.ownership_notes,
+            behind_the_scenes: !!parsedResult.behind_the_scenes
+          }
+        });
         setResult(parsedResult);
       } catch (error) {
         console.error('❌ [NARRATIVE_PARSE_ERROR] Error parsing stored result:', error);

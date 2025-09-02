@@ -69,16 +69,42 @@ export default function ManualPage() {
           console.log('🎨 Generated copy content:', JSON.stringify(rawPipelineResult.generated_copy, null, 2));
         }
         
-        const sessionData = JSON.stringify(rawPipelineResult);
-        console.log('💾 Session data size:', sessionData.length, 'characters');
-        console.log('🔍 Manual search - verification fields being stored:', {
-          verification_status: rawPipelineResult.verification_status,
-          verified_at: rawPipelineResult.verified_at,
-          confidence_assessment: rawPipelineResult.confidence_assessment,
-          verification_evidence: rawPipelineResult.verification_evidence
+        // Log both result and brand right before sessionStorage.setItem
+        console.log('🔍 [SESSION_STORAGE_DEBUG] About to store:', {
+          result: pipelineResult,
+          brand: pipelineResult.brand,
+          hasNarrativeFields: {
+            headline: !!pipelineResult.headline,
+            tagline: !!pipelineResult.tagline,
+            story: !!pipelineResult.story,
+            ownership_notes: !!pipelineResult.ownership_notes,
+            behind_the_scenes: !!pipelineResult.behind_the_scenes
+          }
         });
         
-        sessionStorage.setItem('pipelineResult', sessionData);
+        // Safeguard: Ensure we have the required data before storing
+        if (pipelineResult && pipelineResult.brand) {
+          try {
+            const sessionData = JSON.stringify(pipelineResult);
+            console.log('💾 Session data size:', sessionData.length, 'characters');
+            console.log('🔍 Manual search - verification fields being stored:', {
+              verification_status: pipelineResult.verification_status,
+              verified_at: pipelineResult.verified_at,
+              confidence_assessment: pipelineResult.confidence_assessment,
+              verification_evidence: pipelineResult.verification_evidence
+            });
+            
+            sessionStorage.setItem('pipelineResult', sessionData);
+            console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result');
+          } catch (err) {
+            console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: pipelineResult.brand, result: pipelineResult });
+          }
+        } else {
+          console.error('❌ [SESSION_STORAGE_VALIDATION_ERROR] Missing required data:', {
+            hasResult: !!pipelineResult,
+            hasBrand: !!pipelineResult?.brand
+          });
+        }
         
         // Verify it was stored correctly
         const storedData = sessionStorage.getItem('pipelineResult');

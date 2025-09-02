@@ -142,10 +142,36 @@ export default function CameraPage() {
           console.log('🎨 Generated copy content:', JSON.stringify(cleanResult.generated_copy, null, 2));
         }
         
-        const sessionData = JSON.stringify(cleanResult);
-        console.log('💾 Session data size:', sessionData.length, 'characters');
+        // Log both result and brand right before sessionStorage.setItem
+        console.log('🔍 [SESSION_STORAGE_DEBUG] About to store:', {
+          result: cleanResult,
+          brand: cleanResult.brand,
+          hasNarrativeFields: {
+            headline: !!cleanResult.headline,
+            tagline: !!cleanResult.tagline,
+            story: !!cleanResult.story,
+            ownership_notes: !!cleanResult.ownership_notes,
+            behind_the_scenes: !!cleanResult.behind_the_scenes
+          }
+        });
         
-        sessionStorage.setItem('pipelineResult', sessionData);
+        // Safeguard: Ensure we have the required data before storing
+        if (cleanResult && cleanResult.brand) {
+          try {
+            const sessionData = JSON.stringify(cleanResult);
+            console.log('💾 Session data size:', sessionData.length, 'characters');
+            
+            sessionStorage.setItem('pipelineResult', sessionData);
+            console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result');
+          } catch (err) {
+            console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: cleanResult.brand, result: cleanResult });
+          }
+        } else {
+          console.error('❌ [SESSION_STORAGE_VALIDATION_ERROR] Missing required data:', {
+            hasResult: !!cleanResult,
+            hasBrand: !!cleanResult?.brand
+          });
+        }
         
         // Verify it was stored correctly
         const storedData = sessionStorage.getItem('pipelineResult');
