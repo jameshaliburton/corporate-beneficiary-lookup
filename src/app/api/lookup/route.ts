@@ -754,11 +754,49 @@ export async function POST(request: NextRequest) {
           ];
           const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
           
+          // 🎨 GENERATE NARRATIVE FOR EARLY CACHE HIT (Manual Results)
+          console.log('[COPY_AGENT] EXECUTION PATH: Reached early cache hit narrative generation');
+          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (early cache hit)...');
+          let narrative;
+          try {
+            narrative = await generateNarrativeFromResult({
+              brand_name: cachedResult.brand,
+              brand_country: (cachedResult as any).brand_country || 'Unknown',
+              ultimate_owner: cachedResult.financial_beneficiary,
+              ultimate_owner_country: cachedResult.beneficiary_country,
+              financial_beneficiary: cachedResult.financial_beneficiary,
+              financial_beneficiary_country: cachedResult.beneficiary_country,
+              ownership_type: cachedResult.ownership_structure_type,
+              confidence: cachedResult.confidence_score || 0,
+              ownership_notes: (cachedResult as any).ownership_notes || [],
+              behind_the_scenes: (cachedResult as any).behind_the_scenes || []
+            });
+            console.log('[COPY_AGENT] Successfully generated narrative for early cache hit:', narrative);
+          } catch (narrativeError) {
+            console.error('[COPY_AGENT] Narrative generation failed for early cache hit:', narrativeError);
+            // Fallback narrative
+            narrative = {
+              headline: `${cachedResult.brand} is owned by ${cachedResult.financial_beneficiary}`,
+              tagline: "Discover the corporate connections behind your favorite brands",
+              story: `${cachedResult.brand} is ultimately owned by ${cachedResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
+              ownership_notes: [`Ownership: ${cachedResult.financial_beneficiary} | Country: ${cachedResult.beneficiary_country || 'Unknown'} | Confidence: ${cachedResult.confidence_score || 0}%`],
+              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
+              template_used: "early_cache_fallback"
+            };
+          }
+
           return NextResponse.json({
             ...cachedResult,
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
+            // Add narrative fields
+            headline: narrative.headline,
+            tagline: narrative.tagline,
+            story: narrative.story,
+            ownership_notes: narrative.ownership_notes,
+            behind_the_scenes: narrative.behind_the_scenes,
+            narrative_template_used: narrative.template_used,
             query_id: queryId
               });
             } else {
@@ -1079,11 +1117,49 @@ export async function POST(request: NextRequest) {
           ];
           const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
           
+          // 🎨 GENERATE NARRATIVE FOR VISION-FIRST CACHE HIT
+          console.log('[COPY_AGENT] EXECUTION PATH: Reached vision-first cache hit narrative generation');
+          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (vision-first cache hit)...');
+          let narrative;
+          try {
+            narrative = await generateNarrativeFromResult({
+              brand_name: cachedResult.brand,
+              brand_country: (cachedResult as any).brand_country || 'Unknown',
+              ultimate_owner: cachedResult.financial_beneficiary,
+              ultimate_owner_country: cachedResult.beneficiary_country,
+              financial_beneficiary: cachedResult.financial_beneficiary,
+              financial_beneficiary_country: cachedResult.beneficiary_country,
+              ownership_type: cachedResult.ownership_structure_type,
+              confidence: cachedResult.confidence_score || 0,
+              ownership_notes: (cachedResult as any).ownership_notes || [],
+              behind_the_scenes: (cachedResult as any).behind_the_scenes || []
+            });
+            console.log('[COPY_AGENT] Successfully generated narrative for vision-first cache hit:', narrative);
+          } catch (narrativeError) {
+            console.error('[COPY_AGENT] Narrative generation failed for vision-first cache hit:', narrativeError);
+            // Fallback narrative
+            narrative = {
+              headline: `${cachedResult.brand} is owned by ${cachedResult.financial_beneficiary}`,
+              tagline: "Discover the corporate connections behind your favorite brands",
+              story: `${cachedResult.brand} is ultimately owned by ${cachedResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
+              ownership_notes: [`Ownership: ${cachedResult.financial_beneficiary} | Country: ${cachedResult.beneficiary_country || 'Unknown'} | Confidence: ${cachedResult.confidence_score || 0}%`],
+              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
+              template_used: "vision_cache_fallback"
+            };
+          }
+
           return NextResponse.json({
             ...cachedResult,
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
+            // Add narrative fields
+            headline: narrative.headline,
+            tagline: narrative.tagline,
+            story: narrative.story,
+            ownership_notes: narrative.ownership_notes,
+            behind_the_scenes: narrative.behind_the_scenes,
+            narrative_template_used: narrative.template_used,
             query_id: queryId
           });
       } else {
