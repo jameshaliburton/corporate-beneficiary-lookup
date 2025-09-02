@@ -95,21 +95,45 @@ OUTPUT FORMAT (JSON):
       cleanedText = cleanedText
         .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove problematic control characters but keep \n, \r, \t
         .replace(/\r\n/g, '\n') // Normalize line endings
-        .replace(/\r/g, '\n'); // Convert remaining \r to \n
+        .replace(/\r/g, '\n') // Convert remaining \r to \n
+        .replace(/\n/g, ' ') // Replace newlines with spaces to avoid JSON parsing issues
+        .replace(/\t/g, ' ') // Replace tabs with spaces
+        .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+        .trim(); // Remove leading/trailing whitespace
       
       try {
         console.log('Cleaned narrative JSON text:', cleanedText.substring(0, 200) + '...');
         
-        return JSON.parse(cleanedText);
+        const parsed = JSON.parse(cleanedText);
+        console.log('✅ Successfully parsed narrative JSON');
+        return parsed;
       } catch (parseError) {
-        console.error('Failed to parse narrative JSON:', parseError);
-        console.error('Raw response text:', content.text.substring(0, 500));
-        console.error('Cleaned text that failed to parse:', cleanedText.substring(0, 500));
+        console.error('❌ Failed to parse narrative JSON:', parseError);
+        console.error('Raw response text length:', content.text.length);
+        console.error('Raw response text (first 500 chars):', content.text.substring(0, 500));
+        console.error('Cleaned text length:', cleanedText.length);
+        console.error('Cleaned text (first 500 chars):', cleanedText.substring(0, 500));
         console.error('Parse error details:', {
           message: parseError.message,
           position: parseError.message.match(/position (\d+)/)?.[1],
           line: parseError.message.match(/line (\d+)/)?.[1]
         });
+        
+        // Try to extract JSON from the response if it's embedded in other text
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            console.log('🔄 Attempting to parse extracted JSON...');
+            const extractedJson = jsonMatch[0];
+            const parsed = JSON.parse(extractedJson);
+            console.log('✅ Successfully parsed extracted JSON');
+            return parsed;
+          } catch (extractError) {
+            console.error('❌ Failed to parse extracted JSON:', extractError);
+          }
+        }
+        
+        console.log('🔄 Falling back to fallback narrative due to JSON parsing failure');
         return getFallbackNarrative(result);
       }
     }
