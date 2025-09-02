@@ -1345,6 +1345,17 @@ export async function POST(request: NextRequest) {
       });
       console.log('✅ Generated narrative:', narrative);
       
+      // Production logging for narrative generation
+      if (process.env.NODE_ENV === 'production') {
+        console.log("[NARRATIVE_GENERATED]", {
+          brand: currentProductData.brand,
+          has_headline: !!narrative.headline,
+          has_tagline: !!narrative.tagline,
+          has_story: !!narrative.story,
+          headline_preview: narrative.headline ? narrative.headline.substring(0, 50) + '...' : 'none'
+        });
+      }
+      
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -1430,7 +1441,12 @@ export async function POST(request: NextRequest) {
           has_verification: !!mergedResult.verification_status,
           verification_status: mergedResult.verification_status || 'none',
           has_verification_notes: !!mergedResult.verification_notes,
-          result_type: mergedResult.result_type || 'unknown'
+          result_type: mergedResult.result_type || 'unknown',
+          // Check narrative fields
+          has_headline: !!mergedResult.headline,
+          has_tagline: !!mergedResult.tagline,
+          has_story: !!mergedResult.story,
+          headline_preview: mergedResult.headline ? mergedResult.headline.substring(0, 50) + '...' : 'none'
         });
       }
 
