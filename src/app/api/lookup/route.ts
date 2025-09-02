@@ -888,9 +888,48 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'Already found in lookup' });
           await emitProgress(queryId, 'complete', 'completed', { success: true });
 
+          // 🎨 GENERATE NARRATIVE FOR BARCODE LOOKUP CACHE HIT
+          console.log('[COPY_AGENT] EXECUTION PATH: Reached barcode lookup cache hit narrative generation');
+          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (barcode cache hit)...');
+          let narrative;
+          try {
+            narrative = await generateNarrativeFromResult({
+              brand_name: barcodeData.brand,
+              brand_country: (barcodeData as any).brand_country || 'Unknown',
+              ultimate_owner: barcodeData.financial_beneficiary,
+              ultimate_owner_country: barcodeData.beneficiary_country,
+              financial_beneficiary: barcodeData.financial_beneficiary,
+              financial_beneficiary_country: barcodeData.beneficiary_country,
+              ownership_type: barcodeData.ownership_structure_type,
+              confidence: barcodeData.confidence_score || 0,
+              ownership_notes: (barcodeData as any).ownership_notes || [],
+              behind_the_scenes: (barcodeData as any).behind_the_scenes || []
+            });
+            console.log('[COPY_AGENT] Successfully generated narrative for barcode cache hit:', narrative);
+          } catch (narrativeError) {
+            console.error('[COPY_AGENT] Narrative generation failed for barcode cache hit:', narrativeError);
+            // Fallback narrative
+            narrative = {
+              headline: `${barcodeData.brand} is owned by ${barcodeData.financial_beneficiary}`,
+              tagline: "Discover the corporate connections behind your favorite brands",
+              story: `${barcodeData.brand} is ultimately owned by ${barcodeData.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
+              ownership_notes: [`Ownership: ${barcodeData.financial_beneficiary} | Country: ${barcodeData.beneficiary_country || 'Unknown'} | Confidence: ${barcodeData.confidence_score || 0}%`],
+              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
+              template_used: "barcode_cache_fallback"
+            };
+          }
+
           return NextResponse.json({
             ...barcodeData,
-            query_id: queryId
+            query_id: queryId,
+            // Add narrative fields
+            headline: narrative.headline,
+            tagline: narrative.tagline,
+            story: narrative.story,
+            ownership_notes: narrative.ownership_notes,
+            behind_the_scenes: narrative.behind_the_scenes,
+            narrative_template_used: narrative.template_used,
+            hasGeneratedCopy: true
           });
         }
       } else if (isImageIdentifier) {
