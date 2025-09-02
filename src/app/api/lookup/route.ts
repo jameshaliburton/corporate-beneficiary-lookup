@@ -415,6 +415,10 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     
     // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
     console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
+    console.log('[COPY_AGENT] EXECUTION PATH: Reached cached result narrative generation section');
+    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult exists:', !!cachedResult);
+    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult.brand:', cachedResult?.brand);
+    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult.financial_beneficiary:', cachedResult?.financial_beneficiary);
     console.log('[COPY_AGENT] Generating copy for cached result:', cachedResult.brand, '(confidence:', cachedResult.confidence_score || 0, ')');
     console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (cached path)...');
     const narrative = await generateNarrativeFromResult({
@@ -1323,6 +1327,27 @@ export async function POST(request: NextRequest) {
       // Generate engaging copy using LLM
       console.log('🎨 Generating engaging copy for brand ownership result...');
       console.log('🎨 TEST: This line should appear in logs');
+      console.log('[COPY_AGENT] EXECUTION PATH: Reached narrative generation section');
+      console.log('[COPY_AGENT] EXECUTION PATH: ownershipResult exists:', !!ownershipResult);
+      console.log('[COPY_AGENT] EXECUTION PATH: currentProductData exists:', !!currentProductData);
+      console.log('[COPY_AGENT] EXECUTION PATH: currentProductData.brand:', currentProductData?.brand);
+      console.log('[COPY_AGENT] EXECUTION PATH: ownershipResult.financial_beneficiary:', ownershipResult?.financial_beneficiary);
+      
+      // FALLBACK CHECK: Ensure narrative generation happens if we have any ownership data
+      const shouldGenerateNarrative = !!(
+        ownershipResult && 
+        (ownershipResult.financial_beneficiary || ownershipResult.beneficiary_country || ownershipResult.confidence_score)
+      );
+      
+      console.log('[COPY_AGENT] FALLBACK CHECK: shouldGenerateNarrative:', shouldGenerateNarrative);
+      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.financial_beneficiary:', ownershipResult?.financial_beneficiary);
+      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.beneficiary_country:', ownershipResult?.beneficiary_country);
+      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.confidence_score:', ownershipResult?.confidence_score);
+      
+      if (!shouldGenerateNarrative) {
+        console.log('[COPY_AGENT] Narrative generator skipped - no ownership data available');
+        console.log('[COPY_AGENT] FALLBACK: Creating minimal narrative anyway...');
+      }
       
       // Build ownership data object for LLM analysis
       const ownershipData = {
@@ -1516,6 +1541,20 @@ export async function POST(request: NextRequest) {
         ownership_notes: mergedResult.ownership_notes,
         behind_the_scenes: mergedResult.behind_the_scenes,
         narrative_template_used: mergedResult.narrative_template_used
+      });
+
+      // Log narrative object just before returning to client
+      console.log('[COPY_AGENT] FINAL RESULT: Narrative object before return:', {
+        hasGeneratedCopy: !!(mergedResult.headline && mergedResult.story),
+        headline: mergedResult.headline,
+        tagline: mergedResult.tagline,
+        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
+        ownership_notes: mergedResult.ownership_notes,
+        behind_the_scenes: mergedResult.behind_the_scenes,
+        narrative_template_used: mergedResult.narrative_template_used,
+        success: mergedResult.success,
+        brand: mergedResult.brand,
+        financial_beneficiary: mergedResult.financial_beneficiary
       });
 
       if (forceFullTrace) {
