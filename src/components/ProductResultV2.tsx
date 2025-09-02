@@ -42,6 +42,24 @@ export default function ProductResultV2({
   const [showBehindTheScenes, setShowBehindTheScenes] = useState(false);
   const router = useRouter();
 
+  // DEBUG: Log narrative fields received
+  console.log("[UI] ProductResultV2 received narrative fields:", {
+    headline: narrative?.headline,
+    tagline: narrative?.tagline,
+    story: narrative?.story,
+    ownership_notes: narrative?.ownership_notes,
+    behind_the_scenes: narrative?.behind_the_scenes,
+    template_used: narrative?.template_used
+  });
+
+  // DEBUG: Check if narrative is available
+  const isNarrativeAvailable = narrative && (
+    narrative.headline || 
+    narrative.story || 
+    narrative.tagline
+  );
+  console.log("[UI] Is narrative available?", isNarrativeAvailable);
+
   // Debug logging for verification fields
   console.log('[ProductResultV2] Verification fields:', {
     verification_status: result.verification_status,
@@ -90,6 +108,11 @@ export default function ProductResultV2({
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* DEBUG: Temporary render of narrative object */}
+      <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px', fontSize: '12px' }}>
+        <strong>DEBUG - Narrative Object:</strong>
+        <pre>{JSON.stringify(narrative, null, 2)}</pre>
+      </div>
       {/* Header Section - No Card Styling, Center-Aligned */}
       <div className="space-y-6 text-center">
         <div className="space-y-4">
@@ -117,7 +140,13 @@ export default function ProductResultV2({
             The story of {result.brand_name || 'this brand'}
           </h3>
           <p className="text-muted-foreground leading-relaxed">
-            {narrative?.story || 'Analyzing ownership data...'}
+            {(() => {
+              if (!narrative?.story) {
+                console.warn("[FALLBACK] narrative.story missing. Full narrative object:", narrative);
+                return 'Analyzing ownership data...';
+              }
+              return narrative.story;
+            })()}
           </p>
         </div>
       </div>
