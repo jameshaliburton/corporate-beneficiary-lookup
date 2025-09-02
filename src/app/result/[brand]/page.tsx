@@ -85,8 +85,37 @@ export default function ResultPage() {
         hasProcessed.current = true;
         return;
       } catch (err) {
-        console.error('❌ Error parsing stored pipeline result:', err);
-        // Fall back to mock data
+        console.error('❌ [NARRATIVE_PARSE_ERROR] Error parsing stored pipeline result:', err);
+        console.error('❌ [NARRATIVE_PARSE_ERROR] Raw stored data:', storedPipelineResult.substring(0, 500));
+        
+        // Try to recover by sanitizing the data
+        try {
+          const sanitizedData = storedPipelineResult.replace(/[\u0000-\u001F\u007F]/g, ' ');
+          const recoveredResult = JSON.parse(sanitizedData);
+          console.log('🔄 [NARRATIVE_RECOVERY] Successfully recovered result after sanitization');
+          
+          setPipelineResult(recoveredResult);
+          
+          // Transform the recovered data asynchronously
+          transformPipelineData(recoveredResult)
+            .then(transformedProps => {
+              setProductResultProps(transformedProps);
+              setIsLoading(false);
+            })
+            .catch(transformErr => {
+              console.error('❌ Error transforming recovered pipeline data:', transformErr);
+              setError('Failed to process results');
+              setIsLoading(false);
+            });
+          
+          // Clear the stored data to prevent reuse
+          sessionStorage.removeItem('pipelineResult');
+          hasProcessed.current = true;
+          return;
+        } catch (recoveryError) {
+          console.error('❌ [NARRATIVE_RECOVERY] Failed to recover result:', recoveryError);
+          // Fall back to mock data
+        }
       }
     }
 
