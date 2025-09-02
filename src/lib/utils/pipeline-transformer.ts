@@ -69,6 +69,13 @@ export interface PipelineResult {
       mapping: string;
     };
   };
+  // Narrative fields for story display
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
   // Gemini verification fields
   verification_status?: string;
   verification_confidence_change?: string;
@@ -123,6 +130,13 @@ export interface ProductResultProps {
       mapping: string;
     };
   };
+  // Narrative fields for story display
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
   // Gemini verification fields
   verificationStatus?: string;
   verificationConfidenceChange?: string;
@@ -270,6 +284,13 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     sources: pipelineResult.sources,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
+    // Narrative fields for story display
+    headline: pipelineResult.headline,
+    tagline: pipelineResult.tagline,
+    story: pipelineResult.story,
+    ownership_notes: pipelineResult.ownership_notes,
+    behind_the_scenes: pipelineResult.behind_the_scenes,
+    narrative_template_used: pipelineResult.narrative_template_used,
     // Gemini verification fields
     verificationStatus: pipelineResult.verification_status,
     verificationConfidenceChange: pipelineResult.verification_confidence_change,
