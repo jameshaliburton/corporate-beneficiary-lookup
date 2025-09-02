@@ -1327,6 +1327,7 @@ export async function POST(request: NextRequest) {
       };
       
       console.log('🎨 Starting narrative generation...');
+      console.log('[COPY_AGENT] Generating copy for:', currentProductData.brand, '(confidence:', ownershipResult.confidence_score || 0, ')');
       let narrative;
       try {
         narrative = await generateNarrativeFromResult({
@@ -1346,6 +1347,12 @@ export async function POST(request: NextRequest) {
           behind_the_scenes: ownershipResult.behind_the_scenes
         });
         console.log('✅ Generated narrative:', narrative);
+        console.log('[COPY_AGENT] Output:', {
+          headline: narrative.headline,
+          story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
+          template_used: narrative.template_used
+        });
+        console.log('[COPY_AGENT] Done ✅');
       } catch (narrativeError) {
         console.error('❌ Critical narrative generation error:', narrativeError);
         // Emergency fallback - create minimal narrative
@@ -1443,6 +1450,18 @@ export async function POST(request: NextRequest) {
         hasAgentExecutionTrace: !!mergedResult.agent_execution_trace,
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
         agentExecutionStages: mergedResult.agent_execution_trace?.sections?.reduce((total: number, section: any) => total + section.stages.length, 0) || 0
+      });
+
+      // Log narrative fields in final result
+      console.log('[RESULT_RETURNED] Final result narrative fields:', {
+        brand: mergedResult.brand,
+        headline: mergedResult.headline,
+        tagline: mergedResult.tagline,
+        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
+        ownership_notes: mergedResult.ownership_notes,
+        behind_the_scenes: mergedResult.behind_the_scenes,
+        narrative_template_used: mergedResult.narrative_template_used,
+        hasGeneratedCopy: !!(mergedResult.headline && mergedResult.story)
       });
 
       // Disambiguation trigger marker
