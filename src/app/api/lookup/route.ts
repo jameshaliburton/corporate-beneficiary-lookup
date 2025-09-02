@@ -1352,9 +1352,20 @@ export async function POST(request: NextRequest) {
           has_headline: !!narrative.headline,
           has_tagline: !!narrative.tagline,
           has_story: !!narrative.story,
-          headline_preview: narrative.headline ? narrative.headline.substring(0, 50) + '...' : 'none'
+          headline_preview: narrative.headline ? narrative.headline.substring(0, 50) + '...' : 'none',
+          template_used: narrative.template_used || 'unknown'
         });
       }
+      
+      // Additional debugging - log the actual narrative content
+      console.log('🔍 [NARRATIVE_DEBUG] Full narrative object:', {
+        headline: narrative.headline,
+        tagline: narrative.tagline,
+        story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
+        ownership_notes: narrative.ownership_notes,
+        behind_the_scenes: narrative.behind_the_scenes,
+        template_used: narrative.template_used
+      });
       
       const mergedResult = {
         success: true,
@@ -1446,9 +1457,20 @@ export async function POST(request: NextRequest) {
           has_headline: !!mergedResult.headline,
           has_tagline: !!mergedResult.tagline,
           has_story: !!mergedResult.story,
-          headline_preview: mergedResult.headline ? mergedResult.headline.substring(0, 50) + '...' : 'none'
+          headline_preview: mergedResult.headline ? mergedResult.headline.substring(0, 50) + '...' : 'none',
+          narrative_template_used: mergedResult.narrative_template_used || 'none'
         });
       }
+      
+      // Additional debugging - log the actual narrative fields in final result
+      console.log('🔍 [FINAL_RESULT_DEBUG] Narrative fields in mergedResult:', {
+        headline: mergedResult.headline,
+        tagline: mergedResult.tagline,
+        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
+        ownership_notes: mergedResult.ownership_notes,
+        behind_the_scenes: mergedResult.behind_the_scenes,
+        narrative_template_used: mergedResult.narrative_template_used
+      });
 
       if (forceFullTrace) {
         return NextResponse.json(mergedResult);
