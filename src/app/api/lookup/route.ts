@@ -14,6 +14,9 @@ import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTr
 import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
 import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 
+// Debug: Test import
+console.log('[COPY_AGENT] Import test - generateNarrativeFromResult function:', typeof generateNarrativeFromResult);
+
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
 
@@ -412,6 +415,8 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     
     // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
     console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
+    console.log('[COPY_AGENT] Generating copy for cached result:', cachedResult.brand, '(confidence:', cachedResult.confidence_score || 0, ')');
+    console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (cached path)...');
     const narrative = await generateNarrativeFromResult({
       brand_name: cachedResult.brand,
       brand_country: cachedResult.brand_country,
@@ -425,6 +430,12 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       behind_the_scenes: cachedResult.behind_the_scenes
     });
     console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
+    console.log('[COPY_AGENT] Output for cached result:', {
+      headline: narrative.headline,
+      story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
+      template_used: narrative.template_used
+    });
+    console.log('[COPY_AGENT] Done ✅ (cached result)');
     
     // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
     const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
@@ -1328,6 +1339,7 @@ export async function POST(request: NextRequest) {
       
       console.log('🎨 Starting narrative generation...');
       console.log('[COPY_AGENT] Generating copy for:', currentProductData.brand, '(confidence:', ownershipResult.confidence_score || 0, ')');
+      console.log('[COPY_AGENT] About to call generateNarrativeFromResult function...');
       let narrative;
       try {
         narrative = await generateNarrativeFromResult({
