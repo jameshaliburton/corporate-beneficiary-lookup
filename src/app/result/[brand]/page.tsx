@@ -14,7 +14,37 @@ export default function ResultPage() {
   const [productResultProps, setProductResultProps] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
   const hasProcessed = useRef(false);
+
+  // useEffect to handle sessionStorage writes when pipelineResult changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && pipelineResult && pipelineResult.brand) {
+      try {
+        const sessionData = JSON.stringify(pipelineResult);
+        const key = `pipelineResult_${pipelineResult.brand}`;
+        
+        console.log('🔥 [HOTFIX_SESSION_WRITE] Writing to sessionStorage from result page:', {
+          key,
+          dataSize: sessionData.length,
+          hasStory: !!(pipelineResult as any).story,
+          hasHeadline: !!(pipelineResult as any).headline,
+          hasTagline: !!(pipelineResult as any).tagline
+        });
+        
+        sessionStorage.setItem(key, sessionData);
+        console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result from result page');
+        setSessionStorageStatus('✅ sessionStorage write succeeded');
+        
+        // Also store with generic key for backward compatibility
+        sessionStorage.setItem('pipelineResult', sessionData);
+        
+      } catch (err) {
+        console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: pipelineResult.brand, result: pipelineResult });
+        setSessionStorageStatus('❌ sessionStorage write failed');
+      }
+    }
+  }, [pipelineResult]);
 
   useEffect(() => {
     // Prevent multiple executions
@@ -410,6 +440,13 @@ export default function ResultPage() {
             onScanAnother={() => window.location.href = '/'}
             onShare={() => console.log('Share functionality')}
           />
+          
+          {/* Temporary sessionStorage status indicator */}
+          {sessionStorageStatus && (
+            <div className="mt-4 p-3 rounded-lg bg-blue-100 border border-blue-300 text-sm">
+              <strong>SessionStorage Status:</strong> {sessionStorageStatus}
+            </div>
+          )}
         </div>
       </div>
     </>
