@@ -1347,6 +1347,63 @@ export async function POST(request: NextRequest) {
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
       
+      // 🔍 STEP 7.5: GEMINI VERIFICATION ORCHESTRATION
+      console.log('[ORCHESTRATOR] Running GeminiVerificationAgent...');
+      
+      try {
+        const geminiAgent = new GeminiOwnershipAnalysisAgent();
+        const verificationOutput = await geminiAgent.analyze(
+          currentProductData.brand, 
+          currentProductData.product_name, 
+          ownershipResult
+        );
+        
+        console.log('[VERIFICATION_RESULT]', {
+          verification_status: verificationOutput.verification_status,
+          verified_at: verificationOutput.verified_at,
+          verification_method: verificationOutput.verification_method,
+          verification_notes: verificationOutput.verification_notes,
+          confidence_assessment: verificationOutput.confidence_assessment
+        });
+        
+        // Merge verification output into ownershipResult
+        ownershipResult.verification_status = verificationOutput.verification_status;
+        ownershipResult.verified_at = verificationOutput.verified_at;
+        ownershipResult.verification_method = verificationOutput.verification_method;
+        ownershipResult.verification_notes = verificationOutput.verification_notes;
+        ownershipResult.confidence_assessment = verificationOutput.confidence_assessment;
+        ownershipResult.verification_evidence = verificationOutput.verification_evidence;
+        ownershipResult.verification_confidence_change = verificationOutput.verification_confidence_change;
+        
+        // Ensure agent_execution_trace exists and add Gemini verification entry
+        if (!ownershipResult.agent_execution_trace) {
+          ownershipResult.agent_execution_trace = {
+            sections: [],
+            show_skipped_stages: false,
+            mark_skipped_stages: false
+          };
+        }
+        
+        // Add Gemini verification to the trace
+        if (!ownershipResult.agent_execution_trace.sections) {
+          ownershipResult.agent_execution_trace.sections = [];
+        }
+        
+        ownershipResult.agent_execution_trace.sections.push({
+          agent: 'GeminiVerificationAgent',
+          output: verificationOutput,
+          timestamp: new Date().toISOString(),
+        });
+        
+        console.log('[ORCHESTRATOR] Successfully merged Gemini verification into ownershipResult');
+        
+      } catch (error) {
+        console.error('[ORCHESTRATOR] Gemini verification failed:', error.message);
+        // Continue without verification - don't fail the entire pipeline
+        ownershipResult.verification_status = 'verification_failed';
+        ownershipResult.verification_notes = `Gemini verification failed: ${error.message}`;
+      }
+      
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
       if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
         console.log('💾 [Pipeline] Saving ownership result to database');
@@ -1682,6 +1739,16 @@ export async function POST(request: NextRequest) {
         behind_the_scenes_content: mergedResult.behind_the_scenes?.slice(0, 2) || [],
         has_agent_execution_trace: !!mergedResult.agent_execution_trace,
         trace_sections_count: mergedResult.agent_execution_trace?.sections?.length || 0
+      });
+
+      // 🔍 FINAL PIPELINE RESULT LOGGING
+      console.log('[PIPELINE_FINAL] Returning result with verification + trace:', {
+        verification_status: mergedResult.verification_status,
+        verified_at: mergedResult.verified_at,
+        verification_method: mergedResult.verification_method,
+        has_agent_execution_trace: !!mergedResult.agent_execution_trace,
+        agent_execution_trace_sections: mergedResult.agent_execution_trace?.sections?.length || 0,
+        gemini_verification_entry: mergedResult.agent_execution_trace?.sections?.find(section => section.agent === 'GeminiVerificationAgent') ? 'PRESENT' : 'MISSING'
       });
 
       // Disambiguation trigger marker
