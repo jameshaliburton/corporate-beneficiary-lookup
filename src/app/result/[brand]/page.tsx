@@ -456,6 +456,29 @@ export default function ResultPage() {
     }
   });
 
+  // DEBUG: Log raw pipeline result and verification fields
+  if (typeof window !== "undefined") {
+    console.log('[DEBUG: RAW_PIPELINE_RESULT] Verification fields:', {
+      verification_status: pipelineResult?.verification_status,
+      verified_at: pipelineResult?.verified_at,
+      verification_method: pipelineResult?.verification_method,
+      verification_notes: pipelineResult?.verification_notes,
+      confidence_assessment: pipelineResult?.confidence_assessment,
+      verification_evidence: pipelineResult?.verification_evidence,
+      verification_confidence_change: pipelineResult?.verification_confidence_change
+    });
+    
+    console.log('[DEBUG: TRANSFORMED_PROPS] Verification fields being passed to UI:', {
+      verification_status: productResultProps?.verificationStatus,
+      verified_at: productResultProps?.verifiedAt,
+      verification_method: productResultProps?.verificationMethod,
+      verification_notes: productResultProps?.verificationNotes,
+      confidence_assessment: productResultProps?.confidenceAssessment,
+      verification_evidence: productResultProps?.verificationEvidence,
+      verification_confidence_change: productResultProps?.verificationConfidenceChange
+    });
+  }
+
   return (
     <>
       <Head>
@@ -486,13 +509,13 @@ export default function ResultPage() {
               ownership_notes: productResultProps?.ownership_notes,
               behind_the_scenes: productResultProps?.behind_the_scenes,
               // Gemini verification fields
-              verification_status: productResultProps?.verification_status,
-              verified_at: productResultProps?.verified_at,
-              verification_method: productResultProps?.verification_method,
-              verification_notes: productResultProps?.verification_notes,
-              confidence_assessment: productResultProps?.confidence_assessment,
-              verification_evidence: productResultProps?.verification_evidence,
-              verification_confidence_change: productResultProps?.confidence_assessment?.confidence_change
+              verification_status: productResultProps?.verificationStatus,
+              verified_at: productResultProps?.verifiedAt,
+              verification_method: productResultProps?.verificationMethod,
+              verification_notes: productResultProps?.verificationNotes,
+              confidence_assessment: productResultProps?.confidenceAssessment,
+              verification_evidence: productResultProps?.verificationEvidence,
+              verification_confidence_change: productResultProps?.verificationConfidenceChange
             }}
             narrative={{
               headline: productResultProps?.headline,

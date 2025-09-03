@@ -341,5 +341,18 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     tracesLength: transformedData.traces.length
   });
 
+  // DEBUG: Log verification fields in transformed data
+  if (typeof window !== "undefined") {
+    console.log('[DEBUG: TRANSFORMED_PROPS] Verification fields:', {
+      verificationStatus: transformedData.verificationStatus,
+      verifiedAt: transformedData.verifiedAt,
+      verificationMethod: transformedData.verificationMethod,
+      verificationNotes: transformedData.verificationNotes,
+      confidenceAssessment: transformedData.confidenceAssessment,
+      verificationEvidence: transformedData.verificationEvidence,
+      verificationConfidenceChange: transformedData.verificationConfidenceChange
+    });
+  }
+
   return transformedData;
 } 

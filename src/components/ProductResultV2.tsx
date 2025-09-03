@@ -81,6 +81,25 @@ export default function ProductResultV2({
     verification_confidence_change: result.verification_confidence_change
   });
 
+  // Enhanced debug logging for verification fields
+  if (typeof window !== "undefined") {
+    console.log('[ProductResultV2] Enhanced verification fields debug:', {
+      verification_status: result.verification_status,
+      verified_at: result.verified_at,
+      verification_method: result.verification_method,
+      verification_notes: result.verification_notes,
+      confidence_assessment: result.confidence_assessment,
+      verification_evidence: result.verification_evidence,
+      verification_confidence_change: result.verification_confidence_change,
+      hasVerificationStatus: !!result.verification_status,
+      hasVerifiedAt: !!result.verified_at,
+      hasVerificationMethod: !!result.verification_method,
+      hasVerificationNotes: !!result.verification_notes,
+      hasConfidenceAssessment: !!result.confidence_assessment,
+      hasVerificationEvidence: !!result.verification_evidence
+    });
+  }
+
   // Get country flag emoji
   const getCountryFlag = (country?: string): string => {
     if (!country || country === 'Unknown') return '🏳️';
