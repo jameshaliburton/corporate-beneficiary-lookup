@@ -111,7 +111,28 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         ownershipResult.agent_path.push("gemini_verification_inline_cache");
         
-        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
+        // 🔍 ADD GEMINI SECTION TO AGENT EXECUTION TRACE (CACHE HIT PATH)
+        if (!ownershipResult.agent_execution_trace) {
+          ownershipResult.agent_execution_trace = {
+            sections: [],
+            show_skipped_stages: false,
+            mark_skipped_stages: false
+          };
+        }
+        
+        if (!ownershipResult.agent_execution_trace.sections) {
+          ownershipResult.agent_execution_trace.sections = [];
+        }
+        
+        ownershipResult.agent_execution_trace.sections.push({
+          agent: 'GeminiVerificationAgent',
+          output: geminiAnalysis,
+          timestamp: new Date().toISOString(),
+          evidence_analysis: geminiAnalysis.gemini_evidence_analysis || null,
+          execution_path: 'cache_hit'
+        });
+        
+        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields and trace section to cache hit result");
         
         // Production logging checkpoints
         if (process.env.NODE_ENV === 'production') {
