@@ -440,7 +440,11 @@ export default function ResultPage() {
     result: {
       brand_name: productResultProps?.brand,
       ultimate_owner: productResultProps?.owner,
-      confidence: productResultProps?.confidence
+      ultimate_owner_country: productResultProps?.ownerCountry,
+      financial_beneficiary: productResultProps?.owner,
+      financial_beneficiary_country: productResultProps?.ownerCountry,
+      confidence: productResultProps?.confidence,
+      ownershipChain: productResultProps?.ownershipChain
     },
     narrative: {
       headline: productResultProps?.headline,
