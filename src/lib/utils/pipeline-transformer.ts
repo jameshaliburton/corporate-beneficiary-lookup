@@ -106,6 +106,8 @@ export interface TraceData {
 export interface ProductResultProps {
   brand: string;
   owner: string;
+  ownerCountry?: string;
+  ownerFlag?: string;
   confidence: number;
   productImage: string;
   ownershipChain: OwnershipNode[];
@@ -273,9 +275,24 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     console.log('⚠️ No agent execution trace found in pipeline result');
   }
 
+  // Extract owner from ownership chain if financial_beneficiary is missing
+  const lastOwnershipNode = ownershipChain.length > 0 ? ownershipChain[ownershipChain.length - 1] : null;
+  const ownerFromChain = lastOwnershipNode?.name;
+  const ownerCountryFromChain = lastOwnershipNode?.country;
+  
+  console.log('🏢 [OWNERSHIP_FALLBACK] Extracting owner from chain:', {
+    financial_beneficiary: unwrappedResult.financial_beneficiary,
+    ownershipChainLength: ownershipChain.length,
+    lastNode: lastOwnershipNode,
+    ownerFromChain,
+    ownerCountryFromChain
+  });
+
   const transformedData: ProductResultProps = {
     brand: unwrappedResult.brand ? unwrappedResult.brand.charAt(0).toUpperCase() + unwrappedResult.brand.slice(1) : 'Unknown Brand',
-    owner: unwrappedResult.financial_beneficiary || 'Unknown Owner',
+    owner: unwrappedResult.financial_beneficiary || ownerFromChain || 'Unknown Owner',
+    ownerCountry: unwrappedResult.beneficiary_country || ownerCountryFromChain,
+    ownerFlag: lastOwnershipNode?.countryFlag,
     confidence: unwrappedResult.confidence_score || 0,
     productImage: `data:image/svg+xml;base64,${btoa(`
       <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">

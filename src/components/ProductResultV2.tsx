@@ -52,6 +52,16 @@ export default function ProductResultV2({
     template_used: narrative?.template_used
   });
 
+  // DEBUG: Log ownership data received
+  console.log("[UI] ProductResultV2 received ownership data:", {
+    brand_name: result.brand_name,
+    ultimate_owner: result.ultimate_owner,
+    ultimate_owner_country: result.ultimate_owner_country,
+    financial_beneficiary: result.financial_beneficiary,
+    financial_beneficiary_country: result.financial_beneficiary_country,
+    confidence: result.confidence
+  });
+
   // DEBUG: Check if narrative is available
   const isNarrativeAvailable = narrative && (
     narrative.headline || 
