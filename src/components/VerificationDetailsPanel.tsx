@@ -18,6 +18,7 @@ interface VerificationDetailsPanelProps {
   status: "confirmed" | "contradicted" | "mixed_evidence" | "insufficient_evidence";
   evidence?: VerificationEvidence;
   confidenceChange?: "increased" | "decreased" | "unchanged";
+  verificationNotes?: string; // Add verification notes from main result
   className?: string;
 }
 
@@ -25,11 +26,31 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
   status, 
   evidence, 
   confidenceChange,
+  verificationNotes,
   className 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!evidence) return null;
+  // Enhanced logging for debugging
+  console.log('[VerificationDetailsPanel] Component received props:', {
+    status,
+    evidence,
+    confidenceChange,
+    hasEvidence: !!evidence,
+    evidenceKeys: evidence ? Object.keys(evidence) : [],
+    evidenceValues: evidence ? {
+      supporting_evidence: evidence.supporting_evidence?.length || 0,
+      contradicting_evidence: evidence.contradicting_evidence?.length || 0,
+      neutral_evidence: evidence.neutral_evidence?.length || 0,
+      missing_evidence: evidence.missing_evidence?.length || 0,
+      summary: evidence.summary
+    } : null
+  });
+
+  if (!evidence) {
+    console.log('[VerificationDetailsPanel] No evidence provided, returning null');
+    return null;
+  }
 
   const getPanelConfig = () => {
     switch (status) {
@@ -68,7 +89,25 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
                      neutralEvidence.length > 0 || 
                      missingEvidence.length > 0;
 
-  if (!hasEvidence) return null;
+  // Enhanced evidence checking - render panel even if evidence arrays are empty
+  // This ensures we show verification details even for "insufficient_evidence" cases
+  const shouldRenderPanel = hasEvidence || evidence.summary || verificationNotes || status === 'insufficient_evidence';
+
+  console.log('[VerificationDetailsPanel] Evidence analysis:', {
+    supportingEvidenceCount: supportingEvidence.length,
+    contradictingEvidenceCount: contradictingEvidence.length,
+    neutralEvidenceCount: neutralEvidence.length,
+    missingEvidenceCount: missingEvidence.length,
+    hasEvidence,
+    hasSummary: !!evidence.summary,
+    status,
+    shouldRenderPanel
+  });
+
+  if (!shouldRenderPanel) {
+    console.log('[VerificationDetailsPanel] No evidence to render, returning null');
+    return null;
+  }
 
   return (
     <Card className={cn("w-full max-w-2xl border", config.className, className)}>
@@ -168,6 +207,34 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
             <div className="bg-white p-3 rounded-lg border border-gray-200">
               <p className="text-sm text-gray-700 font-medium mb-1">Summary</p>
               <p className="text-sm text-gray-600">{evidence.summary}</p>
+            </div>
+          )}
+
+          {/* Verification Notes from main result */}
+          {verificationNotes && (
+            <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30">
+              <div className="flex items-start gap-2 text-blue-400">
+                <HelpCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium mb-1">Verification Analysis</p>
+                  <p className="text-sm text-gray-300">{verificationNotes}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: Show message when no evidence arrays have content */}
+          {!hasEvidence && !evidence.summary && !verificationNotes && (
+            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
+              <div className="flex items-center gap-2 text-gray-400">
+                <HelpCircle className="w-4 h-4" />
+                <p className="text-sm">
+                  {status === 'insufficient_evidence' 
+                    ? 'Limited verification data available. Additional research may be needed to confirm ownership details.'
+                    : 'Verification analysis completed. No specific evidence items to display at this time.'
+                  }
+                </p>
+              </div>
             </div>
           )}
         </CardContent>

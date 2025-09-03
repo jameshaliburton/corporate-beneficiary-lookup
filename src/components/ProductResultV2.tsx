@@ -253,14 +253,34 @@ export default function ProductResultV2({
                 confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
               />
               
-              {/* Verification Details Panel */}
-              {result.verification_evidence && (
-                <VerificationDetailsPanel
-                  status={normalizeVerificationStatus(result.verification_status)}
-                  evidence={result.verification_evidence}
-                  confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
-                />
-              )}
+              {/* Verification Details Panel - Enhanced Logic */}
+              {(() => {
+                const hasVerificationEvidence = result.verification_evidence;
+                const normalizedStatus = normalizeVerificationStatus(result.verification_status);
+                
+                console.log('[ProductResultV2] Verification rendering decision:', {
+                  hasVerificationStatus: !!result.verification_status,
+                  verificationStatus: result.verification_status,
+                  normalizedStatus,
+                  hasVerificationEvidence: !!hasVerificationEvidence,
+                  verificationEvidence: hasVerificationEvidence,
+                  shouldRenderPanel: hasVerificationEvidence || !!result.verification_notes
+                });
+                
+                // Always render the panel if we have verification evidence OR verification notes
+                if (hasVerificationEvidence || result.verification_notes) {
+                  return (
+                    <VerificationDetailsPanel
+                      status={normalizedStatus}
+                      evidence={hasVerificationEvidence}
+                      verificationNotes={result.verification_notes}
+                      confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
+                    />
+                  );
+                }
+                
+                return null;
+              })()}
             </div>
           </CardContent>
         </Card>
