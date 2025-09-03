@@ -41,6 +41,9 @@ TASK:
 4. Provide detailed reasoning
 
 OUTPUT FORMAT (JSON):
+You MUST respond with ONLY valid JSON inside triple backticks. Do not include any other text, explanations, or markdown formatting outside the JSON block.
+
+\`\`\`json
 {
   "verification_status": "confirmed|contradicted|mixed_evidence|insufficient_evidence",
   "confidence_assessment": {
@@ -57,35 +60,97 @@ OUTPUT FORMAT (JSON):
   "summary": "Brief summary of verification findings",
   "reasoning": "Detailed reasoning for the verification decision"
 }
+\`\`\`
+
+CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple backticks. No additional text, no explanations, no markdown formatting outside the JSON.
 `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
     
-    // Parse JSON response
+    // 🔍 FULL DEBUG LOGGING FOR GEMINI RESPONSE
+    console.log('[GEMINI_RAW_RESPONSE] Raw Gemini output:', {
+      length: text.length,
+      first_100_chars: text.substring(0, 100),
+      last_100_chars: text.substring(Math.max(0, text.length - 100)),
+      contains_json: text.includes('{') && text.includes('}'),
+      contains_code_blocks: text.includes('```'),
+      contains_markdown: text.includes('**') || text.includes('*')
+    });
+    
+    // 🔍 EXTRACT AND PARSE JSON WITH ROBUST LOGIC
     let verificationResult;
+    let parseAttempt = 'direct';
+    
     try {
+      // First attempt: Direct JSON parsing
       verificationResult = JSON.parse(text);
-    } catch (parseError) {
-      console.error('[GEMINI_DEBUG] Failed to parse JSON response:', parseError);
-      verificationResult = {
-        verification_status: 'insufficient_evidence',
-        confidence_assessment: {
-          original_confidence: existingResult.confidence_score || 0,
-          verified_confidence: existingResult.confidence_score || 0,
-          confidence_change: 'unchanged'
-        },
-        evidence_analysis: {
-          supporting_evidence: [],
-          contradicting_evidence: [],
-          neutral_evidence: [],
-          missing_evidence: ['Failed to parse Gemini response']
-        },
-        summary: 'Verification failed due to parsing error',
-        reasoning: 'Gemini response could not be parsed as valid JSON'
-      };
+      console.log('[GEMINI_PARSE_SUCCESS] Direct JSON parsing succeeded');
+    } catch (directParseError) {
+      console.log('[GEMINI_PARSE_ATTEMPT] Direct parsing failed, trying extraction methods...');
+      
+      try {
+        // Second attempt: Extract JSON from code blocks
+        const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (codeBlockMatch) {
+          parseAttempt = 'code_block';
+          verificationResult = JSON.parse(codeBlockMatch[1]);
+          console.log('[GEMINI_PARSE_SUCCESS] Code block extraction succeeded');
+        } else {
+          throw new Error('No code block found');
+        }
+      } catch (codeBlockError) {
+        console.log('[GEMINI_PARSE_ATTEMPT] Code block extraction failed, trying regex extraction...');
+        
+        try {
+          // Third attempt: Extract JSON using regex for { ... } block
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parseAttempt = 'regex_extraction';
+            verificationResult = JSON.parse(jsonMatch[0]);
+            console.log('[GEMINI_PARSE_SUCCESS] Regex extraction succeeded');
+          } else {
+            throw new Error('No JSON block found with regex');
+          }
+        } catch (regexError) {
+          console.log('[GEMINI_PARSE_ATTEMPT] Regex extraction failed, using fallback...');
+          
+          // Final fallback: Create structured error response
+          parseAttempt = 'fallback';
+          verificationResult = {
+            verification_status: 'unverified_due_to_parsing_error',
+            confidence_assessment: {
+              original_confidence: existingResult.confidence_score || 0,
+              verified_confidence: existingResult.confidence_score || 0,
+              confidence_change: 'unchanged'
+            },
+            evidence_analysis: {
+              supporting_evidence: [],
+              contradicting_evidence: [],
+              neutral_evidence: [],
+              missing_evidence: [`Failed to parse Gemini response - attempted: ${parseAttempt}`]
+            },
+            summary: 'Verification failed due to parsing error',
+            reasoning: `Gemini response could not be parsed as valid JSON. Parse attempts: direct, code_block, regex_extraction. Raw response length: ${text.length}`
+          };
+          
+          console.error('[GEMINI_PARSE_FAILED] All parsing attempts failed:', {
+            directError: directParseError.message,
+            codeBlockError: codeBlockError.message,
+            regexError: regexError.message,
+            rawResponse: text.substring(0, 500) + (text.length > 500 ? '...' : '')
+          });
+        }
+      }
     }
+    
+    console.log('[GEMINI_PARSE_RESULT] Final parsing result:', {
+      parseAttempt,
+      verification_status: verificationResult.verification_status,
+      has_confidence_assessment: !!verificationResult.confidence_assessment,
+      has_evidence_analysis: !!verificationResult.evidence_analysis
+    });
     
     console.log('[GEMINI_DEBUG] Verification result:', verificationResult);
     
