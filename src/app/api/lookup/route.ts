@@ -1653,6 +1653,15 @@ export async function POST(request: NextRequest) {
         agentExecutionStages: mergedResult.agent_execution_trace?.sections?.reduce((total: number, section: any) => total + section.stages.length, 0) || 0
       });
 
+      // 🔍 PIPELINE ORCHESTRATOR LOGGING
+      console.log('[PIPELINE_ORCHESTRATOR] agent_execution_trace:', mergedResult.agent_execution_trace);
+      console.log('[PIPELINE_FINAL_OUTPUT] Result keys:', Object.keys(mergedResult));
+      
+      // ⚠️ WARNING: Check if trace is missing in final output
+      if (!mergedResult.agent_execution_trace) {
+        console.warn('[MISSING_TRACE] No agent_execution_trace included in final pipeline result');
+      }
+
       // Log narrative fields in final result
       console.log('[RESULT_RETURNED] Final result narrative fields:', {
         brand: mergedResult.brand,
@@ -1663,6 +1672,16 @@ export async function POST(request: NextRequest) {
         behind_the_scenes: mergedResult.behind_the_scenes,
         narrative_template_used: mergedResult.narrative_template_used,
         hasGeneratedCopy: !!(mergedResult.headline && mergedResult.story)
+      });
+
+      // ✅ BONUS: Confirm if behind_the_scenes or ownership_notes are populated from trace
+      console.log('[BONUS_TRACE_CHECK] behind_the_scenes and ownership_notes from trace:', {
+        ownership_notes_length: mergedResult.ownership_notes?.length || 0,
+        behind_the_scenes_length: mergedResult.behind_the_scenes?.length || 0,
+        ownership_notes_content: mergedResult.ownership_notes?.slice(0, 2) || [],
+        behind_the_scenes_content: mergedResult.behind_the_scenes?.slice(0, 2) || [],
+        has_agent_execution_trace: !!mergedResult.agent_execution_trace,
+        trace_sections_count: mergedResult.agent_execution_trace?.sections?.length || 0
       });
 
       // Disambiguation trigger marker

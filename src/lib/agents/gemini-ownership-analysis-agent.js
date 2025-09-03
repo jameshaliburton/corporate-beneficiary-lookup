@@ -231,10 +231,23 @@ export class GeminiOwnershipAnalysisAgent {
   }
   
   async analyze(brand, productName, existingResult) {
+    console.log('[VERIFICATION_AGENT] Running GeminiVerificationAgent for brand:', brand);
+    
     // Check availability at runtime
     if (!isGeminiOwnershipAnalysisAvailable()) {
       throw new Error('Gemini API key not available');
     }
-    return performGeminiOwnershipAnalysis(brand, productName, existingResult);
+    
+    const result = await performGeminiOwnershipAnalysis(brand, productName, existingResult);
+    
+    console.log('[VERIFICATION_AGENT] Output fields:', {
+      verification_status: result.verification_status,
+      verified_at: result.verified_at,
+      verification_method: result.verification_method,
+      verification_notes: result.verification_notes,
+      confidence_assessment: result.confidence_assessment,
+    });
+    
+    return result;
   }
 }
