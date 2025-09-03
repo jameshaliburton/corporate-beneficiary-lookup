@@ -2,6 +2,7 @@
 // Extracted from test-simple-pipeline page for reuse across camera and manual flows
 
 import { findCompanyLogo } from '@/lib/services/logo-finder';
+import { unwrapGeneratedCopy } from '@/lib/utils/unwrapGeneratedCopy';
 
 export interface PipelineResult {
   success: boolean;
@@ -156,16 +157,27 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     agent_execution_trace: pipelineResult.agent_execution_trace ? 'present' : 'missing'
   });
 
+  // Unwrap generated_copy fields to top level for UI compatibility
+  const unwrappedResult = unwrapGeneratedCopy(pipelineResult);
+  console.log('📦 [UNWRAP] Unwrapped generated_copy fields:', {
+    hasHeadline: !!unwrappedResult.headline,
+    hasStory: !!unwrappedResult.story,
+    hasTagline: !!unwrappedResult.tagline,
+    hasOwnershipNotes: !!unwrappedResult.ownership_notes,
+    hasBehindTheScenes: !!unwrappedResult.behind_the_scenes,
+    hasGeneratedCopy: !!unwrappedResult.hasGeneratedCopy
+  });
+
   // Transform ownership_flow to OwnershipNode[] without blocking logo fetching
   const ownershipChain: OwnershipNode[] = [];
   
-  if (pipelineResult.ownership_flow) {
-    for (let index = 0; index < pipelineResult.ownership_flow.length; index++) {
-      const node = pipelineResult.ownership_flow[index];
+  if (unwrappedResult.ownership_flow) {
+    for (let index = 0; index < unwrappedResult.ownership_flow.length; index++) {
+      const node = unwrappedResult.ownership_flow[index];
       console.log(`🏢 Processing ownership node ${index}:`, node);
       
       // Use better fallback values
-      const companyName = node.name || (index === 0 ? pipelineResult.brand : 'Parent Company');
+      const companyName = node.name || (index === 0 ? unwrappedResult.brand : 'Parent Company');
       const country = node.country || 'Unknown Country';
       const flag = node.flag || '🏳️';
       
@@ -189,10 +201,10 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
 
   // Transform agent_execution_trace to TraceData[]
   const traces: TraceData[] = [];
-  if (pipelineResult.agent_execution_trace?.sections) {
-    console.log('📊 Processing agent execution trace sections:', pipelineResult.agent_execution_trace.sections.length);
+  if (unwrappedResult.agent_execution_trace?.sections) {
+    console.log('📊 Processing agent execution trace sections:', unwrappedResult.agent_execution_trace.sections.length);
     
-    pipelineResult.agent_execution_trace.sections.forEach((section, sectionIndex) => {
+    unwrappedResult.agent_execution_trace.sections.forEach((section, sectionIndex) => {
       console.log(`📋 Section ${sectionIndex}:`, section.title || section.id);
       
       section.stages.forEach((stage, stageIndex) => {
@@ -229,11 +241,11 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
         });
       });
     });
-  } else if (pipelineResult.agent_execution_trace?.stages) {
+  } else if (unwrappedResult.agent_execution_trace?.stages) {
     // Handle legacy trace format
-    console.log('📊 Processing legacy agent execution trace stages:', pipelineResult.agent_execution_trace.stages.length);
+    console.log('📊 Processing legacy agent execution trace stages:', unwrappedResult.agent_execution_trace.stages.length);
     
-    pipelineResult.agent_execution_trace.stages.forEach((stage, index) => {
+    unwrappedResult.agent_execution_trace.stages.forEach((stage, index) => {
       console.log(`  Stage ${index}:`, stage.stage, 'Status:', stage.status);
       
       let stageType: "vision" | "retrieval" | "ownership" = "ownership";
@@ -262,43 +274,43 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
   }
 
   const transformedData: ProductResultProps = {
-    brand: pipelineResult.brand ? pipelineResult.brand.charAt(0).toUpperCase() + pipelineResult.brand.slice(1) : 'Unknown Brand',
-    owner: pipelineResult.financial_beneficiary || 'Unknown Owner',
-    confidence: pipelineResult.confidence_score || 0,
+    brand: unwrappedResult.brand ? unwrappedResult.brand.charAt(0).toUpperCase() + unwrappedResult.brand.slice(1) : 'Unknown Brand',
+    owner: unwrappedResult.financial_beneficiary || 'Unknown Owner',
+    confidence: unwrappedResult.confidence_score || 0,
     productImage: `data:image/svg+xml;base64,${btoa(`
       <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="128" height="128" rx="64" fill="#FF6B6B"/>
         <text x="64" y="80" text-anchor="middle" fill="white" font-family="Inter" font-size="48" font-weight="600">
-          ${(pipelineResult.brand || 'P').charAt(0).toUpperCase()}
+          ${(unwrappedResult.brand || 'P').charAt(0).toUpperCase()}
         </text>
       </svg>
     `)}`,
     ownershipChain,
-    structureType: pipelineResult.ownership_structure_type,
-    analysisText: pipelineResult.reasoning,
+    structureType: unwrappedResult.ownership_structure_type,
+    analysisText: unwrappedResult.reasoning,
     traces,
     // Agent results and execution trace for ResearchSummary
-    agentResults: pipelineResult.agent_results,
-    agentExecutionTrace: pipelineResult.agent_execution_trace,
-    resultType: pipelineResult.result_type,
-    sources: pipelineResult.sources,
+    agentResults: unwrappedResult.agent_results,
+    agentExecutionTrace: unwrappedResult.agent_execution_trace,
+    resultType: unwrappedResult.result_type,
+    sources: unwrappedResult.sources,
     // LLM-generated copy for engaging storytelling
-    generatedCopy: pipelineResult.generated_copy,
-    // Narrative fields for story display
-    headline: pipelineResult.headline,
-    tagline: pipelineResult.tagline,
-    story: pipelineResult.story,
-    ownership_notes: pipelineResult.ownership_notes,
-    behind_the_scenes: pipelineResult.behind_the_scenes,
-    narrative_template_used: pipelineResult.narrative_template_used,
+    generatedCopy: unwrappedResult.generated_copy,
+    // Narrative fields for story display (now properly unwrapped from generated_copy)
+    headline: unwrappedResult.headline,
+    tagline: unwrappedResult.tagline,
+    story: unwrappedResult.story,
+    ownership_notes: unwrappedResult.ownership_notes,
+    behind_the_scenes: unwrappedResult.behind_the_scenes,
+    narrative_template_used: unwrappedResult.narrative_template_used,
     // Gemini verification fields
-    verificationStatus: pipelineResult.verification_status,
-    verificationConfidenceChange: pipelineResult.verification_confidence_change,
-    verificationEvidence: pipelineResult.verification_evidence,
-    verifiedAt: pipelineResult.verified_at,
-    verificationMethod: pipelineResult.verification_method,
-    confidenceAssessment: pipelineResult.confidence_assessment,
-    verificationNotes: pipelineResult.verification_notes,
+    verificationStatus: unwrappedResult.verification_status,
+    verificationConfidenceChange: unwrappedResult.verification_confidence_change,
+    verificationEvidence: unwrappedResult.verification_evidence,
+    verifiedAt: unwrappedResult.verified_at,
+    verificationMethod: unwrappedResult.verification_method,
+    confidenceAssessment: unwrappedResult.confidence_assessment,
+    verificationNotes: unwrappedResult.verification_notes,
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline
