@@ -69,7 +69,8 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
     const response = await result.response;
     const text = response.text();
     
-    // 🔍 FULL DEBUG LOGGING FOR GEMINI RESPONSE
+    // 🔍 COMPREHENSIVE RAW GEMINI RESPONSE LOGGING
+    console.log('[GEMINI DEBUG] Raw Gemini response:', text);
     console.log('[GEMINI_RAW_RESPONSE] Raw Gemini output:', {
       length: text.length,
       first_100_chars: text.substring(0, 100),
