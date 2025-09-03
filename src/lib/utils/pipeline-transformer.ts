@@ -105,6 +105,7 @@ export interface TraceData {
 
 export interface ProductResultProps {
   brand: string;
+  brandCountry?: string;
   owner: string;
   ownerCountry?: string;
   ownerFlag?: string;
@@ -275,21 +276,26 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     console.log('⚠️ No agent execution trace found in pipeline result');
   }
 
-  // Extract owner from ownership chain if financial_beneficiary is missing
+  // Extract owner and brand country from ownership chain
+  const firstOwnershipNode = ownershipChain.length > 0 ? ownershipChain[0] : null;
   const lastOwnershipNode = ownershipChain.length > 0 ? ownershipChain[ownershipChain.length - 1] : null;
   const ownerFromChain = lastOwnershipNode?.name;
   const ownerCountryFromChain = lastOwnershipNode?.country;
+  const brandCountryFromChain = firstOwnershipNode?.country;
   
-  console.log('🏢 [OWNERSHIP_FALLBACK] Extracting owner from chain:', {
+  console.log('🏢 [OWNERSHIP_FALLBACK] Extracting owner and brand from chain:', {
     financial_beneficiary: unwrappedResult.financial_beneficiary,
     ownershipChainLength: ownershipChain.length,
+    firstNode: firstOwnershipNode,
     lastNode: lastOwnershipNode,
     ownerFromChain,
-    ownerCountryFromChain
+    ownerCountryFromChain,
+    brandCountryFromChain
   });
 
   const transformedData: ProductResultProps = {
     brand: unwrappedResult.brand ? unwrappedResult.brand.charAt(0).toUpperCase() + unwrappedResult.brand.slice(1) : 'Unknown Brand',
+    brandCountry: brandCountryFromChain,
     owner: unwrappedResult.financial_beneficiary || ownerFromChain || 'Unknown Owner',
     ownerCountry: unwrappedResult.beneficiary_country || ownerCountryFromChain,
     ownerFlag: lastOwnershipNode?.countryFlag,
