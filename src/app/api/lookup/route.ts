@@ -82,6 +82,17 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
       const geminiAgent = new GeminiOwnershipAnalysisAgent();
       const geminiAnalysis = await geminiAgent.analyze(brand, product_name, ownershipResult);
       
+      // 🔍 DEBUG: Log Gemini analysis result
+      console.log('[VERIFICATION_AGENT] Gemini verification result:', {
+        verification_status: geminiAnalysis?.verification_status,
+        verified_at: geminiAnalysis?.verified_at,
+        verification_method: geminiAnalysis?.verification_method,
+        verification_notes: geminiAnalysis?.verification_notes,
+        confidence_assessment: geminiAnalysis?.confidence_assessment,
+        verification_evidence: geminiAnalysis?.verification_evidence,
+        verification_confidence_change: geminiAnalysis?.verification_confidence_change
+      });
+      
       if (geminiAnalysis) {
         // Add verification fields to top level
         ownershipResult.verification_status = geminiAnalysis.verification_status || 'inconclusive';
@@ -1347,6 +1358,26 @@ export async function POST(request: NextRequest) {
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
       
+      // 🔍 GEMINI VERIFICATION FOR FRESH PIPELINE RESULTS
+      console.log("[GEMINI_PIPELINE] Starting Gemini verification for fresh pipeline result");
+      const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(
+        ownershipResult, 
+        currentProductData.brand, 
+        currentProductData.product_name, 
+        queryId
+      );
+      
+      if (geminiVerificationRan) {
+        console.log("[GEMINI_PIPELINE] Successfully added verification fields to fresh pipeline result");
+        console.log("[GEMINI_PIPELINE] Verification fields added:", {
+          verification_status: ownershipResult.verification_status,
+          verification_method: ownershipResult.verification_method,
+          verified_at: ownershipResult.verified_at
+        });
+      } else {
+        console.log("[GEMINI_PIPELINE] Gemini verification skipped for fresh pipeline result");
+      }
+      
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
       if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
         console.log('💾 [Pipeline] Saving ownership result to database');
@@ -1679,6 +1710,17 @@ export async function POST(request: NextRequest) {
 
       // 🧠 TRACE SUMMARY LOGGING
       logTraceSummary(mergedResult);
+
+      // 🔍 DEBUG: Log final verification fields before returning
+      console.log('[PIPELINE_RESULT] Final verification fields:', {
+        verification_status: mergedResult.verification_status,
+        verified_at: mergedResult.verified_at,
+        verification_method: mergedResult.verification_method,
+        verification_notes: mergedResult.verification_notes,
+        confidence_assessment: mergedResult.confidence_assessment,
+        verification_evidence: mergedResult.verification_evidence,
+        verification_confidence_change: mergedResult.verification_confidence_change
+      });
 
       // Production result return logging
       if (process.env.NODE_ENV === 'production') {
