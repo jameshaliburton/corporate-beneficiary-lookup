@@ -499,6 +499,16 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       ownership_notes: narrative.ownership_notes,
       behind_the_scenes: narrative.behind_the_scenes,
       narrative_template_used: narrative.template_used,
+      // Add generated_copy for backward compatibility
+      generated_copy: {
+        headline: narrative.headline,
+        tagline: narrative.tagline,
+        story: narrative.story,
+        ownership_notes: narrative.ownership_notes,
+        behind_the_scenes: narrative.behind_the_scenes,
+        template_used: narrative.template_used
+      },
+      hasGeneratedCopy: true,
       cache_hit: true,
       agent_path: cachedResult.agent_path || []
     };
@@ -797,6 +807,16 @@ export async function POST(request: NextRequest) {
             ownership_notes: narrative.ownership_notes,
             behind_the_scenes: narrative.behind_the_scenes,
             narrative_template_used: narrative.template_used,
+            // Add generated_copy for backward compatibility
+            generated_copy: {
+              headline: narrative.headline,
+              tagline: narrative.tagline,
+              story: narrative.story,
+              ownership_notes: narrative.ownership_notes,
+              behind_the_scenes: narrative.behind_the_scenes,
+              template_used: narrative.template_used
+            },
+            hasGeneratedCopy: true,
             query_id: queryId
               });
             } else {
@@ -929,6 +949,15 @@ export async function POST(request: NextRequest) {
             ownership_notes: narrative.ownership_notes,
             behind_the_scenes: narrative.behind_the_scenes,
             narrative_template_used: narrative.template_used,
+            // Add generated_copy for backward compatibility
+            generated_copy: {
+              headline: narrative.headline,
+              tagline: narrative.tagline,
+              story: narrative.story,
+              ownership_notes: narrative.ownership_notes,
+              behind_the_scenes: narrative.behind_the_scenes,
+              template_used: narrative.template_used
+            },
             hasGeneratedCopy: true
           });
         }
@@ -1199,6 +1228,16 @@ export async function POST(request: NextRequest) {
             ownership_notes: narrative.ownership_notes,
             behind_the_scenes: narrative.behind_the_scenes,
             narrative_template_used: narrative.template_used,
+            // Add generated_copy for backward compatibility
+            generated_copy: {
+              headline: narrative.headline,
+              tagline: narrative.tagline,
+              story: narrative.story,
+              ownership_notes: narrative.ownership_notes,
+              behind_the_scenes: narrative.behind_the_scenes,
+              template_used: narrative.template_used
+            },
+            hasGeneratedCopy: true,
             query_id: queryId
           });
       } else {
@@ -1594,6 +1633,16 @@ export async function POST(request: NextRequest) {
         ownership_notes: narrative.ownership_notes,
         behind_the_scenes: narrative.behind_the_scenes,
         narrative_template_used: narrative.template_used,
+        // Add generated_copy for backward compatibility
+        generated_copy: {
+          headline: narrative.headline,
+          tagline: narrative.tagline,
+          story: narrative.story,
+          ownership_notes: narrative.ownership_notes,
+          behind_the_scenes: narrative.behind_the_scenes,
+          template_used: narrative.template_used
+        },
+        hasGeneratedCopy: true,
         query_id: queryId
       };
 
