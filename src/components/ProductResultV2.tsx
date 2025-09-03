@@ -135,6 +135,25 @@ export default function ProductResultV2({
     ownerFlag: getCountryFlag(ownerCountry) 
   });
 
+  // Enhanced debug logging for verification fields
+  console.log('[ProductResultV2] VERIFICATION_DEBUG - Full verification data received:', {
+    verification_status: result.verification_status,
+    verified_at: result.verified_at,
+    verification_method: result.verification_method,
+    verification_notes: result.verification_notes,
+    confidence_assessment: result.confidence_assessment,
+    verification_evidence: result.verification_evidence,
+    verification_confidence_change: result.verification_confidence_change,
+    // Check if verification fields exist
+    hasVerificationStatus: !!result.verification_status,
+    hasVerifiedAt: !!result.verified_at,
+    hasVerificationMethod: !!result.verification_method,
+    hasVerificationNotes: !!result.verification_notes,
+    hasConfidenceAssessment: !!result.confidence_assessment,
+    hasVerificationEvidence: !!result.verification_evidence,
+    hasVerificationConfidenceChange: !!result.verification_confidence_change
+  });
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* DEBUG: Temporary render of narrative object */}
