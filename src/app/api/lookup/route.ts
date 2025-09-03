@@ -1393,6 +1393,7 @@ export async function POST(request: NextRequest) {
           agent: 'GeminiVerificationAgent',
           output: verificationOutput,
           timestamp: new Date().toISOString(),
+          evidence_analysis: verificationOutput.gemini_evidence_analysis || null
         });
         
         console.log('[ORCHESTRATOR] Successfully merged Gemini verification into ownershipResult');

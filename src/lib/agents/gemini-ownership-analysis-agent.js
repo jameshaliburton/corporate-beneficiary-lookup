@@ -255,7 +255,8 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       verification_method: 'gemini_analysis',
       verification_notes: verificationNotes,
       confidence_assessment: confidenceAssessment,
-      agent_execution_trace: agentExecutionTrace,
+      // Store evidence analysis for pipeline orchestrator to use
+      gemini_evidence_analysis: agentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification']
     };
     
@@ -293,7 +294,8 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
         verified_confidence: existingResult.confidence_score || 0,
         confidence_change: 'unchanged'
       },
-      agent_execution_trace: errorAgentExecutionTrace,
+      // Store evidence analysis for pipeline orchestrator to use
+      gemini_evidence_analysis: errorAgentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification_failed']
     };
   }
