@@ -154,30 +154,115 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
     
     console.log('[GEMINI_DEBUG] Verification result:', verificationResult);
     
+    // 🔍 COMPREHENSIVE VERIFICATION AGENT WRAPPER
+    let verificationStatus = 'not_enough_info';
+    let verificationNotes = 'No structured verification info returned';
+    let agentExecutionTrace = null;
+    let verificationEvidence = null;
+    let confidenceAssessment = null;
+
+    try {
+      // Extract structured data from parsed Gemini result
+      if (verificationResult?.verification_status) {
+        verificationStatus = verificationResult.verification_status;
+        verificationNotes = verificationResult.summary || verificationResult.reasoning || '';
+        agentExecutionTrace = verificationResult.evidence_analysis || null;
+        verificationEvidence = verificationResult.evidence_analysis || null;
+        confidenceAssessment = verificationResult.confidence_assessment || null;
+        
+        console.log('[VERIFICATION_AGENT] Successfully extracted structured data:', {
+          brand,
+          owner: existingResult.financial_beneficiary,
+          verificationStatus,
+          verificationNotes: verificationNotes.substring(0, 100) + (verificationNotes.length > 100 ? '...' : ''),
+          hasAgentExecutionTrace: !!agentExecutionTrace,
+          agentExecutionTraceKeys: agentExecutionTrace ? Object.keys(agentExecutionTrace) : [],
+          hasConfidenceAssessment: !!confidenceAssessment
+        });
+      } else {
+        console.warn('[VERIFICATION_AGENT] Missing verification_status in Gemini result');
+      }
+
+      // Validate agent_execution_trace structure
+      if (agentExecutionTrace) {
+        const expectedKeys = ['supporting_evidence', 'contradicting_evidence', 'neutral_evidence', 'missing_evidence'];
+        const hasAllKeys = expectedKeys.every(key => key in agentExecutionTrace);
+        
+        if (!hasAllKeys) {
+          console.warn('[VERIFICATION_AGENT] Incomplete agent_execution_trace structure:', {
+            expectedKeys,
+            actualKeys: Object.keys(agentExecutionTrace),
+            missingKeys: expectedKeys.filter(key => !(key in agentExecutionTrace))
+          });
+        } else {
+          console.log('[VERIFICATION_AGENT] Valid agent_execution_trace structure confirmed:', {
+            supportingEvidenceCount: agentExecutionTrace.supporting_evidence?.length || 0,
+            contradictingEvidenceCount: agentExecutionTrace.contradicting_evidence?.length || 0,
+            neutralEvidenceCount: agentExecutionTrace.neutral_evidence?.length || 0,
+            missingEvidenceCount: agentExecutionTrace.missing_evidence?.length || 0
+          });
+        }
+      } else {
+        console.warn('[VERIFICATION_AGENT] Missing agent_execution_trace in Gemini result');
+      }
+
+    } catch (err) {
+      console.error('[VERIFICATION_AGENT] Failed to extract structured data from Gemini result:', {
+        error: err.message,
+        verificationResult: verificationResult ? Object.keys(verificationResult) : 'null',
+        parseAttempt: parseAttempt
+      });
+      
+      // Fallback to safe defaults
+      verificationStatus = 'unverified_due_to_parsing_error';
+      verificationNotes = 'Failed to extract structured verification data from Gemini response';
+      agentExecutionTrace = {
+        supporting_evidence: [],
+        contradicting_evidence: [],
+        neutral_evidence: [],
+        missing_evidence: ['Failed to parse Gemini verification response']
+      };
+    }
+    
     return {
       ...existingResult,
-      verification_status: verificationResult.verification_status,
-      verification_confidence_change: verificationResult.confidence_assessment.confidence_change,
-      verification_evidence: verificationResult.evidence_analysis,
+      verification_status: verificationStatus,
+      verification_confidence_change: confidenceAssessment?.confidence_change || 'unchanged',
+      verification_evidence: verificationEvidence,
       verified_at: new Date().toISOString(),
       verification_method: 'gemini_analysis',
-      verification_notes: verificationResult.summary,
-      confidence_assessment: verificationResult.confidence_assessment,
+      verification_notes: verificationNotes,
+      confidence_assessment: confidenceAssessment,
+      agent_execution_trace: agentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification']
     };
     
   } catch (error) {
     console.error('[GEMINI_DEBUG] Gemini analysis failed:', error);
+    
+    // 🔍 ERROR HANDLING WITH STRUCTURED FALLBACK
+    const errorAgentExecutionTrace = {
+      supporting_evidence: [],
+      contradicting_evidence: [],
+      neutral_evidence: [],
+      missing_evidence: ['Gemini analysis failed: ' + error.message]
+    };
+    
+    console.log('[VERIFICATION_AGENT] Error fallback with structured trace:', {
+      brand,
+      owner: existingResult.financial_beneficiary,
+      verificationStatus: 'insufficient_evidence',
+      verificationNotes: 'Verification failed due to technical error',
+      hasAgentExecutionTrace: true,
+      agentExecutionTraceKeys: Object.keys(errorAgentExecutionTrace),
+      errorMessage: error.message
+    });
+    
     return {
       ...existingResult,
       verification_status: 'insufficient_evidence',
       verification_confidence_change: 'unchanged',
-      verification_evidence: {
-        supporting_evidence: [],
-        contradicting_evidence: [],
-        neutral_evidence: [],
-        missing_evidence: ['Gemini analysis failed: ' + error.message]
-      },
+      verification_evidence: errorAgentExecutionTrace,
       verified_at: new Date().toISOString(),
       verification_method: 'gemini_analysis_failed',
       verification_notes: 'Verification failed due to technical error',
@@ -186,6 +271,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
         verified_confidence: existingResult.confidence_score || 0,
         confidence_change: 'unchanged'
       },
+      agent_execution_trace: errorAgentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification_failed']
     };
   }
