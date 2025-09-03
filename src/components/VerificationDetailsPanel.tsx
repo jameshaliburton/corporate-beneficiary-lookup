@@ -104,6 +104,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
     shouldRenderPanel
   });
 
+  // Check if we need to show low confidence explanation
+  const hasLowConfidence = supportingEvidence.length === 0 && status === 'insufficient_evidence';
+
   if (!shouldRenderPanel) {
     console.log('[VerificationDetailsPanel] No evidence to render, returning null');
     return null;
@@ -134,6 +137,19 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
 
       {isExpanded && (
         <CardContent className="pt-0 space-y-4">
+          {/* Low Confidence Explanation */}
+          {hasLowConfidence && (
+            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                <h4 className="font-medium text-sm text-yellow-400">Low Confidence Assessment</h4>
+              </div>
+              <p className="text-sm text-gray-300">
+                No clear evidence found. Confidence remains low until verified through additional research or official documentation.
+              </p>
+            </div>
+          )}
+
           {/* Supporting Evidence */}
           {supportingEvidence.length > 0 && (
             <div>

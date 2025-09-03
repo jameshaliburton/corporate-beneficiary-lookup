@@ -180,6 +180,27 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
           agentExecutionTraceKeys: agentExecutionTrace ? Object.keys(agentExecutionTrace) : [],
           hasConfidenceAssessment: !!confidenceAssessment
         });
+
+        // 🔍 VERIFICATION EVIDENCE LOGGING
+        console.log('[VERIFICATION_EVIDENCE_LOG] Evidence analysis:', {
+          brand,
+          verificationStatus,
+          supportingEvidenceCount: agentExecutionTrace?.supporting_evidence?.length || 0,
+          contradictingEvidenceCount: agentExecutionTrace?.contradicting_evidence?.length || 0,
+          neutralEvidenceCount: agentExecutionTrace?.neutral_evidence?.length || 0,
+          missingEvidenceCount: agentExecutionTrace?.missing_evidence?.length || 0,
+          confidenceAssessment: confidenceAssessment ? {
+            originalConfidence: confidenceAssessment.original_confidence,
+            verifiedConfidence: confidenceAssessment.verified_confidence,
+            confidenceChange: confidenceAssessment.confidence_change
+          } : null,
+          evidenceSummary: {
+            supporting: agentExecutionTrace?.supporting_evidence?.slice(0, 2) || [],
+            contradicting: agentExecutionTrace?.contradicting_evidence?.slice(0, 2) || [],
+            neutral: agentExecutionTrace?.neutral_evidence?.slice(0, 2) || [],
+            missing: agentExecutionTrace?.missing_evidence?.slice(0, 2) || []
+          }
+        });
       } else {
         console.warn('[VERIFICATION_AGENT] Missing verification_status in Gemini result');
       }

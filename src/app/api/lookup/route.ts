@@ -1714,9 +1714,30 @@ export async function POST(request: NextRequest) {
       console.log('[PIPELINE_ORCHESTRATOR] agent_execution_trace:', mergedResult.agent_execution_trace);
       console.log('[PIPELINE_FINAL_OUTPUT] Result keys:', Object.keys(mergedResult));
       
+      // 🔍 ENHANCED PIPELINE TRACE LOGGING
+      console.log('[PIPELINE_TRACE] trace =', JSON.stringify(mergedResult.agent_execution_trace, null, 2));
+      
       // ⚠️ WARNING: Check if trace is missing in final output
       if (!mergedResult.agent_execution_trace) {
         console.warn('[MISSING_TRACE] No agent_execution_trace included in final pipeline result');
+        // Inject placeholder trace for UI fallback
+        mergedResult.agent_execution_trace = {
+          sections: [{
+            id: 'no_agents_triggered',
+            title: 'No Agents Triggered',
+            label: 'No Agents Triggered',
+            stages: [{
+              id: 'fallback_stage',
+              stage: 'no_agents_triggered',
+              status: 'skipped',
+              details: 'No agents were triggered for this lookup',
+              duration: 0
+            }]
+          }],
+          show_skipped_stages: true,
+          mark_skipped_stages: true
+        };
+        console.log('[PIPELINE_TRACE] Injected placeholder trace for UI fallback');
       }
 
       // Log narrative fields in final result

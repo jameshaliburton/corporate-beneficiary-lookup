@@ -59,7 +59,23 @@ function cleanPipelineResult(result: any) {
           durationMs: stage.durationMs
         }))
       }))
-    } : undefined
+    } : {
+      // Provide fallback trace structure for UI display
+      sections: [{
+        id: 'no_agents_triggered',
+        title: 'No Agents Triggered',
+        label: 'No Agents Triggered',
+        stages: [{
+          id: 'fallback_stage',
+          stage: 'no_agents_triggered',
+          status: 'skipped',
+          details: 'No agents were triggered for this lookup',
+          duration: 0
+        }]
+      }],
+      show_skipped_stages: true,
+      mark_skipped_stages: true
+    }
   };
 }
 
