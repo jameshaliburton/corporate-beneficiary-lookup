@@ -48,6 +48,7 @@ function sanitizeNarrativeArray(arr: string[] | null | undefined): string[] {
 }
 
 export async function generateNarrativeFromResult(result: any) {
+  console.log('[COPY_AGENT] 🔍 Entered generateNarrativeFromResult()');
   console.log('[COPY_AGENT] Narrative function reached - generateNarrativeFromResult called');
   console.log('[COPY_AGENT] Starting narrative generation for:', {
     brand: result.brand_name,
