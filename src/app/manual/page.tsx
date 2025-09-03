@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { ManualInput } from "@/components/ManualInput";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { unwrapGeneratedCopy } from "@/lib/utils/unwrapGeneratedCopy";
 
 // Function to clean API response and remove circular references
 function cleanPipelineResult(result: any) {
@@ -140,7 +141,18 @@ export default function ManualPage() {
       // Check if the search was successful (confidence > 30)
       if (rawPipelineResult.success && rawPipelineResult.brand && rawPipelineResult.confidence_score > 30) {
         // Successful search - proceed to results
-        const pipelineResult = cleanPipelineResult(rawPipelineResult);
+        const cleanedResult = cleanPipelineResult(rawPipelineResult);
+        
+        // Unwrap generated_copy fields to top level for UI compatibility
+        const pipelineResult = unwrapGeneratedCopy(cleanedResult);
+        console.log('📦 [UNWRAP] Unwrapped manual search result:', {
+          hasHeadline: !!pipelineResult.headline,
+          hasStory: !!pipelineResult.story,
+          hasTagline: !!pipelineResult.tagline,
+          hasOwnershipNotes: !!pipelineResult.ownership_notes,
+          hasBehindTheScenes: !!pipelineResult.behind_the_scenes,
+          hasGeneratedCopy: !!pipelineResult.hasGeneratedCopy
+        });
         
         // Store the full API response in sessionStorage for the results page
         console.log('💾 Storing full API response in sessionStorage:', {
