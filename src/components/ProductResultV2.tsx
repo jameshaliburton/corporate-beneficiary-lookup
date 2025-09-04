@@ -42,16 +42,24 @@ export default function ProductResultV2({
   const [showBehindTheScenes, setShowBehindTheScenes] = useState(false);
   const router = useRouter();
 
-  // Debug logging for verification fields
-  console.log('[ProductResultV2] Verification fields:', {
-    verification_status: result.verification_status,
-    verified_at: result.verified_at,
-    verification_method: result.verification_method,
-    verification_notes: result.verification_notes,
-    confidence_assessment: result.confidence_assessment,
-    verification_evidence: result.verification_evidence,
-    verification_confidence_change: result.verification_confidence_change
-  });
+  // Debug logging for verification fields (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[VERIFICATION DEBUG] ProductResultV2 received:', {
+      verification_status: result.verification_status,
+      verified_at: result.verified_at,
+      verification_method: result.verification_method,
+      verification_notes: result.verification_notes,
+      confidence_assessment: result.confidence_assessment,
+      verification_evidence: result.verification_evidence,
+      verification_confidence_change: result.verification_confidence_change,
+      hasVerificationStatus: !!result.verification_status,
+      normalizedStatus: result.verification_status ? normalizeVerificationStatus(result.verification_status) : 'none',
+      resultKeys: Object.keys(result),
+      willShowBadge: !!result.verification_status,
+      willShowFallback: !result.verification_status && (result.verified_at === null || result.verified_at === undefined),
+      willShowProcessing: !result.verification_status && result.verified_at !== null && result.verified_at !== undefined
+    });
+  }
 
   // Get country flag emoji
   const getCountryFlag = (country?: string): string => {
@@ -185,28 +193,44 @@ export default function ProductResultV2({
         </CardContent>
       </Card>
 
-      {/* Verification Status Badge */}
-      {result.verification_status && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4">
-              <VerificationBadge
-                status={normalizeVerificationStatus(result.verification_status)}
-                confidenceChange={result.verification_confidence_change}
-              />
-              
-              {/* Verification Details Panel */}
-              {result.verification_evidence && (
-                <VerificationDetailsPanel
+      {/* Verification Status Section */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center gap-4">
+            {result.verification_status ? (
+              <>
+                <VerificationBadge
                   status={normalizeVerificationStatus(result.verification_status)}
-                  evidence={result.verification_evidence}
                   confidenceChange={result.verification_confidence_change}
                 />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                
+                {/* Verification Details Panel */}
+                {result.verification_evidence && (
+                  <VerificationDetailsPanel
+                    status={normalizeVerificationStatus(result.verification_status)}
+                    evidence={result.verification_evidence}
+                    confidenceChange={result.verification_confidence_change}
+                  />
+                )}
+              </>
+            ) : result.verified_at === null || result.verified_at === undefined ? (
+              // Only show fallback if we're certain verification hasn't been assessed
+              <div className="text-center">
+                <p className="text-muted-foreground text-sm">
+                  Verification: Not yet assessed
+                </p>
+              </div>
+            ) : (
+              // Show loading state if we have verified_at but no status yet
+              <div className="text-center">
+                <p className="text-muted-foreground text-sm">
+                  Verification: Processing...
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Ownership Notes */}
       {narrative?.ownership_notes && narrative.ownership_notes.length > 0 && (

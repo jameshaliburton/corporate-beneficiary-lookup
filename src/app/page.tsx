@@ -52,7 +52,15 @@ function cleanPipelineResult(result: any) {
           durationMs: stage.durationMs
         }))
       }))
-    } : undefined
+    } : undefined,
+    // Gemini verification fields - FIXED: These were missing!
+    verification_status: result.verification_status,
+    verified_at: result.verified_at,
+    verification_method: result.verification_method,
+    verification_notes: result.verification_notes,
+    confidence_assessment: result.confidence_assessment,
+    verification_evidence: result.verification_evidence,
+    verification_confidence_change: result.verification_confidence_change
   };
 }
 

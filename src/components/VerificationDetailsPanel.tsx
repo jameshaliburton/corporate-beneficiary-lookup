@@ -165,9 +165,9 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
 
           {/* Summary */}
           {evidence.summary && (
-            <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-700 font-medium mb-1">Summary</p>
-              <p className="text-sm text-gray-600">{evidence.summary}</p>
+            <div className="bg-muted/30 p-3 rounded-lg border border-border/20">
+              <p className="text-sm text-foreground font-medium mb-1">Summary</p>
+              <p className="text-sm text-muted-foreground">{evidence.summary}</p>
             </div>
           )}
         </CardContent>
