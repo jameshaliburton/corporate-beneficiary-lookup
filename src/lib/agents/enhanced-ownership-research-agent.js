@@ -1216,6 +1216,16 @@ Respond in valid JSON format.`)
       })
       
       try {
+        console.log('[DBCache] Starting database write for ownership result:', {
+          brand,
+          product_name,
+          beneficiary: ownership.financial_beneficiary,
+          confidence: ownership.confidence_score,
+          verification_status: ownership.verification_status,
+          has_verification_evidence: !!ownership.verification_evidence,
+          verification_confidence_change: ownership.verification_confidence_change
+        });
+
         const { data: product, error: saveError } = await supabase
           .from('products')
           .upsert({
@@ -1227,6 +1237,12 @@ Respond in valid JSON format.`)
             beneficiary_flag: ownership.beneficiary_flag,
             confidence: ownership.confidence_score,
             verification_status: ownership.verification_status,
+            verified_at: ownership.verified_at,
+            verification_method: ownership.verification_method,
+            verification_notes: ownership.verification_notes,
+            verification_evidence: ownership.verification_evidence,
+            verification_confidence_change: ownership.verification_confidence_change,
+            confidence_assessment: ownership.confidence_assessment,
             sources: ownership.sources,
             reasoning: ownership.reasoning,
             result_type: ownership.result_type,
@@ -1243,12 +1259,39 @@ Respond in valid JSON format.`)
           .select()
           .single()
 
-        if (saveError) throw saveError
+        if (saveError) {
+          console.error('[DBCache] Database write failed:', {
+            error: saveError,
+            error_code: saveError.code,
+            error_message: saveError.message,
+            brand,
+            product_name,
+            beneficiary: ownership.financial_beneficiary
+          });
+          throw saveError;
+        }
+        
+        console.log('[DBCache] Database write successful:', {
+          product_id: product.id,
+          brand,
+          product_name,
+          beneficiary: ownership.financial_beneficiary,
+          verification_status: ownership.verification_status,
+          verification_fields_persisted: {
+            verification_status: !!ownership.verification_status,
+            verified_at: !!ownership.verified_at,
+            verification_method: !!ownership.verification_method,
+            verification_notes: !!ownership.verification_notes,
+            verification_evidence: !!ownership.verification_evidence,
+            verification_confidence_change: !!ownership.verification_confidence_change,
+            confidence_assessment: !!ownership.confidence_assessment
+          }
+        });
         
         saveStage.success({ product_id: product.id }, ['Result saved to database'])
         await emitProgress(queryId, 'database_save', 'completed', { product_id: product.id })
         
-                console.log('✅ [Pipeline] Ownership saved to database:', {
+        console.log('✅ [Pipeline] Ownership saved to database:', {
           brand,
           product_name,
           beneficiary: ownership.financial_beneficiary,
