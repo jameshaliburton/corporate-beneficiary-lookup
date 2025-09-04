@@ -25,6 +25,11 @@ const qualityAgent = new QualityAssessmentAgent();
  */
 async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand: string, product_name: string, queryId: string) {
   console.log("[GEMINI_INLINE_CACHE_HIT] Starting Gemini verification for cache hit result");
+  console.log("[GEMINI_DEBUG] Environment check:", {
+    GOOGLE_API_KEY_EXISTS: !!process.env.GOOGLE_API_KEY,
+    GOOGLE_API_KEY_LENGTH: process.env.GOOGLE_API_KEY?.length || 0,
+    NODE_ENV: process.env.NODE_ENV
+  });
   
   // Check if result already has verification status
   const hasExistingVerification = Boolean(
@@ -578,6 +583,9 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
 export async function POST(request: NextRequest) {
   try {
+    // 🔍 COMMIT VERSION DEBUG
+    console.log("[GEMINI_DEBUG] Commit version: ac95a419e5fb8f8fbb94f0c80fbed23760a49272");
+    
     // Log feature flags at the start of each request
     console.log('🔧 Feature Flags:', {
       ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
@@ -1131,6 +1139,44 @@ export async function POST(request: NextRequest) {
       }
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
+      
+      // 🔍 Add Gemini verification for fresh lookups
+      if (
+        ownershipResult.financial_beneficiary &&
+        ownershipResult.financial_beneficiary !== 'Unknown' &&
+        ownershipResult.confidence_score > 0 &&
+        isGeminiOwnershipAnalysisAvailable()
+      ) {
+        try {
+          console.log('[GEMINI_DEBUG] Triggering Gemini agent...');
+          console.log('[GEMINI_FRESH_LOOKUP] Running Gemini verification for fresh lookup');
+
+          const geminiAgent = new GeminiOwnershipAnalysisAgent();
+          const geminiAnalysis = await geminiAgent.analyze(
+            currentProductData.brand,
+            currentProductData.product_name,
+            ownershipResult
+          );
+
+          if (geminiAnalysis?.verification_status) {
+            ownershipResult.verification_status = geminiAnalysis.verification_status;
+            ownershipResult.verified_at = geminiAnalysis.verified_at;
+            ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change ?? 'unchanged';
+            ownershipResult.verification_method = geminiAnalysis.verification_method;
+            ownershipResult.verification_notes = geminiAnalysis.verification_notes;
+            ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment;
+            ownershipResult.verification_evidence = geminiAnalysis.verification_evidence;
+            
+            console.log('[GEMINI_FRESH_LOOKUP] Successfully added verification fields:', {
+              verification_status: ownershipResult.verification_status,
+              verified_at: ownershipResult.verified_at,
+              verification_confidence_change: ownershipResult.verification_confidence_change
+            });
+          }
+        } catch (err) {
+          console.error('[GEMINI_FRESH_LOOKUP] Error running verification agent:', err);
+        }
+      }
       
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
       if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
