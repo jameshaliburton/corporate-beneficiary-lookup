@@ -42,34 +42,6 @@ export default function ProductResultV2({
   const [showBehindTheScenes, setShowBehindTheScenes] = useState(false);
   const router = useRouter();
 
-  // DEBUG: Log narrative fields received
-  console.log("[UI] ProductResultV2 received narrative fields:", {
-    headline: narrative?.headline,
-    tagline: narrative?.tagline,
-    story: narrative?.story,
-    ownership_notes: narrative?.ownership_notes,
-    behind_the_scenes: narrative?.behind_the_scenes,
-    template_used: narrative?.template_used
-  });
-
-  // DEBUG: Log ownership data received
-  console.log("[UI] ProductResultV2 received ownership data:", {
-    brand_name: result.brand_name,
-    ultimate_owner: result.ultimate_owner,
-    ultimate_owner_country: result.ultimate_owner_country,
-    financial_beneficiary: result.financial_beneficiary,
-    financial_beneficiary_country: result.financial_beneficiary_country,
-    confidence: result.confidence
-  });
-
-  // DEBUG: Check if narrative is available
-  const isNarrativeAvailable = narrative && (
-    narrative.headline || 
-    narrative.story || 
-    narrative.tagline
-  );
-  console.log("[UI] Is narrative available?", isNarrativeAvailable);
-
   // Debug logging for verification fields
   console.log('[ProductResultV2] Verification fields:', {
     verification_status: result.verification_status,
@@ -80,25 +52,6 @@ export default function ProductResultV2({
     verification_evidence: result.verification_evidence,
     verification_confidence_change: result.verification_confidence_change
   });
-
-  // Enhanced debug logging for verification fields
-  if (typeof window !== "undefined") {
-    console.log('[ProductResultV2] Enhanced verification fields debug:', {
-      verification_status: result.verification_status,
-      verified_at: result.verified_at,
-      verification_method: result.verification_method,
-      verification_notes: result.verification_notes,
-      confidence_assessment: result.confidence_assessment,
-      verification_evidence: result.verification_evidence,
-      verification_confidence_change: result.verification_confidence_change,
-      hasVerificationStatus: !!result.verification_status,
-      hasVerifiedAt: !!result.verified_at,
-      hasVerificationMethod: !!result.verification_method,
-      hasVerificationNotes: !!result.verification_notes,
-      hasConfidenceAssessment: !!result.confidence_assessment,
-      hasVerificationEvidence: !!result.verification_evidence
-    });
-  }
 
   // Get country flag emoji
   const getCountryFlag = (country?: string): string => {
@@ -135,32 +88,8 @@ export default function ProductResultV2({
     ownerFlag: getCountryFlag(ownerCountry) 
   });
 
-  // Enhanced debug logging for verification fields
-  console.log('[ProductResultV2] VERIFICATION_DEBUG - Full verification data received:', {
-    verification_status: result.verification_status,
-    verified_at: result.verified_at,
-    verification_method: result.verification_method,
-    verification_notes: result.verification_notes,
-    confidence_assessment: result.confidence_assessment,
-    verification_evidence: result.verification_evidence,
-    verification_confidence_change: result.verification_confidence_change,
-    // Check if verification fields exist
-    hasVerificationStatus: !!result.verification_status,
-    hasVerifiedAt: !!result.verified_at,
-    hasVerificationMethod: !!result.verification_method,
-    hasVerificationNotes: !!result.verification_notes,
-    hasConfidenceAssessment: !!result.confidence_assessment,
-    hasVerificationEvidence: !!result.verification_evidence,
-    hasVerificationConfidenceChange: !!result.verification_confidence_change
-  });
-
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* DEBUG: Temporary render of narrative object */}
-      <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px', fontSize: '12px' }}>
-        <strong>DEBUG - Narrative Object:</strong>
-        <pre>{JSON.stringify(narrative, null, 2)}</pre>
-      </div>
       {/* Header Section - No Card Styling, Center-Aligned */}
       <div className="space-y-6 text-center">
         <div className="space-y-4">
@@ -188,13 +117,7 @@ export default function ProductResultV2({
             The story of {result.brand_name || 'this brand'}
           </h3>
           <p className="text-muted-foreground leading-relaxed">
-            {(() => {
-              if (!narrative?.story) {
-                console.warn("[FALLBACK] narrative.story missing. Full narrative object:", narrative);
-                return 'Analyzing ownership data...';
-              }
-              return narrative.story;
-            })()}
+            {narrative?.story || 'Analyzing ownership data...'}
           </p>
         </div>
       </div>
@@ -269,37 +192,17 @@ export default function ProductResultV2({
             <div className="flex flex-col items-center gap-4">
               <VerificationBadge
                 status={normalizeVerificationStatus(result.verification_status)}
-                confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
+                confidenceChange={result.verification_confidence_change}
               />
               
-              {/* Verification Details Panel - Enhanced Logic */}
-              {(() => {
-                const hasVerificationEvidence = result.verification_evidence;
-                const normalizedStatus = normalizeVerificationStatus(result.verification_status);
-                
-                console.log('[ProductResultV2] Verification rendering decision:', {
-                  hasVerificationStatus: !!result.verification_status,
-                  verificationStatus: result.verification_status,
-                  normalizedStatus,
-                  hasVerificationEvidence: !!hasVerificationEvidence,
-                  verificationEvidence: hasVerificationEvidence,
-                  shouldRenderPanel: hasVerificationEvidence || !!result.verification_notes
-                });
-                
-                // Always render the panel if we have verification evidence OR verification notes
-                if (hasVerificationEvidence || result.verification_notes) {
-                  return (
-                    <VerificationDetailsPanel
-                      status={normalizedStatus}
-                      evidence={hasVerificationEvidence}
-                      verificationNotes={result.verification_notes}
-                      confidenceChange={result.verification_confidence_change as "increased" | "decreased" | "unchanged" | undefined}
-                    />
-                  );
-                }
-                
-                return null;
-              })()}
+              {/* Verification Details Panel */}
+              {result.verification_evidence && (
+                <VerificationDetailsPanel
+                  status={normalizeVerificationStatus(result.verification_status)}
+                  evidence={result.verification_evidence}
+                  confidenceChange={result.verification_confidence_change}
+                />
+              )}
             </div>
           </CardContent>
         </Card>

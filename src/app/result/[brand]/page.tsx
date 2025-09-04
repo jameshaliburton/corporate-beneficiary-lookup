@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import ProductResultV2 from '@/components/ProductResultV2';
 import { transformPipelineData, type PipelineResult } from '@/lib/utils/pipeline-transformer';
-import { unwrapGeneratedCopy } from '@/lib/utils/unwrapGeneratedCopy';
 import Head from 'next/head';
 
 export default function ResultPage() {
@@ -15,42 +14,7 @@ export default function ResultPage() {
   const [productResultProps, setProductResultProps] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
   const hasProcessed = useRef(false);
-
-  // DEBUG: Log initial state
-  console.log("[SSR] ResultPage initialized with params:", params);
-  console.log("[SSR] Initial pipelineResult state:", pipelineResult);
-  console.log("[SSR] Initial productResultProps state:", productResultProps);
-
-  // useEffect to handle sessionStorage writes when pipelineResult changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && pipelineResult && pipelineResult.brand) {
-      try {
-        const sessionData = JSON.stringify(pipelineResult);
-        const key = `pipelineResult_${pipelineResult.brand}`;
-        
-        console.log('🔥 [HOTFIX_SESSION_WRITE] Writing to sessionStorage from result page:', {
-          key,
-          dataSize: sessionData.length,
-          hasStory: !!(pipelineResult as any).story,
-          hasHeadline: !!(pipelineResult as any).headline,
-          hasTagline: !!(pipelineResult as any).tagline
-        });
-        
-        sessionStorage.setItem(key, sessionData);
-        console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result from result page');
-        setSessionStorageStatus('✅ sessionStorage write succeeded');
-        
-        // Also store with generic key for backward compatibility
-        sessionStorage.setItem('pipelineResult', sessionData);
-        
-      } catch (err) {
-        console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: pipelineResult.brand, result: pipelineResult });
-        setSessionStorageStatus('❌ sessionStorage write failed');
-      }
-    }
-  }, [pipelineResult]);
 
   useEffect(() => {
     // Prevent multiple executions
@@ -82,68 +46,31 @@ export default function ResultPage() {
         console.log('📦 Found stored pipeline result in sessionStorage');
         const parsedResult = JSON.parse(storedPipelineResult);
         
-        // Unwrap generated_copy fields to top level for UI compatibility
-        const unwrappedResult = unwrapGeneratedCopy(parsedResult);
-        console.log('📦 [UNWRAP] Unwrapped sessionStorage result:', {
-          hasHeadline: !!unwrappedResult.headline,
-          hasStory: !!unwrappedResult.story,
-          hasTagline: !!unwrappedResult.tagline,
-          hasOwnershipNotes: !!unwrappedResult.ownership_notes,
-          hasBehindTheScenes: !!unwrappedResult.behind_the_scenes,
-          hasGeneratedCopy: !!unwrappedResult.hasGeneratedCopy
-        });
-        
         console.log('✅ Retrieved stored pipeline result:', {
-          success: unwrappedResult.success,
-          brand: unwrappedResult.brand,
-          confidence: unwrappedResult.confidence_score,
-          hasGeneratedCopy: !!unwrappedResult.generated_copy,
-          generatedCopyKeys: unwrappedResult.generated_copy ? Object.keys(unwrappedResult.generated_copy) : [],
-          hasNarrativeFields: {
-            headline: !!unwrappedResult.headline,
-            tagline: !!unwrappedResult.tagline,
-            story: !!unwrappedResult.story,
-            ownership_notes: !!unwrappedResult.ownership_notes,
-            behind_the_scenes: !!unwrappedResult.behind_the_scenes
-          }
-        });
-
-        // DEBUG: Log actual narrative field values
-        console.log("[SESSION_STORAGE] Narrative fields from sessionStorage:", {
-          headline: unwrappedResult.headline,
-          tagline: unwrappedResult.tagline,
-          story: unwrappedResult.story,
-          ownership_notes: unwrappedResult.ownership_notes,
-          behind_the_scenes: unwrappedResult.behind_the_scenes,
-          narrative_template_used: unwrappedResult.narrative_template_used
+          success: parsedResult.success,
+          brand: parsedResult.brand,
+          confidence: parsedResult.confidence_score,
+          hasGeneratedCopy: !!parsedResult.generated_copy,
+          generatedCopyKeys: parsedResult.generated_copy ? Object.keys(parsedResult.generated_copy) : []
         });
         
         console.log('🔍 Result page - verification fields retrieved:', {
-          verification_status: unwrappedResult.verification_status,
-          verified_at: unwrappedResult.verified_at,
-          confidence_assessment: unwrappedResult.confidence_assessment,
-          verification_evidence: unwrappedResult.verification_evidence
+          verification_status: parsedResult.verification_status,
+          verified_at: parsedResult.verified_at,
+          confidence_assessment: parsedResult.confidence_assessment,
+          verification_evidence: parsedResult.verification_evidence
         });
         
         // Log the actual generated_copy content
-        if (unwrappedResult.generated_copy) {
-          console.log('🎨 Retrieved generated copy content:', JSON.stringify(unwrappedResult.generated_copy, null, 2));
+        if (parsedResult.generated_copy) {
+          console.log('🎨 Retrieved generated copy content:', JSON.stringify(parsedResult.generated_copy, null, 2));
         }
         
-        setPipelineResult(unwrappedResult);
+        setPipelineResult(parsedResult);
         
         // Transform the data asynchronously
-        transformPipelineData(unwrappedResult)
+        transformPipelineData(parsedResult)
           .then(transformedProps => {
-            // DEBUG: Log transformed props
-            console.log("[TRANSFORM] Transformed props narrative fields:", {
-              headline: transformedProps.headline,
-              tagline: transformedProps.tagline,
-              story: transformedProps.story,
-              ownership_notes: transformedProps.ownership_notes,
-              behind_the_scenes: transformedProps.behind_the_scenes,
-              narrative_template_used: transformedProps.narrative_template_used
-            });
             setProductResultProps(transformedProps);
             setIsLoading(false);
           })
@@ -158,45 +85,8 @@ export default function ResultPage() {
         hasProcessed.current = true;
         return;
       } catch (err) {
-        console.error('❌ [NARRATIVE_PARSE_ERROR] Error parsing stored pipeline result:', err);
-        console.error('❌ [NARRATIVE_PARSE_ERROR] Raw stored data:', storedPipelineResult.substring(0, 500));
-        
-        // Try to recover by sanitizing the data
-        try {
-          const sanitizedData = storedPipelineResult.replace(/[\u0000-\u001F\u007F]/g, ' ');
-          const recoveredResult = JSON.parse(sanitizedData);
-          console.log('🔄 [NARRATIVE_RECOVERY] Successfully recovered result after sanitization');
-          
-          // Unwrap generated_copy fields in recovered result
-          const unwrappedRecoveredResult = unwrapGeneratedCopy(recoveredResult);
-          console.log('📦 [UNWRAP] Unwrapped recovered result:', {
-            hasHeadline: !!unwrappedRecoveredResult.headline,
-            hasStory: !!unwrappedRecoveredResult.story,
-            hasTagline: !!unwrappedRecoveredResult.tagline
-          });
-          
-          setPipelineResult(unwrappedRecoveredResult);
-          
-          // Transform the recovered data asynchronously
-          transformPipelineData(unwrappedRecoveredResult)
-            .then(transformedProps => {
-              setProductResultProps(transformedProps);
-              setIsLoading(false);
-            })
-            .catch(transformErr => {
-              console.error('❌ Error transforming recovered pipeline data:', transformErr);
-              setError('Failed to process results');
-              setIsLoading(false);
-            });
-          
-          // Clear the stored data to prevent reuse
-          sessionStorage.removeItem('pipelineResult');
-          hasProcessed.current = true;
-          return;
-        } catch (recoveryError) {
-          console.error('❌ [NARRATIVE_RECOVERY] Failed to recover result:', recoveryError);
-          // Fall back to mock data
-        }
+        console.error('❌ Error parsing stored pipeline result:', err);
+        // Fall back to mock data
       }
     }
 
@@ -435,50 +325,6 @@ export default function ResultPage() {
   // This useEffect handles the transformation, so we can remove it from here.
   // The productResultProps state will be updated by the useEffect.
 
-  // DEBUG: Log props being passed to ProductResultV2
-  console.log("[PROPS_TO_UI] Props being passed to ProductResultV2:", {
-    result: {
-      brand_name: productResultProps?.brand,
-      ultimate_owner: productResultProps?.owner,
-      ultimate_owner_country: productResultProps?.ownerCountry,
-      financial_beneficiary: productResultProps?.owner,
-      financial_beneficiary_country: productResultProps?.ownerCountry,
-      confidence: productResultProps?.confidence,
-      ownershipChain: productResultProps?.ownershipChain
-    },
-    narrative: {
-      headline: productResultProps?.headline,
-      tagline: productResultProps?.tagline,
-      story: productResultProps?.story,
-      ownership_notes: productResultProps?.ownership_notes,
-      behind_the_scenes: productResultProps?.behind_the_scenes,
-      template_used: productResultProps?.narrative_template_used
-    }
-  });
-
-  // DEBUG: Log raw pipeline result and verification fields
-  if (typeof window !== "undefined") {
-    console.log('[DEBUG: RAW_PIPELINE_RESULT] Verification fields:', {
-      verification_status: pipelineResult?.verification_status,
-      verified_at: pipelineResult?.verified_at,
-      verification_method: pipelineResult?.verification_method,
-      verification_notes: pipelineResult?.verification_notes,
-      confidence_assessment: pipelineResult?.confidence_assessment,
-      verification_evidence: pipelineResult?.verification_evidence,
-      verification_confidence_change: pipelineResult?.verification_confidence_change
-    });
-    
-    console.log('[DEBUG: TRANSFORMED_PROPS] Verification fields being passed to UI:', {
-      verification_status: productResultProps?.verificationStatus,
-      verified_at: productResultProps?.verifiedAt,
-      verification_method: productResultProps?.verificationMethod,
-      verification_notes: productResultProps?.verificationNotes,
-      confidence_assessment: productResultProps?.confidenceAssessment,
-      verification_evidence: productResultProps?.verificationEvidence,
-      verification_confidence_change: productResultProps?.verificationConfidenceChange
-    });
-  }
-
   return (
     <>
       <Head>
@@ -509,13 +355,13 @@ export default function ResultPage() {
               ownership_notes: productResultProps?.ownership_notes,
               behind_the_scenes: productResultProps?.behind_the_scenes,
               // Gemini verification fields
-              verification_status: productResultProps?.verificationStatus,
-              verified_at: productResultProps?.verifiedAt,
-              verification_method: productResultProps?.verificationMethod,
-              verification_notes: productResultProps?.verificationNotes,
-              confidence_assessment: productResultProps?.confidenceAssessment,
-              verification_evidence: productResultProps?.verificationEvidence,
-              verification_confidence_change: productResultProps?.verificationConfidenceChange
+              verification_status: productResultProps?.verification_status,
+              verified_at: productResultProps?.verified_at,
+              verification_method: productResultProps?.verification_method,
+              verification_notes: productResultProps?.verification_notes,
+              confidence_assessment: productResultProps?.confidence_assessment,
+              verification_evidence: productResultProps?.verification_evidence,
+              verification_confidence_change: productResultProps?.confidence_assessment?.confidence_change
             }}
             narrative={{
               headline: productResultProps?.headline,
@@ -528,13 +374,6 @@ export default function ResultPage() {
             onScanAnother={() => window.location.href = '/'}
             onShare={() => console.log('Share functionality')}
           />
-          
-          {/* Temporary sessionStorage status indicator */}
-          {sessionStorageStatus && (
-            <div className="mt-4 p-3 rounded-lg bg-blue-100 border border-blue-300 text-sm">
-              <strong>SessionStorage Status:</strong> {sessionStorageStatus}
-            </div>
-          )}
         </div>
       </div>
     </>

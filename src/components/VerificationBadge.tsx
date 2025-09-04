@@ -16,15 +16,6 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
   confidenceChange,
   className 
 }) => {
-  // Debug logging for verification badge
-  console.log('[VerificationBadge] VERIFICATION_DEBUG - Badge received props:', {
-    status,
-    confidenceChange,
-    className,
-    statusType: typeof status,
-    statusValue: status
-  });
-
   const getStatusConfig = () => {
     switch (status) {
       case 'confirmed':

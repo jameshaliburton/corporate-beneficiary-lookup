@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { VideoCapture } from '@/components/VideoCapture';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -37,13 +37,6 @@ function cleanPipelineResult(result: any) {
     ownership_notes: result.ownership_notes,
     behind_the_scenes: result.behind_the_scenes,
     narrative_template_used: result.narrative_template_used,
-    // Include verification fields
-    verification_status: result.verification_status,
-    verified_at: result.verified_at,
-    verification_method: result.verification_method,
-    confidence_assessment: result.confidence_assessment,
-    verification_evidence: result.verification_evidence,
-    verification_notes: result.verification_notes,
     // Simplify the agent_execution_trace to avoid circular references
     agent_execution_trace: result.agent_execution_trace ? {
       sections: result.agent_execution_trace.sections?.map((section: any) => ({
@@ -59,60 +52,13 @@ function cleanPipelineResult(result: any) {
           durationMs: stage.durationMs
         }))
       }))
-    } : {
-      // Provide fallback trace structure for UI display
-      sections: [{
-        id: 'no_agents_triggered',
-        title: 'No Agents Triggered',
-        label: 'No Agents Triggered',
-        stages: [{
-          id: 'fallback_stage',
-          stage: 'no_agents_triggered',
-          status: 'skipped',
-          details: 'No agents were triggered for this lookup',
-          duration: 0
-        }]
-      }],
-      show_skipped_stages: true,
-      mark_skipped_stages: true
-    }
+    } : undefined
   };
 }
 
 export default function CameraPage() {
   const [isScanning, setIsScanning] = useState(false);
-  const [pipelineResult, setPipelineResult] = useState<any>(null); // Track pipeline result for sessionStorage
-  const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
   const router = useRouter();
-
-  // useEffect to handle sessionStorage writes when pipelineResult changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && pipelineResult && pipelineResult.brand) {
-      try {
-        const sessionData = JSON.stringify(pipelineResult);
-        const key = `pipelineResult_${pipelineResult.brand}`;
-        
-        console.log('🔥 [HOTFIX_SESSION_WRITE] Writing to sessionStorage:', {
-          key,
-          dataSize: sessionData.length,
-          hasStory: !!pipelineResult.story,
-          hasHeadline: !!pipelineResult.headline,
-          hasTagline: !!pipelineResult.tagline
-        });
-        
-        sessionStorage.setItem(key, sessionData);
-        console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result');
-        setSessionStorageStatus('✅ sessionStorage write succeeded');
-        
-        // Also store with generic key for backward compatibility
-        sessionStorage.setItem('pipelineResult', sessionData);
-        
-      } catch (err) {
-        console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: pipelineResult.brand, result: pipelineResult });
-        setSessionStorageStatus('❌ sessionStorage write failed');
-      }
-    }
-  }, [pipelineResult]);
 
   const handleCapture = async (imageData?: string) => {
     if (!imageData) {
@@ -196,28 +142,10 @@ export default function CameraPage() {
           console.log('🎨 Generated copy content:', JSON.stringify(cleanResult.generated_copy, null, 2));
         }
         
-        // Log both result and brand right before sessionStorage.setItem
-        console.log('🔍 [SESSION_STORAGE_DEBUG] About to store:', {
-          result: cleanResult,
-          brand: cleanResult.brand,
-          hasNarrativeFields: {
-            headline: !!cleanResult.headline,
-            tagline: !!cleanResult.tagline,
-            story: !!cleanResult.story,
-            ownership_notes: !!cleanResult.ownership_notes,
-            behind_the_scenes: !!cleanResult.behind_the_scenes
-          }
-        });
+        const sessionData = JSON.stringify(cleanResult);
+        console.log('💾 Session data size:', sessionData.length, 'characters');
         
-        // Set the pipeline result state - this will trigger the useEffect to write to sessionStorage
-        console.log('🔄 [SESSION_STORAGE_TRIGGER] Setting pipeline result state:', {
-          hasResult: !!cleanResult,
-          hasBrand: !!cleanResult?.brand,
-          hasStory: !!cleanResult?.story,
-          hasHeadline: !!cleanResult?.headline
-        });
-        
-        setPipelineResult(cleanResult);
+        sessionStorage.setItem('pipelineResult', sessionData);
         
         // Verify it was stored correctly
         const storedData = sessionStorage.getItem('pipelineResult');
@@ -299,13 +227,6 @@ export default function CameraPage() {
               >
                 Search by name instead
               </Button>
-            </div>
-          )}
-          
-          {/* Temporary sessionStorage status indicator */}
-          {sessionStorageStatus && (
-            <div className="mt-4 p-3 rounded-lg bg-blue-100 border border-blue-300 text-sm">
-              <strong>SessionStorage Status:</strong> {sessionStorageStatus}
             </div>
           )}
         </div>
