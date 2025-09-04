@@ -70,9 +70,6 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         research_method: ownershipResult.result_type,
         sources: ownershipResult.sources
       });
-        hints: {},
-        queryId: queryId
-      });
       
       if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
         // Add verification fields to top level
