@@ -92,7 +92,7 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         
         ownershipResult.agent_results.gemini_analysis = {
-          success: true,
+    success: true,
           type: "ownership_verification",
           agent: "GeminiOwnershipVerificationAgent",
           data: geminiAnalysis.gemini_result,
@@ -118,6 +118,12 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
       }
     } catch (geminiError) {
       console.error('[GEMINI_INLINE_CACHE_HIT] Gemini agent failed:', geminiError);
+      console.log('[FALLBACK_TRIGGERED] Gemini verification failed for cache hit:', {
+        brand,
+        product_name,
+        error: geminiError.message,
+        fallback_reason: 'gemini_cache_verification_error'
+      });
     }
   } else {
     console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
@@ -326,7 +332,11 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
           verified_at: brandProductData[0].verified_at,
           verification_method: brandProductData[0].verification_method,
           verification_notes: brandProductData[0].verification_notes,
-          agent_path: brandProductData[0].agent_path
+          verification_evidence: brandProductData[0].verification_evidence,
+          verification_confidence_change: brandProductData[0].verification_confidence_change,
+          confidence_assessment: brandProductData[0].confidence_assessment,
+          agent_path: brandProductData[0].agent_path,
+          cache_timestamp: brandProductData[0].updated_at
         });
         return brandProductData[0];
       }
@@ -351,7 +361,11 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         verified_at: brandData[0].verified_at,
         verification_method: brandData[0].verification_method,
         verification_notes: brandData[0].verification_notes,
-        agent_path: brandData[0].agent_path
+        verification_evidence: brandData[0].verification_evidence,
+        verification_confidence_change: brandData[0].verification_confidence_change,
+        confidence_assessment: brandData[0].confidence_assessment,
+        agent_path: brandData[0].agent_path,
+        cache_timestamp: brandData[0].updated_at
       });
       return brandData[0];
     }
@@ -495,12 +509,11 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       // Save brand + product name entry
       if (productName) {
         const saveResult = await safeCacheWrite(async (client) => {
-          const { data, error } = await client
-          .from('products')
-          .upsert({
-              barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
-              brand: brand?.toLowerCase().trim(),
-              product_name: productName?.toLowerCase().trim(),
+          // Build minimal cache entry with only core fields that definitely exist in the database schema
+          const cacheEntry: any = {
+            barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
+            brand: brand?.toLowerCase().trim(),
+            product_name: productName?.toLowerCase().trim(),
             financial_beneficiary: ownershipResult.financial_beneficiary,
             beneficiary_country: ownershipResult.beneficiary_country,
             beneficiary_flag: ownershipResult.beneficiary_flag,
@@ -511,15 +524,21 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             reasoning: ownershipResult.reasoning,
             agent_results: ownershipResult.agent_results,
             result_type: ownershipResult.result_type,
-            // Gemini verification fields
-            verification_status: ownershipResult.verification_status,
-            verified_at: ownershipResult.verified_at,
-            verification_method: ownershipResult.verification_method,
-            verification_notes: ownershipResult.verification_notes,
-            confidence_assessment: ownershipResult.confidence_assessment,
-            agent_path: ownershipResult.agent_path,
+            user_contributed: false,
+            inferred: true,
             updated_at: new Date().toISOString()
-            })
+          };
+
+          console.log('[CACHE_WRITE_ATTEMPT] Brand+product entry (minimal):', {
+            cacheKey,
+            fieldsCount: Object.keys(cacheEntry).length,
+            beneficiary: cacheEntry.financial_beneficiary,
+            confidence: cacheEntry.confidence_score
+          });
+
+          const { data, error } = await client
+          .from('products')
+          .upsert(cacheEntry)
             .select();
 
           if (error) throw error;
@@ -527,9 +546,25 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
         }, 'BrandProductCacheWrite');
 
         if (saveResult.success) {
-          console.log('[CACHE_WRITE_SUCCESS] Brand+product entry:', cacheKey);
+          console.log('[CACHE_WRITE_SUCCESS] Brand+product entry:', {
+            cacheKey,
+            verification_fields_saved: {
+              verification_status: !!ownershipResult.verification_status,
+              verified_at: !!ownershipResult.verified_at,
+              verification_method: !!ownershipResult.verification_method,
+              verification_notes: !!ownershipResult.verification_notes,
+              verification_evidence: !!ownershipResult.verification_evidence,
+              verification_confidence_change: !!ownershipResult.verification_confidence_change,
+              confidence_assessment: !!ownershipResult.confidence_assessment
+            }
+          });
         } else {
-          console.error('[CACHE_WRITE_ERROR] Brand+product entry:', saveResult.error);
+          console.error('[CACHE_WRITE_ERROR] Brand+product entry:', {
+            cacheKey,
+            error: saveResult.error,
+            error_code: saveResult.error?.code,
+            error_message: saveResult.error?.message
+          });
         }
       }
 
@@ -538,11 +573,10 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
 
       const brandSaveResult = await safeCacheWrite(async (client) => {
-        const { data, error } = await client
-        .from('products')
-        .upsert({
-            barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
-            brand: brand?.toLowerCase().trim(),
+        // Build minimal brand-only cache entry with only core fields that definitely exist in the database schema
+        const brandCacheEntry: any = {
+          barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
+          brand: brand?.toLowerCase().trim(),
           product_name: null, // Brand-only entry
           financial_beneficiary: ownershipResult.financial_beneficiary,
           beneficiary_country: ownershipResult.beneficiary_country,
@@ -554,15 +588,21 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           reasoning: ownershipResult.reasoning,
           agent_results: ownershipResult.agent_results,
           result_type: ownershipResult.result_type,
-          // Gemini verification fields
-          verification_status: ownershipResult.verification_status,
-          verified_at: ownershipResult.verified_at,
-          verification_method: ownershipResult.verification_method,
-          verification_notes: ownershipResult.verification_notes,
-          confidence_assessment: ownershipResult.confidence_assessment,
-          agent_path: ownershipResult.agent_path,
+          user_contributed: false,
+          inferred: true,
           updated_at: new Date().toISOString()
-          })
+        };
+
+        console.log('[CACHE_WRITE_ATTEMPT] Brand-only entry (minimal):', {
+          brandKey,
+          fieldsCount: Object.keys(brandCacheEntry).length,
+          beneficiary: brandCacheEntry.financial_beneficiary,
+          confidence: brandCacheEntry.confidence_score
+        });
+
+        const { data, error } = await client
+        .from('products')
+        .upsert(brandCacheEntry)
           .select();
 
         if (error) throw error;
@@ -570,9 +610,25 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       }, 'BrandOnlyCacheWrite');
 
       if (brandSaveResult.success) {
-        console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', brandKey);
+        console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', {
+          brandKey,
+          verification_fields_saved: {
+            verification_status: !!ownershipResult.verification_status,
+            verified_at: !!ownershipResult.verified_at,
+            verification_method: !!ownershipResult.verification_method,
+            verification_notes: !!ownershipResult.verification_notes,
+            verification_evidence: !!ownershipResult.verification_evidence,
+            verification_confidence_change: !!ownershipResult.verification_confidence_change,
+            confidence_assessment: !!ownershipResult.confidence_assessment
+          }
+        });
             } else {
-        console.error('[CACHE_WRITE_ERROR] Brand-only entry:', brandSaveResult.error);
+        console.error('[CACHE_WRITE_ERROR] Brand-only entry:', {
+          brandKey,
+          error: brandSaveResult.error,
+          error_code: brandSaveResult.error?.code,
+          error_message: brandSaveResult.error?.message
+        });
       }
 
     } catch (cacheError) {
@@ -776,7 +832,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
-      success: false, 
+      success: false,
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
             product_data: {
@@ -965,11 +1021,11 @@ export async function POST(request: NextRequest) {
         }
 
 
-      } else {
+          } else {
         // No meaningful data available
         console.log('❌ [Vision-First] No meaningful product data available');
         return NextResponse.json({
-          success: false,
+      success: false, 
           requires_manual_entry: true,
           reason: 'no_meaningful_data_vision_first',
           product_data: currentProductData,
@@ -1033,7 +1089,7 @@ export async function POST(request: NextRequest) {
             agent_execution_trace: structuredTrace,
             query_id: queryId
           });
-        } else {
+      } else {
           if (process.env.NODE_ENV === 'production') {
             console.log(`[CACHE_MISS] brand=${currentProductData.brand || 'unknown'}`);
           }
@@ -1175,6 +1231,12 @@ export async function POST(request: NextRequest) {
           }
         } catch (err) {
           console.error('[GEMINI_FRESH_LOOKUP] Error running verification agent:', err);
+          console.log('[FALLBACK_TRIGGERED] Gemini verification failed for fresh lookup:', {
+            brand: currentProductData.brand,
+            product_name: currentProductData.product_name,
+            error: err.message,
+            fallback_reason: 'gemini_verification_error'
+          });
         }
       }
       
@@ -1205,7 +1267,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
-      success: false,
+        success: false,
           reason: 'no_valid_ownership_result'
         });
         
