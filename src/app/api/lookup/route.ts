@@ -63,15 +63,13 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   if (shouldRunGemini) {
     try {
       console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
-      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-        brand: brand,
-        product_name: product_name,
-        ownershipData: {
-          financial_beneficiary: ownershipResult.financial_beneficiary,
-          confidence_score: ownershipResult.confidence_score,
-          research_method: ownershipResult.result_type,
-          sources: ownershipResult.sources
-        },
+      const geminiAgent = new GeminiOwnershipAnalysisAgent();
+      const geminiAnalysis = await geminiAgent.analyze(brand, product_name, {
+        financial_beneficiary: ownershipResult.financial_beneficiary,
+        confidence_score: ownershipResult.confidence_score,
+        research_method: ownershipResult.result_type,
+        sources: ownershipResult.sources
+      });
         hints: {},
         queryId: queryId
       });
