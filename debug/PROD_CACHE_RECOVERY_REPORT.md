@@ -235,6 +235,118 @@ If database migration is not possible, modify the cache write logic to only writ
 - Issue appears to be more complex than just missing fields
 - Need to investigate Supabase connection, RLS policies, or other infrastructure issues
 
+### 2025-09-04 14:20:00 - Migration Status Confirmed
+- **Schema Check**: Confirmed verification fields are missing from Supabase `products` table
+- **Connection Test**: ✅ Supabase connection successful
+- **Migration Required**: Database schema needs to be updated with verification fields
+- **Migration SQL**: Ready to apply in Supabase SQL Editor
+
+## 🚀 **MIGRATION INSTRUCTIONS**
+
+### **Step 1: Apply Database Migration**
+Run this SQL in your **Supabase SQL Editor**:
+
+```sql
+-- Add verification fields to products table
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_status TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_method TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_notes TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS confidence_assessment JSONB;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_evidence JSONB;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS verification_confidence_change TEXT;
+
+-- Verify the migration
+SELECT column_name FROM information_schema.columns 
+WHERE table_name = 'products' AND column_name LIKE '%verification%';
+```
+
+### **Step 2: Verify Migration Success**
+After running the migration, verify that these columns exist:
+- `verification_status`
+- `verified_at`
+- `verification_method`
+- `verification_notes`
+- `confidence_assessment`
+- `verification_evidence`
+- `verification_confidence_change`
+
+## 📊 **Pre-Migration Cache Test Results**
+
+| Brand | Pipeline | Cache Key | DB Save | Cache Hit | Status |
+|-------|----------|-----------|---------|-----------|---------|
+| Nike | Manual | `nike::shoes` | ✅ | ❌ | **CACHE FAIL** |
+| Jordan | Manual | `jordan::basketball` | ✅ | ❌ | **CACHE FAIL** |
+
+**Pattern Confirmed**: Cache writes appear successful (`database_save_success: true`) but cache hits are always `false`. This confirms the schema mismatch issue.
+
+## 🧪 **Post-Migration Testing Plan**
+
+After applying the migration, test these brands:
+
+1. **Nike** (manual) - Test cache write and hit
+2. **Jordan** (manual) - Test cache write and hit  
+3. **Dove** (vision) - Test cache write and hit
+4. **Blancpain** (manual) - Test cache write and hit
+
+**Expected Results After Migration**:
+- Cache writes should succeed without schema errors
+- Cache hits should return `true` on second lookup
+- Verification fields should be persisted in database
+
+## 🚀 **Final Deployment Instructions**
+
+### **Step 3: Environment Verification**
+Ensure these environment variables are set in both local and Vercel:
+
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_ANON_KEY=your_anon_key
+```
+
+### **Step 4: Post-Migration Testing**
+After applying the migration, run these tests:
+
+```bash
+# Test 1: Nike (manual)
+curl -X POST http://localhost:3000/api/lookup \
+  -H "Content-Type: application/json" \
+  -d '{"brand": "Nike", "product_name": "Shoes", "pipeline_type": "manual"}'
+
+# Test 2: Cache hit for Nike
+curl -X POST http://localhost:3000/api/lookup \
+  -H "Content-Type: application/json" \
+  -d '{"brand": "Nike", "product_name": "Shoes", "pipeline_type": "manual"}'
+
+# Test 3: Dove (vision)
+curl -X POST http://localhost:3000/api/lookup \
+  -H "Content-Type: application/json" \
+  -d '{"brand": "Dove", "product_name": "Soap", "pipeline_type": "vision_first"}'
+```
+
+### **Step 5: Deploy to Vercel**
+```bash
+# Push the stable branch
+git push origin deploy/stable-cache-recovery
+
+# Deploy to Vercel
+vercel --prod
+
+# Monitor logs
+vercel logs ownedby-ai --since 10m
+```
+
+### **Step 6: Production Verification**
+After deployment, test the production endpoints:
+- `https://ownedby.app/api/lookup` (manual lookup)
+- `https://ownedby.app/api/lookup` (vision lookup)
+
+Monitor for:
+- `[CACHE_WRITE_SUCCESS]` logs
+- `[CACHE_HIT]` logs  
+- No `PGRST204` or `42501` errors
+
 ---
 
 ## ✅ Recovery Summary
