@@ -14,9 +14,6 @@ import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTr
 import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
 import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 
-// Debug: Test import
-console.log('[COPY_AGENT] Import test - generateNarrativeFromResult function:', typeof generateNarrativeFromResult);
-
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
 
@@ -63,34 +60,31 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   // Run if: no existing verification OR existing verification is insufficient
   const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification) && !isGarbageResult && geminiAvailable;
   
-  // Production logging checkpoints
-  if (process.env.NODE_ENV === 'production') {
-    console.log("[GEMINI_REQUEST_TRIGGERED]", {
-      brand,
-      product_name,
-      shouldRunGemini,
-      hasExistingVerification,
-      hasInsufficientVerification,
-      isGarbageResult,
-      geminiAvailable
-    });
-  }
-  
   if (shouldRunGemini) {
     try {
       console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
-      const geminiAgent = new GeminiOwnershipAnalysisAgent();
-      const geminiAnalysis = await geminiAgent.analyze(brand, product_name, ownershipResult);
+      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
+        brand: brand,
+        product_name: product_name,
+        ownershipData: {
+          financial_beneficiary: ownershipResult.financial_beneficiary,
+          confidence_score: ownershipResult.confidence_score,
+          research_method: ownershipResult.result_type,
+          sources: ownershipResult.sources
+        },
+        hints: {},
+        queryId: queryId
+      });
       
-      if (geminiAnalysis) {
+      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
         // Add verification fields to top level
-        ownershipResult.verification_status = geminiAnalysis.verification_status || 'inconclusive';
-        ownershipResult.verified_at = geminiAnalysis.verified_at || new Date().toISOString();
-        ownershipResult.verification_method = geminiAnalysis.verification_method || 'gemini_web_search';
-        ownershipResult.verification_notes = geminiAnalysis.verification_notes || 'Gemini verification completed';
-        ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment || null;
-        ownershipResult.verification_evidence = geminiAnalysis.verification_evidence || null;
-        ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change || null;
+        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
+        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
         
         // Add Gemini results to agent_results
         if (!ownershipResult.agent_results) {
@@ -98,11 +92,13 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         
         ownershipResult.agent_results.gemini_analysis = {
-    success: true,
+          success: true,
           type: "ownership_verification",
           agent: "GeminiOwnershipVerificationAgent",
-          data: geminiAnalysis,
-          reasoning: 'Gemini verification completed'
+          data: geminiAnalysis.gemini_result,
+          reasoning: 'Gemini verification completed',
+          web_snippets_count: geminiAnalysis.web_snippets_count,
+          search_queries_used: geminiAnalysis.search_queries_used
         };
         
         // Add agent path tracking
@@ -111,69 +107,20 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         ownershipResult.agent_path.push("gemini_verification_inline_cache");
         
-        // 🔍 ADD GEMINI SECTION TO AGENT EXECUTION TRACE (CACHE HIT PATH)
-        if (!ownershipResult.agent_execution_trace) {
-          ownershipResult.agent_execution_trace = {
-            sections: [],
-            show_skipped_stages: false,
-            mark_skipped_stages: false
-          };
-        }
+        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields to cache hit result");
         
-        if (!ownershipResult.agent_execution_trace.sections) {
-          ownershipResult.agent_execution_trace.sections = [];
-        }
-        
-        ownershipResult.agent_execution_trace.sections.push({
-          agent: 'GeminiVerificationAgent',
-          output: geminiAnalysis,
-          timestamp: new Date().toISOString(),
-          evidence_analysis: geminiAnalysis.gemini_evidence_analysis || null,
-          execution_path: 'cache_hit'
-        });
-        
-        console.log("[GEMINI_INLINE_CACHE_HIT] Successfully added verification fields and trace section to cache hit result");
-        
-        // Production logging checkpoints
+        // Gemini verification marker
         if (process.env.NODE_ENV === 'production') {
-          console.log("[GEMINI_COMPLETED]", {
-            brand,
-            verification_status: ownershipResult.verification_status || 'unknown',
-            confidence: ownershipResult.confidence_score || 'unknown',
-            verification_method: ownershipResult.verification_method,
-            verification_notes: ownershipResult.verification_notes
-          });
+          console.log(`[GEMINI_VERIFIED] brand=${brand}, status=${ownershipResult.verification_status || 'unknown'}, confidence=${ownershipResult.confidence_score || 'unknown'}`);
         }
         
         return true;
       }
     } catch (geminiError) {
       console.error('[GEMINI_INLINE_CACHE_HIT] Gemini agent failed:', geminiError);
-      
-      // Production error logging
-      if (process.env.NODE_ENV === 'production') {
-        console.log("[GEMINI_ERROR_CAUGHT]", {
-          brand,
-          error: geminiError.message,
-          stack: geminiError.stack
-        });
-      }
     }
   } else {
     console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
-    
-    // Production skip logging
-    if (process.env.NODE_ENV === 'production') {
-      console.log("[GEMINI_SKIPPED]", {
-        brand,
-        reason: {
-          hasExistingVerification,
-          hasInsufficientVerification,
-          isGarbageResult,
-          geminiAvailable
-        }
-      });
-    }
   }
   
   return false;
@@ -436,12 +383,6 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     
     // 🎨 ALWAYS GENERATE FRESH NARRATIVE (even on cache hit)
     console.log('🎨 [Shared Cache] Generating fresh narrative for cached ownership data...');
-    console.log('[COPY_AGENT] EXECUTION PATH: Reached cached result narrative generation section');
-    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult exists:', !!cachedResult);
-    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult.brand:', cachedResult?.brand);
-    console.log('[COPY_AGENT] EXECUTION PATH: cachedResult.financial_beneficiary:', cachedResult?.financial_beneficiary);
-    console.log('[COPY_AGENT] Generating copy for cached result:', cachedResult.brand, '(confidence:', cachedResult.confidence_score || 0, ')');
-    console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (cached path)...');
     const narrative = await generateNarrativeFromResult({
       brand_name: cachedResult.brand,
       brand_country: cachedResult.brand_country,
@@ -455,12 +396,6 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       behind_the_scenes: cachedResult.behind_the_scenes
     });
     console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
-    console.log('[COPY_AGENT] Output for cached result:', {
-      headline: narrative.headline,
-      story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
-      template_used: narrative.template_used
-    });
-    console.log('[COPY_AGENT] Done ✅ (cached result)');
     
     // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
     const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
@@ -520,16 +455,6 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       ownership_notes: narrative.ownership_notes,
       behind_the_scenes: narrative.behind_the_scenes,
       narrative_template_used: narrative.template_used,
-      // Add generated_copy for backward compatibility
-      generated_copy: {
-        headline: narrative.headline,
-        tagline: narrative.tagline,
-        story: narrative.story,
-        ownership_notes: narrative.ownership_notes,
-        behind_the_scenes: narrative.behind_the_scenes,
-        template_used: narrative.template_used
-      },
-      hasGeneratedCopy: true,
       cache_hit: true,
       agent_path: cachedResult.agent_path || []
     };
@@ -660,7 +585,7 @@ export async function POST(request: NextRequest) {
   try {
     // Log feature flags at the start of each request
     console.log('🔧 Feature Flags:', {
-      ENABLE_GEMINI_OWNERSHIP_AGENT: true, // Temporarily hardcoded for testing
+      ENABLE_GEMINI_OWNERSHIP_AGENT: process.env.ENABLE_GEMINI_OWNERSHIP_AGENT === 'true',
       ENABLE_DISAMBIGUATION_AGENT: process.env.ENABLE_DISAMBIGUATION_AGENT === 'true',
       ENABLE_AGENT_REPORTS: process.env.ENABLE_AGENT_REPORTS === 'true',
       ENABLE_PIPELINE_LOGGING: process.env.ENABLE_PIPELINE_LOGGING === 'true'
@@ -690,18 +615,6 @@ export async function POST(request: NextRequest) {
     // Extract request metadata for logging
     const ip_country = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
     const lang_hint = request.headers.get('accept-language')?.split(',')[0] || 'unknown';
-    
-    // Production pipeline entry logging
-    if (process.env.NODE_ENV === 'production') {
-      console.log("[PIPELINE_ENTRY]", {
-        brand: brand || 'unknown',
-        product: product_name || 'unknown',
-        barcode: barcode || 'none',
-        source: image_base64 ? 'image' : 'manual',
-        ip_country,
-        lang_hint
-      });
-    }
     
     // Top-level request marker
     if (process.env.NODE_ENV === 'production') {
@@ -785,59 +698,11 @@ export async function POST(request: NextRequest) {
           ];
           const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
           
-          // 🎨 GENERATE NARRATIVE FOR EARLY CACHE HIT (Manual Results)
-          console.log('[COPY_AGENT] EXECUTION PATH: Reached early cache hit narrative generation');
-          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (early cache hit)...');
-          let narrative;
-          try {
-            narrative = await generateNarrativeFromResult({
-              brand_name: cachedResult.brand,
-              brand_country: (cachedResult as any).brand_country || 'Unknown',
-              ultimate_owner: cachedResult.financial_beneficiary,
-              ultimate_owner_country: cachedResult.beneficiary_country,
-              financial_beneficiary: cachedResult.financial_beneficiary,
-              financial_beneficiary_country: cachedResult.beneficiary_country,
-              ownership_type: cachedResult.ownership_structure_type,
-              confidence: cachedResult.confidence_score || 0,
-              ownership_notes: (cachedResult as any).ownership_notes || [],
-              behind_the_scenes: (cachedResult as any).behind_the_scenes || []
-            });
-            console.log('[COPY_AGENT] Successfully generated narrative for early cache hit:', narrative);
-          } catch (narrativeError) {
-            console.error('[COPY_AGENT] Narrative generation failed for early cache hit:', narrativeError);
-            // Fallback narrative
-            narrative = {
-              headline: `${cachedResult.brand} is owned by ${cachedResult.financial_beneficiary}`,
-              tagline: "Discover the corporate connections behind your favorite brands",
-              story: `${cachedResult.brand} is ultimately owned by ${cachedResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
-              ownership_notes: [`Ownership: ${cachedResult.financial_beneficiary} | Country: ${cachedResult.beneficiary_country || 'Unknown'} | Confidence: ${cachedResult.confidence_score || 0}%`],
-              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
-              template_used: "early_cache_fallback"
-            };
-          }
-
           return NextResponse.json({
             ...cachedResult,
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
-            // Add narrative fields
-            headline: narrative.headline,
-            tagline: narrative.tagline,
-            story: narrative.story,
-            ownership_notes: narrative.ownership_notes,
-            behind_the_scenes: narrative.behind_the_scenes,
-            narrative_template_used: narrative.template_used,
-            // Add generated_copy for backward compatibility
-            generated_copy: {
-              headline: narrative.headline,
-              tagline: narrative.tagline,
-              story: narrative.story,
-              ownership_notes: narrative.ownership_notes,
-              behind_the_scenes: narrative.behind_the_scenes,
-              template_used: narrative.template_used
-            },
-            hasGeneratedCopy: true,
             query_id: queryId
               });
             } else {
@@ -908,7 +773,7 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'complete', 'completed', { success: false, reason: 'requires_manual_entry' });
           
           return NextResponse.json({
-      success: false,
+      success: false, 
             requires_manual_entry: true,
             reason: barcodeData.result_type || 'poor_quality_manual_entry',
             product_data: {
@@ -929,57 +794,9 @@ export async function POST(request: NextRequest) {
           await emitProgress(queryId, 'ownership_research', 'completed', { reason: 'Already found in lookup' });
           await emitProgress(queryId, 'complete', 'completed', { success: true });
 
-          // 🎨 GENERATE NARRATIVE FOR BARCODE LOOKUP CACHE HIT
-          console.log('[COPY_AGENT] EXECUTION PATH: Reached barcode lookup cache hit narrative generation');
-          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (barcode cache hit)...');
-          let narrative;
-          try {
-            narrative = await generateNarrativeFromResult({
-              brand_name: barcodeData.brand,
-              brand_country: (barcodeData as any).brand_country || 'Unknown',
-              ultimate_owner: barcodeData.financial_beneficiary,
-              ultimate_owner_country: barcodeData.beneficiary_country,
-              financial_beneficiary: barcodeData.financial_beneficiary,
-              financial_beneficiary_country: barcodeData.beneficiary_country,
-              ownership_type: barcodeData.ownership_structure_type,
-              confidence: barcodeData.confidence_score || 0,
-              ownership_notes: (barcodeData as any).ownership_notes || [],
-              behind_the_scenes: (barcodeData as any).behind_the_scenes || []
-            });
-            console.log('[COPY_AGENT] Successfully generated narrative for barcode cache hit:', narrative);
-          } catch (narrativeError) {
-            console.error('[COPY_AGENT] Narrative generation failed for barcode cache hit:', narrativeError);
-            // Fallback narrative
-            narrative = {
-              headline: `${barcodeData.brand} is owned by ${barcodeData.financial_beneficiary}`,
-              tagline: "Discover the corporate connections behind your favorite brands",
-              story: `${barcodeData.brand} is ultimately owned by ${barcodeData.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
-              ownership_notes: [`Ownership: ${barcodeData.financial_beneficiary} | Country: ${barcodeData.beneficiary_country || 'Unknown'} | Confidence: ${barcodeData.confidence_score || 0}%`],
-              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
-              template_used: "barcode_cache_fallback"
-            };
-          }
-
           return NextResponse.json({
             ...barcodeData,
-            query_id: queryId,
-            // Add narrative fields
-            headline: narrative.headline,
-            tagline: narrative.tagline,
-            story: narrative.story,
-            ownership_notes: narrative.ownership_notes,
-            behind_the_scenes: narrative.behind_the_scenes,
-            narrative_template_used: narrative.template_used,
-            // Add generated_copy for backward compatibility
-            generated_copy: {
-              headline: narrative.headline,
-              tagline: narrative.tagline,
-              story: narrative.story,
-              ownership_notes: narrative.ownership_notes,
-              behind_the_scenes: narrative.behind_the_scenes,
-              template_used: narrative.template_used
-            },
-            hasGeneratedCopy: true
+            query_id: queryId
           });
         }
       } else if (isImageIdentifier) {
@@ -1145,11 +962,11 @@ export async function POST(request: NextRequest) {
         }
 
 
-          } else {
+      } else {
         // No meaningful data available
         console.log('❌ [Vision-First] No meaningful product data available');
         return NextResponse.json({
-      success: false, 
+          success: false,
           requires_manual_entry: true,
           reason: 'no_meaningful_data_vision_first',
           product_data: currentProductData,
@@ -1206,62 +1023,14 @@ export async function POST(request: NextRequest) {
           ];
           const structuredTrace = buildStructuredTrace(earlyCacheHitStages, false, true);
           
-          // 🎨 GENERATE NARRATIVE FOR VISION-FIRST CACHE HIT
-          console.log('[COPY_AGENT] EXECUTION PATH: Reached vision-first cache hit narrative generation');
-          console.log('[COPY_AGENT] About to call generateNarrativeFromResult function (vision-first cache hit)...');
-          let narrative;
-          try {
-            narrative = await generateNarrativeFromResult({
-              brand_name: cachedResult.brand,
-              brand_country: (cachedResult as any).brand_country || 'Unknown',
-              ultimate_owner: cachedResult.financial_beneficiary,
-              ultimate_owner_country: cachedResult.beneficiary_country,
-              financial_beneficiary: cachedResult.financial_beneficiary,
-              financial_beneficiary_country: cachedResult.beneficiary_country,
-              ownership_type: cachedResult.ownership_structure_type,
-              confidence: cachedResult.confidence_score || 0,
-              ownership_notes: (cachedResult as any).ownership_notes || [],
-              behind_the_scenes: (cachedResult as any).behind_the_scenes || []
-            });
-            console.log('[COPY_AGENT] Successfully generated narrative for vision-first cache hit:', narrative);
-          } catch (narrativeError) {
-            console.error('[COPY_AGENT] Narrative generation failed for vision-first cache hit:', narrativeError);
-            // Fallback narrative
-            narrative = {
-              headline: `${cachedResult.brand} is owned by ${cachedResult.financial_beneficiary}`,
-              tagline: "Discover the corporate connections behind your favorite brands",
-              story: `${cachedResult.brand} is ultimately owned by ${cachedResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
-              ownership_notes: [`Ownership: ${cachedResult.financial_beneficiary} | Country: ${cachedResult.beneficiary_country || 'Unknown'} | Confidence: ${cachedResult.confidence_score || 0}%`],
-              behind_the_scenes: ["Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership."],
-              template_used: "vision_cache_fallback"
-            };
-          }
-
           return NextResponse.json({
             ...cachedResult,
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
-            // Add narrative fields
-            headline: narrative.headline,
-            tagline: narrative.tagline,
-            story: narrative.story,
-            ownership_notes: narrative.ownership_notes,
-            behind_the_scenes: narrative.behind_the_scenes,
-            narrative_template_used: narrative.template_used,
-            // Add generated_copy for backward compatibility
-            generated_copy: {
-              headline: narrative.headline,
-              tagline: narrative.tagline,
-              story: narrative.story,
-              ownership_notes: narrative.ownership_notes,
-              behind_the_scenes: narrative.behind_the_scenes,
-              template_used: narrative.template_used
-            },
-            hasGeneratedCopy: true,
             query_id: queryId
           });
-      } else {
+        } else {
           if (process.env.NODE_ENV === 'production') {
             console.log(`[CACHE_MISS] brand=${currentProductData.brand || 'unknown'}`);
           }
@@ -1368,64 +1137,6 @@ export async function POST(request: NextRequest) {
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
       
-      // 🔍 STEP 7.5: GEMINI VERIFICATION ORCHESTRATION
-      console.log('[ORCHESTRATOR] Running GeminiVerificationAgent...');
-      
-      try {
-        const geminiAgent = new GeminiOwnershipAnalysisAgent();
-        const verificationOutput = await geminiAgent.analyze(
-          currentProductData.brand, 
-          currentProductData.product_name, 
-          ownershipResult
-        );
-        
-        console.log('[VERIFICATION_RESULT]', {
-          verification_status: verificationOutput.verification_status,
-          verified_at: verificationOutput.verified_at,
-          verification_method: verificationOutput.verification_method,
-          verification_notes: verificationOutput.verification_notes,
-          confidence_assessment: verificationOutput.confidence_assessment
-        });
-        
-        // Merge verification output into ownershipResult
-        ownershipResult.verification_status = verificationOutput.verification_status;
-        ownershipResult.verified_at = verificationOutput.verified_at;
-        ownershipResult.verification_method = verificationOutput.verification_method;
-        ownershipResult.verification_notes = verificationOutput.verification_notes;
-        ownershipResult.confidence_assessment = verificationOutput.confidence_assessment;
-        ownershipResult.verification_evidence = verificationOutput.verification_evidence;
-        ownershipResult.verification_confidence_change = verificationOutput.verification_confidence_change;
-        
-        // Ensure agent_execution_trace exists and add Gemini verification entry
-        if (!ownershipResult.agent_execution_trace) {
-          ownershipResult.agent_execution_trace = {
-            sections: [],
-            show_skipped_stages: false,
-            mark_skipped_stages: false
-          };
-        }
-        
-        // Add Gemini verification to the trace
-        if (!ownershipResult.agent_execution_trace.sections) {
-          ownershipResult.agent_execution_trace.sections = [];
-        }
-        
-        ownershipResult.agent_execution_trace.sections.push({
-          agent: 'GeminiVerificationAgent',
-          output: verificationOutput,
-          timestamp: new Date().toISOString(),
-          evidence_analysis: verificationOutput.gemini_evidence_analysis || null
-        });
-        
-        console.log('[ORCHESTRATOR] Successfully merged Gemini verification into ownershipResult');
-        
-      } catch (error) {
-        console.error('[ORCHESTRATOR] Gemini verification failed:', error.message);
-        // Continue without verification - don't fail the entire pipeline
-        ownershipResult.verification_status = 'verification_failed';
-        ownershipResult.verification_notes = `Gemini verification failed: ${error.message}`;
-      }
-      
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
       if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
         console.log('💾 [Pipeline] Saving ownership result to database');
@@ -1453,7 +1164,7 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');
         await emitProgress(queryId, 'database_save', 'completed', { 
-        success: false,
+      success: false,
           reason: 'no_valid_ownership_result'
         });
         
@@ -1560,27 +1271,6 @@ export async function POST(request: NextRequest) {
       // Generate engaging copy using LLM
       console.log('🎨 Generating engaging copy for brand ownership result...');
       console.log('🎨 TEST: This line should appear in logs');
-      console.log('[COPY_AGENT] EXECUTION PATH: Reached narrative generation section');
-      console.log('[COPY_AGENT] EXECUTION PATH: ownershipResult exists:', !!ownershipResult);
-      console.log('[COPY_AGENT] EXECUTION PATH: currentProductData exists:', !!currentProductData);
-      console.log('[COPY_AGENT] EXECUTION PATH: currentProductData.brand:', currentProductData?.brand);
-      console.log('[COPY_AGENT] EXECUTION PATH: ownershipResult.financial_beneficiary:', ownershipResult?.financial_beneficiary);
-      
-      // FALLBACK CHECK: Ensure narrative generation happens if we have any ownership data
-      const shouldGenerateNarrative = !!(
-        ownershipResult && 
-        (ownershipResult.financial_beneficiary || ownershipResult.beneficiary_country || ownershipResult.confidence_score)
-      );
-      
-      console.log('[COPY_AGENT] FALLBACK CHECK: shouldGenerateNarrative:', shouldGenerateNarrative);
-      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.financial_beneficiary:', ownershipResult?.financial_beneficiary);
-      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.beneficiary_country:', ownershipResult?.beneficiary_country);
-      console.log('[COPY_AGENT] FALLBACK CHECK: ownershipResult.confidence_score:', ownershipResult?.confidence_score);
-      
-      if (!shouldGenerateNarrative) {
-        console.log('[COPY_AGENT] Narrative generator skipped - no ownership data available');
-        console.log('[COPY_AGENT] FALLBACK: Creating minimal narrative anyway...');
-      }
       
       // Build ownership data object for LLM analysis
       const ownershipData = {
@@ -1596,68 +1286,23 @@ export async function POST(request: NextRequest) {
       };
       
       console.log('🎨 Starting narrative generation...');
-      console.log('[COPY_AGENT] Generating copy for:', currentProductData.brand, '(confidence:', ownershipResult.confidence_score || 0, ')');
-      console.log('[COPY_AGENT] About to call generateNarrativeFromResult function...');
-      let narrative;
-      try {
-        narrative = await generateNarrativeFromResult({
-          brand_name: currentProductData.brand,
-          brand_country: ownershipResult.brand_country,
-          ultimate_owner: ownershipResult.financial_beneficiary,
-          ultimate_owner_country: ownershipResult.beneficiary_country,
-          financial_beneficiary: ownershipResult.financial_beneficiary,
-          financial_beneficiary_country: ownershipResult.beneficiary_country,
-          ownership_type: ownershipResult.ownership_structure_type,
-          confidence: ownershipResult.confidence_score || 0,
-          acquisition_year: ownershipResult.acquisition_year,
-          previous_owner: ownershipResult.previous_owner,
-          vision_context: visionContext,
-          disambiguation_options: ownershipResult.disambiguation_options,
-          ownership_notes: ownershipResult.ownership_notes,
-          behind_the_scenes: ownershipResult.behind_the_scenes
-        });
-        console.log('✅ Generated narrative:', narrative);
-        console.log('[COPY_AGENT] Output:', {
-          headline: narrative.headline,
-          story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
-          template_used: narrative.template_used
-        });
-        console.log('[COPY_AGENT] Done ✅');
-      } catch (narrativeError) {
-        console.error('❌ Critical narrative generation error:', narrativeError);
-        // Emergency fallback - create minimal narrative
-        narrative = {
-          headline: `${currentProductData.brand} is owned by ${ownershipResult.financial_beneficiary}`,
-          tagline: "Discover the corporate connections behind your favorite brands",
-          story: `${currentProductData.brand} is ultimately owned by ${ownershipResult.financial_beneficiary}. This ownership structure reflects the complex web of corporate relationships that shape the products we use every day.`,
-          ownership_notes: `Ownership: ${ownershipResult.financial_beneficiary} | Country: ${ownershipResult.beneficiary_country || 'Unknown'} | Confidence: ${ownershipResult.confidence_score || 0}%`,
-          behind_the_scenes: "Corporate ownership research involves analyzing public records, financial statements, and regulatory filings to trace the ultimate beneficiaries of brand ownership.",
-          template_used: "emergency_fallback"
-        };
-        console.log('🚨 Using emergency fallback narrative:', narrative);
-      }
-      
-      // Production logging for narrative generation
-      if (process.env.NODE_ENV === 'production') {
-        console.log("[NARRATIVE_GENERATED]", {
-          brand: currentProductData.brand,
-          has_headline: !!narrative.headline,
-          has_tagline: !!narrative.tagline,
-          has_story: !!narrative.story,
-          headline_preview: narrative.headline ? narrative.headline.substring(0, 50) + '...' : 'none',
-          template_used: narrative.template_used || 'unknown'
-        });
-      }
-      
-      // Additional debugging - log the actual narrative content
-      console.log('🔍 [NARRATIVE_DEBUG] Full narrative object:', {
-        headline: narrative.headline,
-        tagline: narrative.tagline,
-        story: narrative.story ? narrative.story.substring(0, 100) + '...' : 'none',
-        ownership_notes: narrative.ownership_notes,
-        behind_the_scenes: narrative.behind_the_scenes,
-        template_used: narrative.template_used
+      const narrative = await generateNarrativeFromResult({
+        brand_name: currentProductData.brand,
+        brand_country: ownershipResult.brand_country,
+        ultimate_owner: ownershipResult.financial_beneficiary,
+        ultimate_owner_country: ownershipResult.beneficiary_country,
+        financial_beneficiary: ownershipResult.financial_beneficiary,
+        financial_beneficiary_country: ownershipResult.beneficiary_country,
+        ownership_type: ownershipResult.ownership_structure_type,
+        confidence: ownershipResult.confidence_score || 0,
+        acquisition_year: ownershipResult.acquisition_year,
+        previous_owner: ownershipResult.previous_owner,
+        vision_context: visionContext,
+        disambiguation_options: ownershipResult.disambiguation_options,
+        ownership_notes: ownershipResult.ownership_notes,
+        behind_the_scenes: ownershipResult.behind_the_scenes
       });
+      console.log('✅ Generated narrative:', narrative);
       
       const mergedResult = {
         success: true,
@@ -1712,16 +1357,6 @@ export async function POST(request: NextRequest) {
         ownership_notes: narrative.ownership_notes,
         behind_the_scenes: narrative.behind_the_scenes,
         narrative_template_used: narrative.template_used,
-        // Add generated_copy for backward compatibility
-        generated_copy: {
-          headline: narrative.headline,
-          tagline: narrative.tagline,
-          story: narrative.story,
-          ownership_notes: narrative.ownership_notes,
-          behind_the_scenes: narrative.behind_the_scenes,
-          template_used: narrative.template_used
-        },
-        hasGeneratedCopy: true,
         query_id: queryId
       };
 
@@ -1730,68 +1365,6 @@ export async function POST(request: NextRequest) {
         hasAgentExecutionTrace: !!mergedResult.agent_execution_trace,
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
         agentExecutionStages: mergedResult.agent_execution_trace?.sections?.reduce((total: number, section: any) => total + section.stages.length, 0) || 0
-      });
-
-      // 🔍 PIPELINE ORCHESTRATOR LOGGING
-      console.log('[PIPELINE_ORCHESTRATOR] agent_execution_trace:', mergedResult.agent_execution_trace);
-      console.log('[PIPELINE_FINAL_OUTPUT] Result keys:', Object.keys(mergedResult));
-      
-      // 🔍 ENHANCED PIPELINE TRACE LOGGING
-      console.log('[PIPELINE_TRACE] trace =', JSON.stringify(mergedResult.agent_execution_trace, null, 2));
-      
-      // ⚠️ WARNING: Check if trace is missing in final output
-      if (!mergedResult.agent_execution_trace) {
-        console.warn('[MISSING_TRACE] No agent_execution_trace included in final pipeline result');
-        // Inject placeholder trace for UI fallback
-        mergedResult.agent_execution_trace = {
-          sections: [{
-            id: 'no_agents_triggered',
-            title: 'No Agents Triggered',
-            label: 'No Agents Triggered',
-            stages: [{
-              id: 'fallback_stage',
-              stage: 'no_agents_triggered',
-              status: 'skipped',
-              details: 'No agents were triggered for this lookup',
-              duration: 0
-            }]
-          }],
-          show_skipped_stages: true,
-          mark_skipped_stages: true
-        };
-        console.log('[PIPELINE_TRACE] Injected placeholder trace for UI fallback');
-      }
-
-      // Log narrative fields in final result
-      console.log('[RESULT_RETURNED] Final result narrative fields:', {
-        brand: mergedResult.brand,
-        headline: mergedResult.headline,
-        tagline: mergedResult.tagline,
-        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
-        ownership_notes: mergedResult.ownership_notes,
-        behind_the_scenes: mergedResult.behind_the_scenes,
-        narrative_template_used: mergedResult.narrative_template_used,
-        hasGeneratedCopy: !!(mergedResult.headline && mergedResult.story)
-      });
-
-      // ✅ BONUS: Confirm if behind_the_scenes or ownership_notes are populated from trace
-      console.log('[BONUS_TRACE_CHECK] behind_the_scenes and ownership_notes from trace:', {
-        ownership_notes_length: mergedResult.ownership_notes?.length || 0,
-        behind_the_scenes_length: mergedResult.behind_the_scenes?.length || 0,
-        ownership_notes_content: mergedResult.ownership_notes?.slice(0, 2) || [],
-        behind_the_scenes_content: mergedResult.behind_the_scenes?.slice(0, 2) || [],
-        has_agent_execution_trace: !!mergedResult.agent_execution_trace,
-        trace_sections_count: mergedResult.agent_execution_trace?.sections?.length || 0
-      });
-
-      // 🔍 FINAL PIPELINE RESULT LOGGING
-      console.log('[PIPELINE_FINAL] Returning result with verification + trace:', {
-        verification_status: mergedResult.verification_status,
-        verified_at: mergedResult.verified_at,
-        verification_method: mergedResult.verification_method,
-        has_agent_execution_trace: !!mergedResult.agent_execution_trace,
-        agent_execution_trace_sections: mergedResult.agent_execution_trace?.sections?.length || 0,
-        gemini_verification_entry: mergedResult.agent_execution_trace?.sections?.find(section => section.agent === 'GeminiVerificationAgent') ? 'PRESENT' : 'MISSING'
       });
 
       // Disambiguation trigger marker
@@ -1808,47 +1381,6 @@ export async function POST(request: NextRequest) {
 
       // 🧠 TRACE SUMMARY LOGGING
       logTraceSummary(mergedResult);
-
-      // Production result return logging
-      if (process.env.NODE_ENV === 'production') {
-        console.log("[RESULT_RETURNED]", {
-          brand: mergedResult.brand || 'unknown',
-          has_verification: !!mergedResult.verification_status,
-          verification_status: mergedResult.verification_status || 'none',
-          has_verification_notes: !!mergedResult.verification_notes,
-          result_type: mergedResult.result_type || 'unknown',
-          // Check narrative fields
-          has_headline: !!mergedResult.headline,
-          has_tagline: !!mergedResult.tagline,
-          has_story: !!mergedResult.story,
-          headline_preview: mergedResult.headline ? mergedResult.headline.substring(0, 50) + '...' : 'none',
-          narrative_template_used: mergedResult.narrative_template_used || 'none'
-        });
-      }
-      
-      // Additional debugging - log the actual narrative fields in final result
-      console.log('🔍 [FINAL_RESULT_DEBUG] Narrative fields in mergedResult:', {
-        headline: mergedResult.headline,
-        tagline: mergedResult.tagline,
-        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
-        ownership_notes: mergedResult.ownership_notes,
-        behind_the_scenes: mergedResult.behind_the_scenes,
-        narrative_template_used: mergedResult.narrative_template_used
-      });
-
-      // Log narrative object just before returning to client
-      console.log('[COPY_AGENT] FINAL RESULT: Narrative object before return:', {
-        hasGeneratedCopy: !!(mergedResult.headline && mergedResult.story),
-        headline: mergedResult.headline,
-        tagline: mergedResult.tagline,
-        story: mergedResult.story ? mergedResult.story.substring(0, 100) + '...' : 'none',
-        ownership_notes: mergedResult.ownership_notes,
-        behind_the_scenes: mergedResult.behind_the_scenes,
-        narrative_template_used: mergedResult.narrative_template_used,
-        success: mergedResult.success,
-        brand: mergedResult.brand,
-        financial_beneficiary: mergedResult.financial_beneficiary
-      });
 
       if (forceFullTrace) {
         return NextResponse.json(mergedResult);

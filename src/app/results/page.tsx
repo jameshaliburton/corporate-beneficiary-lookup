@@ -64,14 +64,6 @@ interface PipelineResult {
   };
   result_type?: string;
   user_contributed?: boolean;
-  // Gemini verification fields
-  verification_status?: string;
-  verification_confidence_change?: string;
-  verification_evidence?: any;
-  verified_at?: string;
-  verification_method?: string;
-  confidence_assessment?: any;
-  verification_notes?: string;
 }
 
 interface OwnershipNode {
@@ -92,68 +84,16 @@ interface TraceData {
 export default function ResultsPage() {
   const [result, setResult] = useState<PipelineResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sessionStorageStatus, setSessionStorageStatus] = useState<string>(''); // Track sessionStorage status
-
-  // useEffect to handle sessionStorage writes when result changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && result && result.brand) {
-      try {
-        const sessionData = JSON.stringify(result);
-        const key = `pipelineResult_${result.brand}`;
-        
-        console.log('🔥 [HOTFIX_SESSION_WRITE] Writing to sessionStorage from results page:', {
-          key,
-          dataSize: sessionData.length,
-          hasStory: !!result.story,
-          hasHeadline: !!result.headline,
-          hasTagline: !!result.tagline
-        });
-        
-        sessionStorage.setItem(key, sessionData);
-        console.log('✅ [SESSION_STORAGE_SUCCESS] Successfully stored pipeline result from results page');
-        setSessionStorageStatus('✅ sessionStorage write succeeded');
-        
-        // Also store with generic key for backward compatibility
-        sessionStorage.setItem('pipelineResult', sessionData);
-        
-      } catch (err) {
-        console.error('❌ [SESSION_STORAGE_WRITE_ERROR]', { err, brand: result.brand, result: result });
-        setSessionStorageStatus('❌ sessionStorage write failed');
-      }
-    }
-  }, [result]);
 
   useEffect(() => {
     const storedResult = sessionStorage.getItem('pipelineResult');
     if (storedResult) {
       try {
         const parsedResult = JSON.parse(storedResult);
-        console.log('📊 Loaded pipeline result:', {
-          success: parsedResult.success,
-          brand: parsedResult.brand,
-          confidence: parsedResult.confidence_score,
-          hasNarrativeFields: {
-            headline: !!parsedResult.headline,
-            tagline: !!parsedResult.tagline,
-            story: !!parsedResult.story,
-            ownership_notes: !!parsedResult.ownership_notes,
-            behind_the_scenes: !!parsedResult.behind_the_scenes
-          }
-        });
+        console.log('📊 Loaded pipeline result:', parsedResult);
         setResult(parsedResult);
       } catch (error) {
-        console.error('❌ [NARRATIVE_PARSE_ERROR] Error parsing stored result:', error);
-        console.error('❌ [NARRATIVE_PARSE_ERROR] Raw stored data:', storedResult.substring(0, 500));
-        
-        // Try to recover by sanitizing the data
-        try {
-          const sanitizedData = storedResult.replace(/[\u0000-\u001F\u007F]/g, ' ');
-          const recoveredResult = JSON.parse(sanitizedData);
-          console.log('🔄 [NARRATIVE_RECOVERY] Successfully recovered result after sanitization');
-          setResult(recoveredResult);
-        } catch (recoveryError) {
-          console.error('❌ [NARRATIVE_RECOVERY] Failed to recover result:', recoveryError);
-        }
+        console.error('❌ Error parsing stored result:', error);
       }
     } else {
       console.log('⚠️ No stored result found in sessionStorage');
@@ -365,13 +305,6 @@ export default function ResultsPage() {
           onScanAnother={() => window.location.href = '/'}
           onShare={() => console.log('Share functionality')}
         />
-        
-        {/* Temporary sessionStorage status indicator */}
-        {sessionStorageStatus && (
-          <div className="mt-4 p-3 rounded-lg bg-blue-100 border border-blue-300 text-sm">
-            <strong>SessionStorage Status:</strong> {sessionStorageStatus}
-          </div>
-        )}
       </div>
     </div>
   );
