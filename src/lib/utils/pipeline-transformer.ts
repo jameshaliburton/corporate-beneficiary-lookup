@@ -168,7 +168,7 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     hasTagline: !!unwrappedResult.tagline,
     hasOwnershipNotes: !!unwrappedResult.ownership_notes,
     hasBehindTheScenes: !!unwrappedResult.behind_the_scenes,
-    hasGeneratedCopy: !!unwrappedResult.hasGeneratedCopy
+    hasGeneratedCopy: !!unwrappedResult.generated_copy
   });
 
   // Transform ownership_flow to OwnershipNode[] without blocking logo fetching

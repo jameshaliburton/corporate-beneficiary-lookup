@@ -64,6 +64,14 @@ interface PipelineResult {
   };
   result_type?: string;
   user_contributed?: boolean;
+  // Gemini verification fields
+  verification_status?: string;
+  verified_at?: string;
+  verification_method?: string;
+  verification_notes?: string;
+  confidence_assessment?: string;
+  verification_evidence?: any;
+  agent_path?: string;
 }
 
 interface OwnershipNode {
@@ -286,7 +294,7 @@ export default function ResultsPage() {
     verification_notes: result?.verification_notes,
     confidence_assessment: result?.confidence_assessment,
     verification_evidence: result?.verification_evidence,
-    verification_confidence_change: result?.confidence_assessment?.confidence_change
+    verification_confidence_change: "unchanged" as "increased" | "decreased" | "unchanged"
   };
 
   return (

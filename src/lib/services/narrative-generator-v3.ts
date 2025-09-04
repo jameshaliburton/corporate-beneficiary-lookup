@@ -23,7 +23,7 @@ export interface OwnershipResult {
   verification_notes?: string;
   confidence_assessment?: any;
   verification_evidence?: any;
-  verification_confidence_change?: string;
+  verification_confidence_change?: "increased" | "decreased" | "unchanged";
 }
 
 export interface NarrativeFields {
