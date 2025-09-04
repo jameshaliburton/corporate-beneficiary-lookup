@@ -29,6 +29,16 @@ export default function ResultPage() {
     const confidence = searchParams.get('confidence');
 
     console.log('📄 ResultPage: Processing', { brandSlug, success, errorParam, confidence });
+    
+    // Debug: Log pipeline type and sessionStorage keys
+    const pipelineType = searchParams.get('pipeline_type') || 'unknown';
+    const sessionKeys = Object.keys(sessionStorage).filter(key => key.includes('pipeline') || key.includes('result'));
+    console.log('[VERIFICATION DEBUG] Pipeline info:', {
+      pipelineType,
+      sessionKeys,
+      brandSlug,
+      hasProcessed: hasProcessed.current
+    });
 
     if (success === 'false' || errorParam) {
       console.log('❌ Error result:', errorParam);
@@ -57,8 +67,11 @@ export default function ResultPage() {
         console.log('🔍 Result page - verification fields retrieved:', {
           verification_status: parsedResult.verification_status,
           verified_at: parsedResult.verified_at,
+          verification_method: parsedResult.verification_method,
           confidence_assessment: parsedResult.confidence_assessment,
-          verification_evidence: parsedResult.verification_evidence
+          verification_evidence: parsedResult.verification_evidence,
+          verification_confidence_change: parsedResult.verification_confidence_change,
+          pipelineType: pipelineType
         });
         
         // Log the actual generated_copy content
@@ -71,6 +84,30 @@ export default function ResultPage() {
         // Transform the data asynchronously
         transformPipelineData(parsedResult)
           .then(transformedProps => {
+            // Debug logging for verification fields
+            console.log('[VERIFICATION DEBUG] Transformed verification fields:', {
+              verificationStatus: transformedProps.verificationStatus,
+              verifiedAt: transformedProps.verifiedAt,
+              verificationMethod: transformedProps.verificationMethod,
+              verificationNotes: transformedProps.verificationNotes,
+              confidenceAssessment: transformedProps.confidenceAssessment,
+              verificationEvidence: transformedProps.verificationEvidence,
+              verificationConfidenceChange: transformedProps.verificationConfidenceChange,
+              pipelineType: pipelineType,
+              hasVerificationStatus: !!transformedProps.verificationStatus,
+              hasVerifiedAt: !!transformedProps.verifiedAt,
+              rawVerificationStatus: parsedResult.verification_status,
+              rawVerifiedAt: parsedResult.verified_at
+            });
+            
+            // Additional debug: Check if verification data is being lost
+            if (parsedResult.verification_status && !transformedProps.verificationStatus) {
+              console.error('[VERIFICATION DEBUG] ❌ VERIFICATION DATA LOST DURING TRANSFORMATION!', {
+                original: parsedResult.verification_status,
+                transformed: transformedProps.verificationStatus
+              });
+            }
+            
             setProductResultProps(transformedProps);
             setIsLoading(false);
           })
@@ -342,7 +379,27 @@ export default function ResultPage() {
       <div className="min-h-screen bg-background dark-gradient">
         <AppHeader />
         <div className="container mx-auto max-w-md px-4 pt-4">
-          <ProductResultV2
+          {isLoading ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-glow mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading results...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <p className="text-red-400 mb-4">Error: {error}</p>
+                <button 
+                  onClick={() => window.location.href = '/'}
+                  className="px-4 py-2 bg-primary-glow text-white rounded-lg hover:bg-primary-glow/80"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : productResultProps ? (
+            <ProductResultV2
             result={{
               brand_name: productResultProps?.brand,
               brand_country: productResultProps?.brandCountry,
@@ -354,14 +411,14 @@ export default function ResultPage() {
               confidence: productResultProps?.confidence,
               ownership_notes: productResultProps?.ownership_notes,
               behind_the_scenes: productResultProps?.behind_the_scenes,
-              // Gemini verification fields
-              verification_status: productResultProps?.verification_status,
-              verified_at: productResultProps?.verified_at,
-              verification_method: productResultProps?.verification_method,
-              verification_notes: productResultProps?.verification_notes,
-              confidence_assessment: productResultProps?.confidence_assessment,
-              verification_evidence: productResultProps?.verification_evidence,
-              verification_confidence_change: productResultProps?.confidence_assessment?.confidence_change
+              // Gemini verification fields (using camelCase from transformPipelineData)
+              verification_status: productResultProps?.verificationStatus,
+              verified_at: productResultProps?.verifiedAt,
+              verification_method: productResultProps?.verificationMethod,
+              verification_notes: productResultProps?.verificationNotes,
+              confidence_assessment: productResultProps?.confidenceAssessment,
+              verification_evidence: productResultProps?.verificationEvidence,
+              verification_confidence_change: productResultProps?.verificationConfidenceChange
             }}
             narrative={{
               headline: productResultProps?.headline,
@@ -374,6 +431,19 @@ export default function ResultPage() {
             onScanAnother={() => window.location.href = '/'}
             onShare={() => console.log('Share functionality')}
           />
+          ) : (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <p className="text-muted-foreground">No results available</p>
+                <button 
+                  onClick={() => window.location.href = '/'}
+                  className="px-4 py-2 bg-primary-glow text-white rounded-lg hover:bg-primary-glow/80 mt-4"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
