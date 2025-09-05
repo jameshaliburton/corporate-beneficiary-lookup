@@ -1226,6 +1226,28 @@ Respond in valid JSON format.`)
           verification_confidence_change: ownership.verification_confidence_change
         });
 
+        // Convert confidence_score to integer (0-100) if it's a float
+        let confidenceScore = ownership.confidence_score || null;
+        if (confidenceScore !== null) {
+          if (typeof confidenceScore === 'string') {
+            confidenceScore = parseFloat(confidenceScore);
+          }
+          if (typeof confidenceScore === 'number') {
+            // If it's a decimal (0.0-1.0), convert to percentage (0-100)
+            if (confidenceScore <= 1.0) {
+              confidenceScore = Math.round(confidenceScore * 100);
+            }
+            // Ensure it's within valid range
+            confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+          }
+        }
+        
+        console.log('[DBCache] Converted confidence_score:', {
+          original: ownership.confidence_score,
+          converted: confidenceScore,
+          type: typeof confidenceScore
+        });
+
         const { data: product, error: saveError } = await supabase
           .from('products')
           .upsert({
@@ -1235,7 +1257,7 @@ Respond in valid JSON format.`)
             financial_beneficiary: ownership.financial_beneficiary,
             beneficiary_country: ownership.beneficiary_country,
             beneficiary_flag: ownership.beneficiary_flag,
-            confidence: ownership.confidence_score,
+            confidence_score: confidenceScore,
             verification_status: ownership.verification_status,
             verified_at: ownership.verified_at,
             verification_method: ownership.verification_method,

@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { getServiceRoleClient } from '../supabase';
 
 let supabase: any = null;
 
 // Only initialize Supabase if environment variables are available
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
-  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = getServiceRoleClient();
 }
 
 export async function safeCacheWrite<T>(

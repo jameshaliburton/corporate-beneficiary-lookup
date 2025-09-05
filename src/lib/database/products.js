@@ -169,12 +169,34 @@ export async function upsertProduct(productData) {
  */
 export async function updateProductOwnership(barcode, ownershipData) {
   try {
+    // Convert confidence_score to integer (0-100) if it's a float
+    let confidenceScore = ownershipData.confidence_score || null;
+    if (confidenceScore !== null) {
+      if (typeof confidenceScore === 'string') {
+        confidenceScore = parseFloat(confidenceScore);
+      }
+      if (typeof confidenceScore === 'number') {
+        // If it's a decimal (0.0-1.0), convert to percentage (0-100)
+        if (confidenceScore <= 1.0) {
+          confidenceScore = Math.round(confidenceScore * 100);
+        }
+        // Ensure it's within valid range
+        confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+      }
+    }
+    
+    console.log('[Products] Converted confidence_score:', {
+      original: ownershipData.confidence_score,
+      converted: confidenceScore,
+      type: typeof confidenceScore
+    });
+
     const updateData = {
       financial_beneficiary: ownershipData.financial_beneficiary,
       beneficiary_country: ownershipData.beneficiary_country,
       beneficiary_flag: ownershipData.beneficiary_flag,
       ownership_structure_type: ownershipData.ownership_structure_type,
-      confidence_score: ownershipData.confidence_score,
+      confidence_score: confidenceScore,
       ownership_flow: ownershipData.ownership_flow,
       sources: ownershipData.sources,
       reasoning: ownershipData.reasoning,
