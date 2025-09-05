@@ -624,7 +624,7 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             type: typeof confidenceScore
           });
 
-          // Build minimal cache entry with only core fields that definitely exist in the database schema
+          // Build cache entry with core fields and Gemini verification metadata
           const cacheEntry: any = {
             barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
             brand: brand?.toLowerCase().trim(),
@@ -641,7 +641,19 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             result_type: ownershipResult.result_type,
             user_contributed: false,
             inferred: true,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            // Include Gemini verification fields if present
+            ...(ownershipResult.verification_status && { verification_status: ownershipResult.verification_status }),
+            ...(ownershipResult.verified_at && { verified_at: ownershipResult.verified_at }),
+            ...(ownershipResult.verification_method && { verification_method: ownershipResult.verification_method }),
+            ...(ownershipResult.verification_notes && { 
+              verification_notes: ownershipResult.verification_notes.length > 1000 
+                ? ownershipResult.verification_notes.substring(0, 1000) + '...' 
+                : ownershipResult.verification_notes 
+            }),
+            ...(ownershipResult.verification_evidence && { verification_evidence: ownershipResult.verification_evidence }),
+            ...(ownershipResult.verification_confidence_change && { verification_confidence_change: ownershipResult.verification_confidence_change }),
+            ...(ownershipResult.confidence_assessment && { confidence_assessment: ownershipResult.confidence_assessment })
           };
 
           console.log('[CACHE_WRITE_ATTEMPT] Brand+product entry (minimal):', {
@@ -664,12 +676,12 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           console.log('[CACHE_WRITE_SUCCESS] Brand+product entry:', {
             cacheKey,
             verification_fields_saved: {
-              verification_status: !!ownershipResult.verification_status,
-              verified_at: !!ownershipResult.verified_at,
-              verification_method: !!ownershipResult.verification_method,
-              verification_notes: !!ownershipResult.verification_notes,
+              verification_status: ownershipResult.verification_status || 'none',
+              verified_at: ownershipResult.verified_at || 'none',
+              verification_method: ownershipResult.verification_method || 'none',
+              verification_notes: ownershipResult.verification_notes ? `${ownershipResult.verification_notes.length} chars` : 'none',
               verification_evidence: !!ownershipResult.verification_evidence,
-              verification_confidence_change: !!ownershipResult.verification_confidence_change,
+              verification_confidence_change: ownershipResult.verification_confidence_change || 'none',
               confidence_assessment: !!ownershipResult.confidence_assessment
             }
           });
@@ -710,7 +722,7 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           type: typeof confidenceScore
         });
 
-        // Build minimal brand-only cache entry with only core fields that definitely exist in the database schema
+        // Build brand-only cache entry with core fields and Gemini verification metadata
         const brandCacheEntry: any = {
           barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
           brand: brand?.toLowerCase().trim(),
@@ -727,7 +739,19 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           result_type: ownershipResult.result_type,
           user_contributed: false,
           inferred: true,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Include Gemini verification fields if present
+          ...(ownershipResult.verification_status && { verification_status: ownershipResult.verification_status }),
+          ...(ownershipResult.verified_at && { verified_at: ownershipResult.verified_at }),
+          ...(ownershipResult.verification_method && { verification_method: ownershipResult.verification_method }),
+          ...(ownershipResult.verification_notes && { 
+            verification_notes: ownershipResult.verification_notes.length > 1000 
+              ? ownershipResult.verification_notes.substring(0, 1000) + '...' 
+              : ownershipResult.verification_notes 
+          }),
+          ...(ownershipResult.verification_evidence && { verification_evidence: ownershipResult.verification_evidence }),
+          ...(ownershipResult.verification_confidence_change && { verification_confidence_change: ownershipResult.verification_confidence_change }),
+          ...(ownershipResult.confidence_assessment && { confidence_assessment: ownershipResult.confidence_assessment })
         };
 
         console.log('[CACHE_WRITE_ATTEMPT] Brand-only entry (minimal):', {
@@ -750,12 +774,12 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
         console.log('[CACHE_WRITE_SUCCESS] Brand-only entry:', {
           brandKey,
           verification_fields_saved: {
-            verification_status: !!ownershipResult.verification_status,
-            verified_at: !!ownershipResult.verified_at,
-            verification_method: !!ownershipResult.verification_method,
-            verification_notes: !!ownershipResult.verification_notes,
+            verification_status: ownershipResult.verification_status || 'none',
+            verified_at: ownershipResult.verified_at || 'none',
+            verification_method: ownershipResult.verification_method || 'none',
+            verification_notes: ownershipResult.verification_notes ? `${ownershipResult.verification_notes.length} chars` : 'none',
             verification_evidence: !!ownershipResult.verification_evidence,
-            verification_confidence_change: !!ownershipResult.verification_confidence_change,
+            verification_confidence_change: ownershipResult.verification_confidence_change || 'none',
             confidence_assessment: !!ownershipResult.confidence_assessment
           }
         });
