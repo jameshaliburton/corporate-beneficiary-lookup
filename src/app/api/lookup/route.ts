@@ -6,6 +6,7 @@ import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
 import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
+import { lookupCachedResult, cachePipelineResult } from '@/lib/cache';
 
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
@@ -16,6 +17,9 @@ import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
+
+// Feature flag for new cache system - default to false until schema is ready
+const useNewCacheSystem = process.env.USE_NEW_CACHE_SYSTEM === 'true';
 
 // Initialize the Quality Assessment Agent
 const qualityAgent = new QualityAssessmentAgent();
@@ -295,6 +299,51 @@ function isProductDataMeaningful(productData: any): boolean {
   return hasQualityData;
 }
 
+// 🧠 NEW CACHE MODULE INTEGRATION
+async function lookupWithNewCache(brand: string, productName?: string, queryId?: string) {
+  console.log('[NEW_CACHE_LOOKUP_CALL] Function called with:', { brand, productName, queryId });
+  
+  const pipelineName = productName ? 'manual_entry' : 'manual_entry_brand_only';
+  const input = { brand, product_name: productName };
+  
+  console.log('[NEW_CACHE_LOOKUP] Starting lookup:', { brand, productName, pipelineName });
+  
+  // Log the cache key that will be generated
+  const { generateCacheKey } = require('@/lib/cache/hash');
+  const cacheKey = generateCacheKey(pipelineName, input);
+  console.log('[CACHE_KEY_GENERATED] Generated key:', cacheKey);
+  
+  try {
+    console.log('[CACHE_READ_ATTEMPT] Calling lookupCachedResult with:', { pipelineName, input });
+    const cacheResult = await lookupCachedResult(pipelineName, input);
+    
+    console.log('[NEW_CACHE_RESULT] Cache lookup result:', { 
+      hit: cacheResult.hit, 
+      hasData: !!cacheResult.data, 
+      error: cacheResult.error,
+      dataKeys: cacheResult.data ? Object.keys(cacheResult.data) : []
+    });
+    
+    if (cacheResult.hit && cacheResult.data) {
+      console.log('[CACHE_HIT] Found cached result:', { brand, productName });
+      const result = {
+        ...cacheResult.data,
+        cache_hit: true,
+        hit: true,
+        source: 'cache'
+      };
+      console.log('[CACHE_HIT_RETURN] Returning cached result with keys:', Object.keys(result));
+      return result;
+    } else {
+      console.log('[CACHE_MISS] No cached result found:', { brand, productName, error: cacheResult.error });
+      return null;
+    }
+  } catch (error) {
+    console.error('[NEW_CACHE_ERROR] Cache lookup failed:', error);
+    return null;
+  }
+}
+
 // 🧠 SHARED CACHING FUNCTION FOR BOTH IMAGE AND MANUAL ENTRY
 async function lookupWithCache(brand: string, productName?: string, queryId?: string) {
   const cacheKey = makeCacheKey(brand, productName);
@@ -423,6 +472,10 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         verification_method: cachedResult.verification_method,
         verification_notes: cachedResult.verification_notes
       });
+      // Save to both cache systems for comparison
+      if (useNewCacheSystem) {
+        await saveToNewCache(cachedResult.brand, cachedResult.product_name, cachedResult);
+      }
       await saveToCache(cachedResult.brand, cachedResult.product_name, cachedResult);
     }
     
@@ -496,6 +549,46 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
   }
 }
 
+// 🧠 NEW CACHE MODULE SAVING FUNCTION
+async function saveToNewCache(brand: string, productName: string, ownershipResult: any) {
+  console.log('[NEW_CACHE_SAVE] Starting save:', { 
+    brand, 
+    productName, 
+    hasBeneficiary: !!ownershipResult.financial_beneficiary,
+    beneficiary: ownershipResult.financial_beneficiary
+  });
+  
+  if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
+    try {
+      const pipelineName = productName ? 'manual_entry' : 'manual_entry_brand_only';
+      const input = { brand, product_name: productName };
+      
+      console.log('[NEW_CACHE_SAVE] Saving to cache:', { brand, productName, pipelineName });
+      
+      // Log the cache key that will be generated
+      const { generateCacheKey } = require('@/lib/cache/hash');
+      const cacheKey = generateCacheKey(pipelineName, input);
+      console.log('[CACHE_WRITE_KEY] Generated key for WRITE:', cacheKey);
+      
+      const saveResult = await cachePipelineResult(pipelineName, input, ownershipResult);
+      
+      console.log('[NEW_CACHE_SAVE_RESULT] Save result:', saveResult);
+      
+      if (saveResult.success) {
+        console.log('[NEW_CACHE_SAVE_SUCCESS] Cache save successful:', { brand, productName });
+      } else {
+        console.error('[NEW_CACHE_SAVE_ERROR] Cache save failed:', { brand, productName, error: saveResult.error });
+      }
+    } catch (error) {
+      console.error('[NEW_CACHE_SAVE_ERROR] Cache save exception:', { brand, productName, error });
+    }
+  } else {
+    console.log('[NEW_CACHE_SAVE_SKIP] Skipping save - no valid beneficiary:', { 
+      beneficiary: ownershipResult.financial_beneficiary 
+    });
+  }
+}
+
 // 🧠 SHARED CACHE SAVING FUNCTION
 async function saveToCache(brand: string, productName: string, ownershipResult: any) {
   if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
@@ -509,6 +602,28 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       // Save brand + product name entry
       if (productName) {
         const saveResult = await safeCacheWrite(async (client) => {
+          // Convert confidence_score to integer (0-100) if it's a float
+          let confidenceScore = ownershipResult.confidence_score || null;
+          if (confidenceScore !== null) {
+            if (typeof confidenceScore === 'string') {
+              confidenceScore = parseFloat(confidenceScore);
+            }
+            if (typeof confidenceScore === 'number') {
+              // If it's a decimal (0.0-1.0), convert to percentage (0-100)
+              if (confidenceScore <= 1.0) {
+                confidenceScore = Math.round(confidenceScore * 100);
+              }
+              // Ensure it's within valid range
+              confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+            }
+          }
+          
+          console.log('[CACHE_WRITE_DEBUG] Converted confidence_score:', {
+            original: ownershipResult.confidence_score,
+            converted: confidenceScore,
+            type: typeof confidenceScore
+          });
+
           // Build minimal cache entry with only core fields that definitely exist in the database schema
           const cacheEntry: any = {
             barcode: `cache_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for cache entries
@@ -517,7 +632,7 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
             financial_beneficiary: ownershipResult.financial_beneficiary,
             beneficiary_country: ownershipResult.beneficiary_country,
             beneficiary_flag: ownershipResult.beneficiary_flag,
-            confidence_score: ownershipResult.confidence_score,
+            confidence_score: confidenceScore,
             ownership_structure_type: ownershipResult.ownership_structure_type,
             ownership_flow: ownershipResult.ownership_flow,
             sources: ownershipResult.sources,
@@ -573,6 +688,28 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
       console.log('💾 [Shared Cache] Saving brand-only entry:', brandKey);
 
       const brandSaveResult = await safeCacheWrite(async (client) => {
+        // Convert confidence_score to integer (0-100) if it's a float
+        let confidenceScore = ownershipResult.confidence_score || null;
+        if (confidenceScore !== null) {
+          if (typeof confidenceScore === 'string') {
+            confidenceScore = parseFloat(confidenceScore);
+          }
+          if (typeof confidenceScore === 'number') {
+            // If it's a decimal (0.0-1.0), convert to percentage (0-100)
+            if (confidenceScore <= 1.0) {
+              confidenceScore = Math.round(confidenceScore * 100);
+            }
+            // Ensure it's within valid range
+            confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+          }
+        }
+        
+        console.log('[CACHE_WRITE_DEBUG] Brand-only converted confidence_score:', {
+          original: ownershipResult.confidence_score,
+          converted: confidenceScore,
+          type: typeof confidenceScore
+        });
+
         // Build minimal brand-only cache entry with only core fields that definitely exist in the database schema
         const brandCacheEntry: any = {
           barcode: `cache_brand_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique barcode for brand-only cache entries
@@ -581,7 +718,7 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
           financial_beneficiary: ownershipResult.financial_beneficiary,
           beneficiary_country: ownershipResult.beneficiary_country,
           beneficiary_flag: ownershipResult.beneficiary_flag,
-          confidence_score: ownershipResult.confidence_score,
+          confidence_score: confidenceScore,
           ownership_structure_type: ownershipResult.ownership_structure_type,
           ownership_flow: ownershipResult.ownership_flow,
           sources: ownershipResult.sources,
@@ -641,6 +778,7 @@ export async function POST(request: NextRequest) {
   try {
     // 🔍 COMMIT VERSION DEBUG
     console.log("[GEMINI_DEBUG] Commit version: ac95a419e5fb8f8fbb94f0c80fbed23760a49272");
+    console.log('[API_ROUTE_ENTRY] POST /api/lookup called');
     
     // Log feature flags at the start of each request
     console.log('🔧 Feature Flags:', {
@@ -669,7 +807,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null } = body;
+    const { barcode, product_name, brand, hints = {}, evaluation_mode = false, image_base64 = null, followUpContext = null, pipeline_type = null } = body;
     
     // Extract request metadata for logging
     const ip_country = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
@@ -737,7 +875,17 @@ export async function POST(request: NextRequest) {
           barcode: identifier
         });
         
-        const cachedResult = await lookupWithCache(brand || '', product_name, queryId);
+        // Try new cache system first if enabled, fallback to legacy
+        console.log('[CACHE_CALL_SITE_1] useNewCacheSystem:', useNewCacheSystem, 'brand:', brand, 'product_name:', product_name);
+        const cachedResult = useNewCacheSystem 
+          ? await lookupWithNewCache(brand || '', product_name, queryId)
+          : await lookupWithCache(brand || '', product_name, queryId);
+        console.log('[CACHE_CALL_SITE_1_RESULT] cachedResult:', { 
+          hasResult: !!cachedResult, 
+          cacheHit: cachedResult?.cache_hit, 
+          hit: cachedResult?.hit,
+          source: cachedResult?.source 
+        });
         
         if (cachedResult && cachedResult.cache_hit) {
           if (process.env.NODE_ENV === 'production') {
@@ -762,8 +910,10 @@ export async function POST(request: NextRequest) {
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
-            query_id: queryId
-              });
+            query_id: queryId,
+            hit: true,
+            source: 'cache'
+          });
             } else {
           if (process.env.NODE_ENV === 'production') {
             console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
@@ -1044,11 +1194,17 @@ export async function POST(request: NextRequest) {
           product_name: currentProductData.product_name 
         });
         
-        const cachedResult = await lookupWithCache(
-          currentProductData.brand || '', 
-          currentProductData.product_name, 
-          queryId
-        );
+        // Try new cache system first if enabled, fallback to legacy
+        console.log('[CACHE_CALL_SITE_2] useNewCacheSystem:', useNewCacheSystem, 'brand:', currentProductData.brand, 'product_name:', currentProductData.product_name);
+        const cachedResult = useNewCacheSystem 
+          ? await lookupWithNewCache(currentProductData.brand || '', currentProductData.product_name, queryId)
+          : await lookupWithCache(currentProductData.brand || '', currentProductData.product_name, queryId);
+        console.log('[CACHE_CALL_SITE_2_RESULT] cachedResult:', { 
+          hasResult: !!cachedResult, 
+          cacheHit: cachedResult?.cache_hit, 
+          hit: cachedResult?.hit,
+          source: cachedResult?.source 
+        });
         
         if (cachedResult && cachedResult.cache_hit) {
           if (process.env.NODE_ENV === 'production') {
@@ -1087,7 +1243,9 @@ export async function POST(request: NextRequest) {
             barcode: identifier,
             user_contributed: !!(product_name || brand),
             agent_execution_trace: structuredTrace,
-            query_id: queryId
+            query_id: queryId,
+            hit: true,
+            source: 'cache'
           });
       } else {
           if (process.env.NODE_ENV === 'production') {
@@ -1155,7 +1313,7 @@ export async function POST(request: NextRequest) {
       await emitProgress(queryId, 'ownership_research', 'started', { 
         brand: currentProductData.brand, 
         product_name: currentProductData.product_name,
-        pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy'
+        pipeline_type: pipeline_type || (shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy')
       });
       
       // Enable evaluation logging if requested
@@ -1241,6 +1399,13 @@ export async function POST(request: NextRequest) {
       }
       
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
+      console.log('[CACHE_DEBUG] Checking ownership result:', {
+        hasBeneficiary: !!ownershipResult.financial_beneficiary,
+        beneficiary: ownershipResult.financial_beneficiary,
+        isUnknown: ownershipResult.financial_beneficiary === 'Unknown',
+        condition: ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown'
+      });
+      
       if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
         console.log('💾 [Pipeline] Saving ownership result to database');
         await emitProgress(queryId, 'database_save', 'started', { 
@@ -1262,6 +1427,13 @@ export async function POST(request: NextRequest) {
           product: currentProductData.product_name,
           beneficiary: ownershipResult.financial_beneficiary 
         });
+        // Save to both cache systems for comparison
+        if (useNewCacheSystem) {
+          console.log('[CACHE_DEBUG] useNewCacheSystem is true, calling saveToNewCache');
+          await saveToNewCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
+        } else {
+          console.log('[CACHE_DEBUG] useNewCacheSystem is false, skipping new cache');
+        }
         await saveToCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
         
       } else {
@@ -1452,7 +1624,7 @@ export async function POST(request: NextRequest) {
           isSuccessful: visionContext.isSuccessful(),
           reasoning: visionContext.reasoning
         } : null,
-        pipeline_type: shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy',
+        pipeline_type: pipeline_type || (shouldUseVisionFirstPipeline() ? 'vision_first' : 'legacy'),
         // New narrative fields for engaging storytelling
         headline: narrative.headline,
         tagline: narrative.tagline,
