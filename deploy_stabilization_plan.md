@@ -441,3 +441,53 @@ The database operations were missing comprehensive logging, error handling, and 
 The Supabase database operations have been fully hardened with comprehensive logging, error handling, and verification field persistence. All database writes now include complete verification data, and any failures are logged with detailed error information. The cache operations have been enhanced to provide full visibility into hit/miss patterns and verification data retrieval.
 
 **Status**: ✅ **FULLY OPERATIONAL** - Database operations are now hardened with comprehensive logging and error handling.
+
+---
+
+## 🚀 **SAFE DEPLOY PLAN - CACHE + GEMINI VERIFICATION**
+
+### ✅ **Ready for Production Deployment**
+
+The cache system with Gemini verification metadata is now fully integrated, tested, and ready for safe production deployment. All systems have been validated and are working correctly.
+
+### 📋 **Deployment Documentation**
+
+**Main Deploy Plan**: `SAFE_DEPLOY_PLAN_CACHE_GEMINI.md`  
+**Deploy Script**: `scripts/safe-deploy-cache-gemini.sh`  
+**Current Status**: Ready for production deployment
+
+### 🎯 **Key Features Validated**
+
+- ✅ **Cache System**: Fully integrated with verification metadata
+- ✅ **Gemini Verification**: Working for both cache hits and fresh lookups  
+- ✅ **UI Badge System**: Verification fields properly displayed
+- ✅ **Database Operations**: All verification fields persisted correctly
+- ✅ **Performance**: Cache hits validated (Pop-Tarts, Rabén & Sjögren cases)
+- ✅ **Backward Compatibility**: Existing cache entries still work
+
+### 🚀 **Quick Deploy Commands**
+
+```bash
+# Option 1: Use the automated deploy script
+./scripts/safe-deploy-cache-gemini.sh
+
+# Option 2: Manual deployment
+git add . && git commit -am "feat: enable Gemini verification metadata in cache"
+git tag -a v2.0.0-cache-verification -m "Stable cache + Gemini release"
+git push origin main
+vercel --prod
+```
+
+### 🆘 **Rollback Plan**
+
+```bash
+# If issues detected, rollback immediately
+git checkout v1.9.5-stable-cache-fix
+git push origin HEAD --force
+vercel --prod
+```
+
+**Deployment Status**: ✅ **READY FOR PRODUCTION**  
+**Risk Level**: Low (validated and tested)  
+**Rollback Time**: <5 minutes  
+**Expected Downtime**: None
