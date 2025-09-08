@@ -348,18 +348,17 @@ async function performWebSearches(queries) {
         console.log('[GEMINI_DEBUG] Returning', results.length, 'real search results');
         return removeDuplicateSnippets(results);
       } else {
-        console.warn('[GEMINI_DEBUG] No real search results found, falling back to mock data');
+        console.warn('[GEMINI_DEBUG] No real search results found - returning empty results');
+        return [];
       }
     } else {
-      console.warn('[GEMINI_DEBUG] Google API keys not available, using mock data');
+      console.warn('[GEMINI_DEBUG] Google API keys not available - returning empty results');
+      return [];
     }
-    
-    // Fallback to mock results
-    return getMockResultsForQuery(queries[0]);
     
   } catch (error) {
     console.error('[GEMINI_DEBUG] Web search failed:', error);
-    return getMockResultsForQuery(queries[0]);
+    return [];
   }
 }
 
@@ -434,6 +433,30 @@ function getMockResultsForQuery(query) {
         content: "Nike, Inc. is headquartered in Beaverton, Oregon, and is one of the world's largest suppliers of athletic shoes and apparel.",
         source: "nike.com",
         url: "https://www.nike.com"
+      }
+    ];
+  }
+  
+  // IBM-specific mock data
+  if (lowerQuery.includes('ibm')) {
+    return [
+      {
+        title: "International Business Machines Corporation - Wikipedia",
+        content: "International Business Machines Corporation (IBM) is an American multinational technology corporation headquartered in Armonk, New York. IBM is a publicly traded company listed on the New York Stock Exchange.",
+        source: "wikipedia.org",
+        url: "https://en.wikipedia.org/wiki/IBM"
+      },
+      {
+        title: "IBM Investor Relations",
+        content: "IBM is a publicly traded company on the New York Stock Exchange under the ticker symbol IBM. The company operates as a multinational technology and consulting corporation.",
+        source: "investor.ibm.com",
+        url: "https://investor.ibm.com"
+      },
+      {
+        title: "IBM Corporate Profile",
+        content: "International Business Machines Corporation (IBM) is a leading cloud platform and cognitive solutions company. IBM is headquartered in Armonk, New York, and operates in over 170 countries.",
+        source: "ibm.com",
+        url: "https://www.ibm.com"
       }
     ];
   }
