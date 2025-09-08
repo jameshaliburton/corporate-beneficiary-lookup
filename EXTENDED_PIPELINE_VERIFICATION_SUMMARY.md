@@ -105,7 +105,7 @@ Successfully completed a comprehensive end-to-end verification of the OwnedBy pi
 - **Skipped Writes**: 3/14 (21.4%) - edge cases
 
 #### **Write Behavior**
-- **Table**: ownership_results
+- **Table**: products (ownership_results table removed in ownership-por-v1.1)
 - **Trace IDs**: Generated for all successful cases
 - **Timestamps**: Properly recorded
 - **Data Integrity**: All successful cases saved correctly
