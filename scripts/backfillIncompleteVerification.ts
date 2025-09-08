@@ -1,5 +1,10 @@
 #!/usr/bin/env tsx
 
+import { config } from 'dotenv';
+
+// Load environment variables
+config({ path: '.env.local' });
+
 /**
  * Backfill Script for Incomplete Verification Metadata (ownership-por-v1.1.1)
  * 
@@ -8,7 +13,7 @@
  * 
  * Target entries:
  * - verification_status IS NOT NULL AND
- * - (verification_method IS NULL OR verified_owner_entity IS NULL)
+ * - (verification_method IS NULL OR financial_beneficiary IS NULL)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -48,9 +53,9 @@ async function backfillIncompleteVerification() {
     
     const { data: incompleteEntries, error: queryError } = await supabase
       .from('products')
-      .select('id, brand, product_name, financial_beneficiary, confidence_score, verification_status, verification_method, verified_owner_entity')
+      .select('id, brand, product_name, financial_beneficiary, confidence_score, verification_status, verification_method')
       .not('verification_status', 'is', null)
-      .or('verification_method.is.null,verified_owner_entity.is.null');
+      .or('verification_method.is.null,financial_beneficiary.is.null');
 
     if (queryError) {
       console.error('❌ [BACKFILL] Error querying incomplete entries:', queryError);
@@ -75,7 +80,7 @@ async function backfillIncompleteVerification() {
       console.log(`   [BACKFILL] Current metadata:`, {
         verification_status: entry.verification_status,
         verification_method: entry.verification_method,
-        verified_owner_entity: entry.verified_owner_entity
+        financial_beneficiary: entry.financial_beneficiary
       });
 
       try {
@@ -102,7 +107,6 @@ async function backfillIncompleteVerification() {
         const updateData = {
           verification_status: geminiAnalysis.verification_status,
           verification_method: geminiAnalysis.verification_method,
-          verified_owner_entity: geminiAnalysis.verified_owner_entity,
           verified_at: new Date().toISOString(),
           verification_notes: geminiAnalysis.verification_notes,
           confidence_assessment: geminiAnalysis.confidence_assessment,
@@ -122,7 +126,7 @@ async function backfillIncompleteVerification() {
           console.log(`   [BACKFILL] New metadata:`, {
             verification_status: updateData.verification_status,
             verification_method: updateData.verification_method,
-            verified_owner_entity: updateData.verified_owner_entity
+            financial_beneficiary: entry.financial_beneficiary
           });
           successCount++;
         }
