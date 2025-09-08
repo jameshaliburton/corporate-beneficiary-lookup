@@ -516,7 +516,8 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         verification_status: cachedResult.verification_status,
         verified_at: cachedResult.verified_at,
         verification_method: cachedResult.verification_method,
-        verification_notes: cachedResult.verification_notes
+        verification_notes: cachedResult.verification_notes,
+        verified_owner_entity: cachedResult.verified_owner_entity
       });
       // Save to both cache systems for comparison
       if (useNewCacheSystem) {
