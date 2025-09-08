@@ -14,6 +14,7 @@ import { extractVisionContext } from '@/lib/agents/vision-context-extractor.js';
 import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTrace, logFeatureFlags } from '@/lib/config/feature-flags';
 import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
 import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
+import { ragPopulationAgent } from '@/lib/agents/rag-population-agent.js';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -47,27 +48,43 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   // Check if Gemini is available
   const geminiAvailable = isGeminiOwnershipAnalysisAvailable();
   
-  // Check if existing verification is insufficient (should re-run)
+  // [VERIFICATION_LOGIC] Check if existing verification is insufficient (ownership-por-v1.1)
   const hasInsufficientVerification = ownershipResult.verification_status === 'insufficient_evidence';
+  const hasUncertainVerification = ownershipResult.verification_status === 'uncertain';
   
-  console.log("[GEMINI_INLINE_CACHE_HIT] Verification check:", {
+  // [VERIFICATION_LOGIC] Check if result is already fully verified with complete metadata (ownership-por-v1.1.1)
+  const isFullyVerified = (
+    ownershipResult.verification_status &&
+    ownershipResult.verification_method &&
+    ownershipResult.verified_owner_entity
+  );
+  
+  console.log("[GEMINI_INLINE_CACHE_HIT] Verification check (ownership-por-v1.1):", {
     brand,
     hasExistingVerification,
     isGarbageResult,
     geminiAvailable,
     hasInsufficientVerification,
+    hasUncertainVerification,
+    isFullyVerified,
     existing_verification_status: ownershipResult.verification_status,
     verification_fields_present: {
       verification_status: !!ownershipResult.verification_status,
       verified_at: !!ownershipResult.verified_at,
       verification_method: !!ownershipResult.verification_method,
-      verification_notes: !!ownershipResult.verification_notes
-    }
+      verification_notes: !!ownershipResult.verification_notes,
+      verified_owner_entity: !!ownershipResult.verified_owner_entity
+    },
+    is_fully_verified: isFullyVerified
   });
   
-  // Determine if Gemini should run
-  // Run if: no existing verification OR existing verification is insufficient
-  const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification) && !isGarbageResult && geminiAvailable;
+  // [VERIFICATION_LOGIC] Determine if Gemini should run (ownership-por-v1.1)
+  // Run if: no existing verification OR existing verification is insufficient/uncertain
+  // Skip if: already fully verified OR garbage result OR Gemini unavailable
+  const shouldRunGemini = (!hasExistingVerification || hasInsufficientVerification || hasUncertainVerification) && 
+                         !isFullyVerified && 
+                         !isGarbageResult && 
+                         geminiAvailable;
   
   if (shouldRunGemini) {
     try {
@@ -130,16 +147,45 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
       });
     }
   } else {
-    console.log("[GEMINI_INLINE_CACHE_HIT] Skipped - conditions not met");
+    const skipReason = isFullyVerified ? "fully_verified_cache_hit" :
+                      !hasExistingVerification ? "no_existing_verification" : 
+                      hasInsufficientVerification ? "insufficient_verification" : 
+                      hasUncertainVerification ? "uncertain_verification" :
+                      isGarbageResult ? "garbage_result" : 
+                      !geminiAvailable ? "gemini_unavailable" : "unknown";
+    
+    if (isFullyVerified) {
+      console.log(`[VERIFICATION] Skipped Gemini: fully verified cache hit for ${brand}`);
+    } else {
+      console.log(`[VERIFICATION] Gemini triggered: incomplete verification metadata for ${brand}`);
+    }
+    
+    console.log("[GEMINI_INLINE_CACHE_HIT] Skipping Gemini verification (ownership-por-v1.1.1):", {
+      reason: skipReason,
+      brand,
+      missing_fields: {
+        verification_status: !ownershipResult.verification_status,
+        verification_method: !ownershipResult.verification_method,
+        verified_owner_entity: !ownershipResult.verified_owner_entity
+      }
+    });
   }
   
   return false;
 }
 
-// 🧠 NORMALIZED CACHE KEY FUNCTION
+// 🧠 NORMALIZED CACHE KEY FUNCTION (ownership-por-v1.1)
 function makeCacheKey(brand: string, product?: string): string {
-  const b = brand.trim().toLowerCase();
-  const p = product ? product.trim().toLowerCase() : "";
+  // [CACHE_KEY_NORMALIZATION] Always lowercase brand for consistency (ownership-por-v1.1)
+  const b = brand?.trim().toLowerCase() || '';
+  const p = product?.trim().toLowerCase() || '';
+  
+  // [CACHE_KEY_DEFENSIVE] Handle undefined/null product_name safely
+  if (!b) {
+    console.warn('[CACHE_KEY_WARNING] Empty brand name provided to makeCacheKey');
+    return '';
+  }
+  
   return p ? `${b}::${p}` : b;
 }
 
@@ -525,6 +571,34 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       cache_hit: true,
       agent_path: cachedResult.agent_path || []
     };
+
+    // [RAG_POPULATION] Populate knowledge base for cache hits (ownership-por-v1.1)
+    try {
+      console.log('[RAG_POPULATION] Starting RAG population for cache hit');
+      const ragResult = await ragPopulationAgent.populateKnowledgeBase(
+        cachedResult,
+        brand,
+        productName,
+        null // No barcode for cache hits
+      );
+      
+      if (ragResult.success) {
+        console.log('[RAG_POPULATION] Successfully populated knowledge base for cache hit:', {
+          id: ragResult.id,
+          brand: ragResult.brand,
+          beneficiary: ragResult.beneficiary,
+          confidence: ragResult.confidence
+        });
+      } else {
+        console.log('[RAG_POPULATION] Skipped knowledge base population for cache hit:', {
+          reason: ragResult.reason,
+          brand: brand
+        });
+      }
+    } catch (ragError) {
+      console.error('[RAG_POPULATION] Error populating knowledge base for cache hit:', ragError);
+      // Non-blocking error - don't fail the pipeline
+    }
   } else {
     if (process.env.NODE_ENV === 'production') {
       console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
@@ -589,8 +663,14 @@ async function saveToNewCache(brand: string, productName: string, ownershipResul
   }
 }
 
-// 🧠 SHARED CACHE SAVING FUNCTION
+// 🧠 SHARED CACHE SAVING FUNCTION (ownership-por-v1.1)
 async function saveToCache(brand: string, productName: string, ownershipResult: any) {
+  console.log('[CACHE_WRITE] Starting dual-save strategy (ownership-por-v1.1):', { 
+    brand, 
+    productName, 
+    hasBeneficiary: !!ownershipResult.financial_beneficiary,
+    beneficiary: ownershipResult.financial_beneficiary
+  });
   if (ownershipResult.financial_beneficiary && ownershipResult.financial_beneficiary !== 'Unknown') {
     try {
       const cacheKey = makeCacheKey(brand, productName);
@@ -1378,13 +1458,23 @@ export async function POST(request: NextRequest) {
       
       await emitProgress(queryId, 'ownership_research', 'completed', ownershipResult);
       
-      // 🔍 Add Gemini verification for fresh lookups
-      if (
+      // [VERIFICATION_LOGIC] Add Gemini verification for fresh lookups (ownership-por-v1.1.1)
+      // Only run if: valid beneficiary, not fully verified, confidence > 0, and Gemini available
+      const isFullyVerifiedFresh = (
+        ownershipResult.verification_status &&
+        ownershipResult.verification_method &&
+        ownershipResult.verified_owner_entity
+      );
+      
+      const shouldRunFreshGemini = (
         ownershipResult.financial_beneficiary &&
         ownershipResult.financial_beneficiary !== 'Unknown' &&
         ownershipResult.confidence_score > 0 &&
+        !isFullyVerifiedFresh && // No complete verification metadata
         isGeminiOwnershipAnalysisAvailable()
-      ) {
+      );
+      
+      if (shouldRunFreshGemini) {
         try {
           console.log('[GEMINI_DEBUG] Triggering Gemini agent...');
           console.log('[GEMINI_FRESH_LOOKUP] Running Gemini verification for fresh lookup');
@@ -1420,6 +1510,28 @@ export async function POST(request: NextRequest) {
             fallback_reason: 'gemini_verification_error'
           });
         }
+      } else {
+        const freshSkipReason = !ownershipResult.financial_beneficiary ? "no_beneficiary" :
+                                ownershipResult.financial_beneficiary === 'Unknown' ? "unknown_beneficiary" :
+                                ownershipResult.confidence_score <= 0 ? "low_confidence" :
+                                isFullyVerifiedFresh ? "fully_verified" :
+                                !isGeminiOwnershipAnalysisAvailable() ? "gemini_unavailable" : "unknown";
+        
+        if (isFullyVerifiedFresh) {
+          console.log(`[VERIFICATION] Skipped Gemini: fully verified fresh lookup for ${currentProductData.brand}`);
+        } else {
+          console.log(`[VERIFICATION] Gemini triggered: incomplete verification metadata for fresh lookup ${currentProductData.brand}`);
+        }
+        
+        console.log('[GEMINI_FRESH_LOOKUP] Skipping Gemini verification (ownership-por-v1.1.1):', {
+          reason: freshSkipReason,
+          brand: currentProductData.brand,
+          missing_fields: {
+            verification_status: !ownershipResult.verification_status,
+            verification_method: !ownershipResult.verification_method,
+            verified_owner_entity: !ownershipResult.verified_owner_entity
+          }
+        });
       }
       
       // Step 8: Database Save (ALWAYS EXECUTE if ownership determined)
@@ -1459,6 +1571,34 @@ export async function POST(request: NextRequest) {
           console.log('[CACHE_DEBUG] useNewCacheSystem is false, skipping new cache');
         }
         await saveToCache(currentProductData.brand || '', currentProductData.product_name || '', ownershipResult);
+        
+        // [RAG_POPULATION] Populate knowledge base with successful ownership result (ownership-por-v1.1)
+        try {
+          console.log('[RAG_POPULATION] Starting RAG population for successful result');
+          const ragResult = await ragPopulationAgent.populateKnowledgeBase(
+            ownershipResult,
+            currentProductData.brand || '',
+            currentProductData.product_name || '',
+            identifier
+          );
+          
+          if (ragResult.success) {
+            console.log('[RAG_POPULATION] Successfully populated knowledge base:', {
+              id: ragResult.id,
+              brand: ragResult.brand,
+              beneficiary: ragResult.beneficiary,
+              confidence: ragResult.confidence
+            });
+          } else {
+            console.log('[RAG_POPULATION] Skipped knowledge base population:', {
+              reason: ragResult.reason,
+              brand: currentProductData.brand
+            });
+          }
+        } catch (ragError) {
+          console.error('[RAG_POPULATION] Error populating knowledge base:', ragError);
+          // Non-blocking error - don't fail the pipeline
+        }
         
       } else {
         console.log('⚠️ [Pipeline] Skipping database save - no valid ownership result');

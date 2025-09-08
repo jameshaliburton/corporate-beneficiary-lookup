@@ -75,13 +75,29 @@ export function generateCacheKey(
 ): string {
   console.log(`[CACHE_KEY_GEN] Input:`, { pipelineName, input, locale, cacheVersion })
   
-  // For ownership lookups, use brand::product format for consistency
+  // [CACHE_KEY_NORMALIZATION] For ownership lookups, use brand::product format for consistency (ownership-por-v1.1)
   if (input.brand && input.product_name) {
-    const key = `${cacheVersion}:${pipelineName}:${input.brand.toLowerCase()}::${input.product_name.toLowerCase()}`
+    // [CACHE_KEY_DEFENSIVE] Handle undefined/null product_name safely
+    const normalizedBrand = input.brand?.trim().toLowerCase() || '';
+    const normalizedProduct = input.product_name?.trim().toLowerCase() || '';
+    
+    if (!normalizedBrand) {
+      console.warn('[CACHE_KEY_WARNING] Empty brand name in cache key generation');
+      return '';
+    }
+    
+    const key = `${cacheVersion}:${pipelineName}:${normalizedBrand}::${normalizedProduct}`
     console.log(`[CACHE_KEY_GEN] Generated brand+product key:`, key)
     return key
   } else if (input.brand) {
-    const key = `${cacheVersion}:${pipelineName}:${input.brand.toLowerCase()}`
+    const normalizedBrand = input.brand?.trim().toLowerCase() || '';
+    
+    if (!normalizedBrand) {
+      console.warn('[CACHE_KEY_WARNING] Empty brand name in cache key generation');
+      return '';
+    }
+    
+    const key = `${cacheVersion}:${pipelineName}:${normalizedBrand}`
     console.log(`[CACHE_KEY_GEN] Generated brand-only key:`, key)
     return key
   }

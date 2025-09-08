@@ -71,18 +71,12 @@ class CachePresenceAuditor {
         .ilike('brand', `%${brand}%`)
         .limit(5);
 
-      // Check ownership_results table
-      const { data: ownershipData, error: ownershipError } = await supabase
-        .from('ownership_results')
-        .select('id, brand, product_name, verification_status, verified_at, verification_notes')
-        .ilike('brand', `%${brand}%`)
-        .limit(5);
+      // [MIGRATION_CLEANUP] Removed ownership_results table reference (ownership-por-v1.1)
+      // ownership_results table does not exist in current schema
 
       const dbMatch = {
         products: productsData && productsData.length > 0 ? productsData : null,
-        ownership_results: ownershipData && ownershipData.length > 0 ? ownershipData : null,
-        productsError,
-        ownershipError
+        productsError
       };
 
       return dbMatch;
@@ -90,9 +84,7 @@ class CachePresenceAuditor {
       console.error(`❌ Database check failed for ${brand}:`, error);
       return {
         products: null,
-        ownership_results: null,
-        productsError: error,
-        ownershipError: error
+        productsError: error
       };
     }
   }
@@ -188,7 +180,7 @@ class CachePresenceAuditor {
     const notes = [];
     
     // Check for database presence but no cache hit
-    if ((dbMatch.products || dbMatch.ownership_results) && !apiData?.cache_hit) {
+    if (dbMatch.products && !apiData?.cache_hit) {
       notes.push("Potential cache write issue");
     }
     
@@ -233,7 +225,6 @@ class CachePresenceAuditor {
     // Check database presence
     const dbMatch = await this.checkDatabasePresence(brand);
     console.log(`   📊 DB Products: ${dbMatch.products ? '✅' : '❌'}`);
-    console.log(`   📊 DB Ownership: ${dbMatch.ownership_results ? '✅' : '❌'}`);
     
     // Call API
     const apiResult = await this.callLookupAPI(brand);
@@ -247,7 +238,7 @@ class CachePresenceAuditor {
     // Analyze verification
     const verification = this.analyzeVerification(
       apiResult.data, 
-      dbMatch.products?.[0] || dbMatch.ownership_results?.[0]
+      dbMatch.products?.[0]
     );
     
     // Generate notes
@@ -255,12 +246,8 @@ class CachePresenceAuditor {
     
     // Determine DB match status
     let dbMatchStatus = "❌";
-    if (dbMatch.products && dbMatch.ownership_results) {
-      dbMatchStatus = "✅ (both)";
-    } else if (dbMatch.products) {
+    if (dbMatch.products) {
       dbMatchStatus = "✅ (products)";
-    } else if (dbMatch.ownership_results) {
-      dbMatchStatus = "✅ (ownership_results)";
     }
     
     const result = {
@@ -362,7 +349,7 @@ class CachePresenceAuditor {
     markdown += `1. **Review Action Items**: Address any critical issues identified above\n`;
     markdown += `2. **Monitor Cache Performance**: Track cache hit rates and verification metadata\n`;
     markdown += `3. **Validate Gemini Integration**: Ensure Gemini triggers correctly on cache misses\n`;
-    markdown += `4. **Database Consistency**: Verify data consistency between products and ownership_results tables\n\n`;
+    markdown += `4. **Database Consistency**: Verify data consistency in products table\n\n`;
     
     markdown += `---\n`;
     markdown += `*Audit completed at ${timestamp}*\n`;
