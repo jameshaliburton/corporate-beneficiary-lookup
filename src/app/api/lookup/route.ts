@@ -1493,13 +1493,15 @@ export async function POST(request: NextRequest) {
             ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change ?? 'unchanged';
             ownershipResult.verification_method = geminiAnalysis.verification_method;
             ownershipResult.verification_notes = geminiAnalysis.verification_notes;
+            ownershipResult.verified_owner_entity = geminiAnalysis.verified_owner_entity; // Add missing field (ownership-por-v1.1.1)
             ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment;
             ownershipResult.verification_evidence = geminiAnalysis.verification_evidence;
             
             console.log('[GEMINI_FRESH_LOOKUP] Successfully added verification fields:', {
               verification_status: ownershipResult.verification_status,
               verified_at: ownershipResult.verified_at,
-              verification_confidence_change: ownershipResult.verification_confidence_change
+              verification_confidence_change: ownershipResult.verification_confidence_change,
+              verified_owner_entity: ownershipResult.verified_owner_entity
             });
           }
         } catch (err) {
