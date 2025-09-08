@@ -254,6 +254,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       verified_at: new Date().toISOString(),
       verification_method: 'gemini_analysis',
       verification_notes: verificationNotes,
+      verified_owner_entity: existingResult.financial_beneficiary, // Set verified owner entity (ownership-por-v1.1.1)
       confidence_assessment: confidenceAssessment,
       // Store evidence analysis for pipeline orchestrator to use
       gemini_evidence_analysis: agentExecutionTrace,
@@ -289,6 +290,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       verified_at: new Date().toISOString(),
       verification_method: 'gemini_analysis_failed',
       verification_notes: 'Verification failed due to technical error',
+      verified_owner_entity: existingResult.financial_beneficiary, // Set verified owner entity (ownership-por-v1.1.1)
       confidence_assessment: {
         original_confidence: existingResult.confidence_score || 0,
         verified_confidence: existingResult.confidence_score || 0,
