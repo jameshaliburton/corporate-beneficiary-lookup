@@ -56,7 +56,7 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   const isFullyVerified = (
     ownershipResult.verification_status &&
     ownershipResult.verification_method &&
-    ownershipResult.verified_owner_entity
+    ownershipResult.financial_beneficiary // Use existing financial_beneficiary field instead of verified_owner_entity
   );
   
   console.log("[GEMINI_INLINE_CACHE_HIT] Verification check (ownership-por-v1.1):", {
@@ -73,7 +73,7 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
       verified_at: !!ownershipResult.verified_at,
       verification_method: !!ownershipResult.verification_method,
       verification_notes: !!ownershipResult.verification_notes,
-      verified_owner_entity: !!ownershipResult.verified_owner_entity
+      financial_beneficiary: !!ownershipResult.financial_beneficiary
     },
     is_fully_verified: isFullyVerified
   });
@@ -166,7 +166,7 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
       missing_fields: {
         verification_status: !ownershipResult.verification_status,
         verification_method: !ownershipResult.verification_method,
-        verified_owner_entity: !ownershipResult.verified_owner_entity
+        financial_beneficiary: !ownershipResult.financial_beneficiary
       }
     });
   }
@@ -517,7 +517,7 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         verified_at: cachedResult.verified_at,
         verification_method: cachedResult.verification_method,
         verification_notes: cachedResult.verification_notes,
-        verified_owner_entity: cachedResult.verified_owner_entity
+        financial_beneficiary: cachedResult.financial_beneficiary
       });
       // Save to both cache systems for comparison
       if (useNewCacheSystem) {
@@ -1464,7 +1464,7 @@ export async function POST(request: NextRequest) {
       const isFullyVerifiedFresh = (
         ownershipResult.verification_status &&
         ownershipResult.verification_method &&
-        ownershipResult.verified_owner_entity
+        ownershipResult.financial_beneficiary // Use existing financial_beneficiary field instead of verified_owner_entity
       );
       
       const shouldRunFreshGemini = (
@@ -1493,7 +1493,7 @@ export async function POST(request: NextRequest) {
             ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change ?? 'unchanged';
             ownershipResult.verification_method = geminiAnalysis.verification_method;
             ownershipResult.verification_notes = geminiAnalysis.verification_notes;
-            ownershipResult.verified_owner_entity = geminiAnalysis.verified_owner_entity; // Add missing field (ownership-por-v1.1.1)
+            // Note: verified_owner_entity field doesn't exist in database schema, using financial_beneficiary instead
             ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment;
             ownershipResult.verification_evidence = geminiAnalysis.verification_evidence;
             
@@ -1501,7 +1501,7 @@ export async function POST(request: NextRequest) {
               verification_status: ownershipResult.verification_status,
               verified_at: ownershipResult.verified_at,
               verification_confidence_change: ownershipResult.verification_confidence_change,
-              verified_owner_entity: ownershipResult.verified_owner_entity
+              financial_beneficiary: ownershipResult.financial_beneficiary
             });
           }
         } catch (err) {
@@ -1532,7 +1532,7 @@ export async function POST(request: NextRequest) {
           missing_fields: {
             verification_status: !ownershipResult.verification_status,
             verification_method: !ownershipResult.verification_method,
-            verified_owner_entity: !ownershipResult.verified_owner_entity
+            financial_beneficiary: !ownershipResult.financial_beneficiary
           }
         });
       }
