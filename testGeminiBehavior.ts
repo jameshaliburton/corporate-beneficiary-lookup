@@ -9,7 +9,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const fetch = require('node-fetch').default || require('node-fetch');
+const nodeFetch = require('node-nodeFetch').default || require('node-nodeFetch');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
@@ -145,7 +145,7 @@ class GeminiVerificationTester {
     const startTime = Date.now();
     
     try {
-      const response = await fetch(PRODUCTION_API_URL, {
+      const response = await nodeFetch(PRODUCTION_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
