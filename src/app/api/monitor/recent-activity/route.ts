@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     };
     
     data.forEach((scan, index) => {
-      const scanInfo = {
+      const scanInfo: any = {
         brand: scan.brand || 'Unknown',
         product: scan.product_name || 'Unknown',
         created_at: scan.created_at,
