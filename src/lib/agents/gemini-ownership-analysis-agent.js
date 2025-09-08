@@ -305,23 +305,39 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
 
 async function performWebSearches(queries) {
   try {
+    console.log('[GEMINI_DEBUG] Checking Google API configuration...');
+    console.log('[GEMINI_DEBUG] GOOGLE_API_KEY exists:', !!process.env.GOOGLE_API_KEY);
+    console.log('[GEMINI_DEBUG] GOOGLE_CSE_ID exists:', !!process.env.GOOGLE_CSE_ID);
+    console.log('[GEMINI_DEBUG] NEXT_PUBLIC_GOOGLE_API_KEY exists:', !!process.env.NEXT_PUBLIC_GOOGLE_API_KEY);
+    console.log('[GEMINI_DEBUG] NEXT_PUBLIC_GOOGLE_CSE_ID exists:', !!process.env.NEXT_PUBLIC_GOOGLE_CSE_ID);
+    
     // Try to use Google Custom Search API if available
-    if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_CSE_ID) {
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+    const cseId = process.env.GOOGLE_CSE_ID || process.env.NEXT_PUBLIC_GOOGLE_CSE_ID;
+    
+    if (apiKey && cseId) {
+      console.log('[GEMINI_DEBUG] Using Google Custom Search API');
       const results = [];
       for (const query of queries) {
         try {
           const response = await fetch(
-            `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_API_KEY}&cx=${process.env.GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=3`
+            `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${encodeURIComponent(query)}&num=3`
           );
           const data = await response.json();
           
           if (data.items) {
+            console.log('[GEMINI_DEBUG] Found', data.items.length, 'results for query:', query);
             results.push(...data.items.map(item => ({
               title: item.title,
               content: item.snippet,
               source: item.displayLink,
               url: item.link
             })));
+          } else {
+            console.warn('[GEMINI_DEBUG] No items in Google search response for query:', query);
+            if (data.error) {
+              console.warn('[GEMINI_DEBUG] Google API error:', data.error);
+            }
           }
         } catch (searchError) {
           console.warn('[GEMINI_DEBUG] Google search failed for query:', query, searchError);
@@ -329,8 +345,13 @@ async function performWebSearches(queries) {
       }
       
       if (results.length > 0) {
+        console.log('[GEMINI_DEBUG] Returning', results.length, 'real search results');
         return removeDuplicateSnippets(results);
+      } else {
+        console.warn('[GEMINI_DEBUG] No real search results found, falling back to mock data');
       }
+    } else {
+      console.warn('[GEMINI_DEBUG] Google API keys not available, using mock data');
     }
     
     // Fallback to mock results
@@ -344,6 +365,30 @@ async function performWebSearches(queries) {
 
 function getMockResultsForQuery(query) {
   const lowerQuery = query.toLowerCase();
+  
+  // Coca-Cola-specific mock data
+  if (lowerQuery.includes('coca-cola') || lowerQuery.includes('coca cola')) {
+    return [
+      {
+        title: "The Coca-Cola Company - Wikipedia",
+        content: "The Coca-Cola Company is an American multinational corporation, manufacturer, retailer, and marketer of nonalcoholic beverage concentrates and syrups.",
+        source: "wikipedia.org",
+        url: "https://en.wikipedia.org/wiki/The_Coca-Cola_Company"
+      },
+      {
+        title: "Coca-Cola Company Profile",
+        content: "The Coca-Cola Company (NYSE: KO) is the world's largest beverage company, offering more than 500 brands to people in more than 200 countries.",
+        source: "investors.coca-colacompany.com",
+        url: "https://investors.coca-colacompany.com"
+      },
+      {
+        title: "Coca-Cola Corporate Structure",
+        content: "The Coca-Cola Company is a publicly traded company with headquarters in Atlanta, Georgia. It operates as a global beverage company.",
+        source: "coca-colacompany.com",
+        url: "https://www.coca-colacompany.com"
+      }
+    ];
+  }
   
   // Purina-specific mock data
   if (lowerQuery.includes('purina')) {
@@ -365,6 +410,30 @@ function getMockResultsForQuery(query) {
         content: "Purina is wholly owned by Nestlé S.A., a Swiss multinational food and drink processing conglomerate.",
         source: "corporatewatch.org",
         url: "https://corporatewatch.org/nestle"
+      }
+    ];
+  }
+  
+  // Nike-specific mock data
+  if (lowerQuery.includes('nike')) {
+    return [
+      {
+        title: "Nike, Inc. - Wikipedia",
+        content: "Nike, Inc. is an American multinational corporation that is engaged in the design, development, manufacturing, and worldwide marketing and sales of footwear, apparel, equipment, accessories, and services.",
+        source: "wikipedia.org",
+        url: "https://en.wikipedia.org/wiki/Nike,_Inc."
+      },
+      {
+        title: "Nike Investor Relations",
+        content: "Nike, Inc. is a publicly traded company on the New York Stock Exchange under the ticker symbol NKE.",
+        source: "investors.nike.com",
+        url: "https://investors.nike.com"
+      },
+      {
+        title: "Nike Corporate Information",
+        content: "Nike, Inc. is headquartered in Beaverton, Oregon, and is one of the world's largest suppliers of athletic shoes and apparel.",
+        source: "nike.com",
+        url: "https://www.nike.com"
       }
     ];
   }
