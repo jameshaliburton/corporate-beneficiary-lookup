@@ -97,15 +97,15 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         sources: ownershipResult.sources
       });
       
-      if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
-        // Add verification fields to top level
-        ownershipResult.verification_status = geminiAnalysis.gemini_result.verification_status || 'inconclusive';
-        ownershipResult.verified_at = geminiAnalysis.gemini_result.verified_at || new Date().toISOString();
-        ownershipResult.verification_method = geminiAnalysis.gemini_result.verification_method || 'gemini_web_search';
-        ownershipResult.verification_notes = geminiAnalysis.gemini_result.verification_notes || 'Gemini verification completed';
-        ownershipResult.confidence_assessment = geminiAnalysis.gemini_result.confidence_assessment || null;
-        ownershipResult.verification_evidence = geminiAnalysis.gemini_result.evidence_analysis || null;
-        ownershipResult.verification_confidence_change = geminiAnalysis.gemini_result.confidence_assessment?.confidence_change || null;
+      if (geminiAnalysis?.verification_status) {
+        // Add verification fields to top level (ownership-por-v1.1.1)
+        ownershipResult.verification_status = geminiAnalysis.verification_status || 'inconclusive';
+        ownershipResult.verified_at = geminiAnalysis.verified_at || new Date().toISOString();
+        ownershipResult.verification_method = geminiAnalysis.verification_method || 'gemini_analysis';
+        ownershipResult.verification_notes = geminiAnalysis.verification_notes || 'Gemini verification completed';
+        ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment || null;
+        ownershipResult.verification_evidence = geminiAnalysis.verification_evidence || null;
+        ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change || null;
         
         // Add Gemini results to agent_results
         if (!ownershipResult.agent_results) {
@@ -113,13 +113,13 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         }
         
         ownershipResult.agent_results.gemini_analysis = {
-    success: true,
+          success: true,
           type: "ownership_verification",
           agent: "GeminiOwnershipVerificationAgent",
-          data: geminiAnalysis.gemini_result,
+          data: geminiAnalysis,
           reasoning: 'Gemini verification completed',
-          web_snippets_count: geminiAnalysis.web_snippets_count,
-          search_queries_used: geminiAnalysis.search_queries_used
+          web_snippets_count: geminiAnalysis.web_snippets_count || 0,
+          search_queries_used: geminiAnalysis.search_queries_used || []
         };
         
         // Add agent path tracking
