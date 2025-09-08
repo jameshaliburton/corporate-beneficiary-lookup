@@ -98,8 +98,7 @@ async function backfillIncompleteVerification() {
           entry.product_name || '',
           {
             financial_beneficiary: entry.financial_beneficiary,
-            confidence_score: entry.confidence_score,
-            beneficiary_country: entry.beneficiary_country || 'Unknown'
+            confidence_score: entry.confidence_score
           }
         );
 
