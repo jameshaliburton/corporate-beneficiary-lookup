@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Initialize Supabase client with error handling
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 export async function GET(request: NextRequest) {
   try {
     console.log('[MONITOR] Recent activity check requested');
     
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -79,6 +87,16 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('[MONITOR] Error:', error);
+    
+    // Handle specific error cases
+    if (error instanceof Error && error.message.includes('Missing Supabase environment variables')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Database configuration error - missing environment variables',
+        details: 'NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required'
+      }, { status: 503 });
+    }
+    
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
