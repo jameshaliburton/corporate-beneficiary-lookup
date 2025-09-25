@@ -1,6 +1,7 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
+import { Footer } from "@/components/Footer"
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -73,6 +74,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         {children}
+        <Footer />
         <Toaster />
       </body>
     </html>

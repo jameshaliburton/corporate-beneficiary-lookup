@@ -88,7 +88,7 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   
   if (shouldRunGemini) {
     try {
-      console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
+      console.log("[GEMINI_REQUEST] Calling Gemini agent for cache hit result");
       const geminiAgent = new GeminiOwnershipAnalysisAgent();
       const geminiAnalysis = await geminiAgent.analyze(brand, product_name, {
         financial_beneficiary: ownershipResult.financial_beneficiary,
@@ -516,7 +516,7 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
         verification_status: cachedResult.verification_status,
         verified_at: cachedResult.verified_at,
         verification_method: cachedResult.verification_method,
-        verification_notes: cachedResult.verification_notes,
+y         verification_notes: cachedResult.verification_notes,
         financial_beneficiary: cachedResult.financial_beneficiary
       });
       // Save to both cache systems for comparison
@@ -996,7 +996,35 @@ export async function POST(request: NextRequest) {
           if (process.env.NODE_ENV === 'production') {
             console.log(`[CACHE_HIT] brand=${brand || 'unknown'}`);
           }
-          console.log('✅ [Early Cache] HIT → Returning cached result for manual entry');
+          console.log('✅ [Early Cache] HIT → Checking if Gemini verification needed');
+          
+          // [VERIFICATION_TRIGGER] Always run Gemini verification for cache hits from visual scans
+          const isVisualScan = !!image_base64 || identifier?.startsWith('img_');
+          const needsVerification = !cachedResult.verification_status || 
+                                   !cachedResult.verification_method || 
+                                   !cachedResult.financial_beneficiary;
+          
+          console.log(`[VERIFICATION_TRIGGER] brand=${brand} isVisualScan=${isVisualScan} needsVerification=${needsVerification}`);
+          
+          if (isVisualScan && needsVerification) {
+            console.log(`[VERIFICATION_TRIGGER] Running Gemini verification for visual scan cache hit: ${brand}`);
+            try {
+              const geminiResult = await maybeRunGeminiVerificationForCacheHit(
+                cachedResult, 
+                brand || '', 
+                product_name || '', 
+                queryId
+              );
+              
+              if (geminiResult) {
+                console.log(`[VERIFICATION_TRIGGER] Gemini verification completed for visual scan: ${brand}`);
+                // Update cached result with verification data
+                Object.assign(cachedResult, geminiResult);
+              }
+            } catch (error) {
+              console.error(`[VERIFICATION_TRIGGER] Gemini verification failed for visual scan: ${brand}`, error);
+            }
+          }
           
           // Build structured trace for early cache hit
           const earlyCacheHitStages = [
