@@ -1,9 +1,13 @@
 # Dependencies
 node_modules/
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+*.key
+*.pem
 
 # Next.js
 .next/
@@ -22,4 +26,9 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+#Google Service Account
 gcp-service-account.json
+
+# Scripts with sensitive data
+scripts/*.js
