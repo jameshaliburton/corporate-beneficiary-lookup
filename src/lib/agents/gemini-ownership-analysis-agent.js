@@ -1,11 +1,112 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ClaudeVerificationAgent, isMedicalBrand } from './claude-verification-agent.js';
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+// Initialize Gemini with fallback to new GEMINI_API_KEY
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+// Medical keywords for compliance tracking
+const MEDICAL_KEYWORDS = [
+  'pharmacy', 'medical', 'health', 'drug', 'medicine', 
+  'clinic', 'hospital', 'pharmaceutical', 'healthcare',
+  'therapeutic', 'diagnostic', 'clinical', 'medicinal'
+];
+
+/**
+ * Check if a brand/product combination contains medical keywords
+ */
+function isMedicalBrandLocal(brand, productName) {
+  const text = `${brand} ${productName}`.toLowerCase();
+  return MEDICAL_KEYWORDS.some(keyword => text.includes(keyword));
+}
+
+/**
+ * Check if Gemini safe mode is enabled
+ */
+function isGeminiSafeModeEnabled() {
+  return process.env.GEMINI_SAFE_MODE === 'true';
+}
+
+/**
+ * Log compliance events for audit tracking
+ */
+function logComplianceEvent(eventType, data) {
+  const timestamp = new Date().toISOString();
+  const complianceLog = {
+    timestamp,
+    event_type: eventType,
+    ...data
+  };
+  
+  console.log('[COMPLIANCE_LOG]', JSON.stringify(complianceLog, null, 2));
+  
+  // In production, this could be sent to a compliance monitoring service
+  if (process.env.NODE_ENV === 'production') {
+    // TODO: Send to compliance monitoring service
+    // await sendToComplianceService(complianceLog);
+  }
+}
 
 export async function performGeminiOwnershipAnalysis(brand, productName, existingResult) {
   try {
     console.log('[GEMINI_DEBUG] Starting Gemini ownership analysis for:', brand);
+    
+    // 🔐 COMPLIANCE CHECK: Medical brand detection and safe mode
+    const isMedical = isMedicalBrandLocal(brand, productName);
+    const isSafeMode = isGeminiSafeModeEnabled();
+    
+    if (isSafeMode || isMedical) {
+      const reason = isSafeMode ? 'Safe mode enabled' : 'Medical brand detected';
+      const medicalKeywords = isMedical ? MEDICAL_KEYWORDS.filter(keyword => 
+        `${brand} ${productName}`.toLowerCase().includes(keyword)
+      ) : [];
+      
+      // Log compliance event
+      logComplianceEvent('gemini_route_skipped', {
+        reason,
+        brand,
+        productName,
+        isMedical,
+        isSafeMode,
+        medicalKeywords,
+        fallback_agent: 'claude_verification_agent'
+      });
+      
+      console.log('[GEMINI_ROUTE_SKIPPED]', {
+        reason,
+        brand,
+        productName,
+        isMedical,
+        isSafeMode,
+        medicalKeywords
+      });
+      
+      // Route to Claude fallback agent
+      console.log('[FALLBACK_TRIGGERED] Routing to Claude verification agent');
+      const claudeAgent = new ClaudeVerificationAgent();
+      const claudeResult = await claudeAgent.analyze(brand, productName, existingResult);
+      
+      // Add fallback attribution
+      claudeResult.verification_method = `claude_analysis_fallback_${reason.toLowerCase().replace(/\s+/g, '_')}`;
+      claudeResult.agent_path = [...(existingResult.agent_path || []), `claude_fallback_${reason.toLowerCase().replace(/\s+/g, '_')}`];
+      
+      // Log successful fallback
+      logComplianceEvent('claude_fallback_success', {
+        brand,
+        productName,
+        verification_status: claudeResult.verification_status,
+        verification_method: claudeResult.verification_method,
+        reason
+      });
+      
+      console.log('[FALLBACK_SUCCESS] Claude verification completed:', {
+        brand,
+        verification_status: claudeResult.verification_status,
+        verification_method: claudeResult.verification_method
+      });
+      
+      return claudeResult;
+    }
     
     // Build search queries
     const searchQueries = [
@@ -65,8 +166,8 @@ You MUST respond with ONLY valid JSON inside triple backticks. Do not include an
 CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple backticks. No additional text, no explanations, no markdown formatting outside the JSON.
 `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const geminiResult = await model.generateContent(prompt);
+    const response = await geminiResult.response;
     const text = response.text();
     
     // 🔍 COMPREHENSIVE RAW GEMINI RESPONSE LOGGING
@@ -246,7 +347,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       };
     }
     
-    return {
+    const result = {
       ...existingResult,
       verification_status: verificationStatus,
       verification_confidence_change: confidenceAssessment?.confidence_change || 'unchanged',
@@ -260,6 +361,23 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       gemini_evidence_analysis: agentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification']
     };
+    
+    // Log successful Gemini usage for compliance tracking
+    logComplianceEvent('gemini_analysis_success', {
+      brand,
+      productName,
+      verification_status: verificationStatus,
+      verification_method: 'gemini_analysis',
+      confidence_assessment: confidenceAssessment,
+      evidence_count: {
+        supporting: agentExecutionTrace?.supporting_evidence?.length || 0,
+        contradicting: agentExecutionTrace?.contradicting_evidence?.length || 0,
+        neutral: agentExecutionTrace?.neutral_evidence?.length || 0,
+        missing: agentExecutionTrace?.missing_evidence?.length || 0
+      }
+    });
+    
+    return result;
     
   } catch (error) {
     console.error('[GEMINI_DEBUG] Gemini analysis failed:', error);
@@ -491,7 +609,10 @@ function removeDuplicateSnippets(snippets) {
 }
 
 export function isGeminiOwnershipAnalysisAvailable() {
-  return !!process.env.GOOGLE_API_KEY;
+  const hasGoogleKey = !!process.env.GOOGLE_API_KEY;
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+  
+  return hasGoogleKey || hasGeminiKey;
 }
 
 export class GeminiOwnershipAnalysisAgent {
@@ -507,16 +628,16 @@ export class GeminiOwnershipAnalysisAgent {
       throw new Error('Gemini API key not available');
     }
     
-    const result = await performGeminiOwnershipAnalysis(brand, productName, existingResult);
+    const analysisResult = await performGeminiOwnershipAnalysis(brand, productName, existingResult);
     
     console.log('[VERIFICATION_AGENT] Output fields:', {
-      verification_status: result.verification_status,
-      verified_at: result.verified_at,
-      verification_method: result.verification_method,
-      verification_notes: result.verification_notes,
-      confidence_assessment: result.confidence_assessment,
+      verification_status: analysisResult.verification_status,
+      verified_at: analysisResult.verified_at,
+      verification_method: analysisResult.verification_method,
+      verification_notes: analysisResult.verification_notes,
+      confidence_assessment: analysisResult.confidence_assessment,
     });
     
-    return result;
+    return analysisResult;
   }
 }
