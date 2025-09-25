@@ -212,6 +212,15 @@ export default function ProductResultV2({
                     confidenceChange={result.verification_confidence_change}
                   />
                 )}
+                
+                {/* Gemini Attribution - Only show when Gemini was used */}
+                {result.llm_source === 'gemini' && (
+                  <div className="mt-3 text-center">
+                    <p className="text-xs italic text-gray-400">
+                      Powered by Google AI
+                    </p>
+                  </div>
+                )}
               </>
             ) : result.verified_at === null || result.verified_at === undefined ? (
               // Only show fallback if we're certain verification hasn't been assessed

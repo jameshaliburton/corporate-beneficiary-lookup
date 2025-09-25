@@ -196,3 +196,4 @@ WITH CHECK (true);
 - Service role client bypasses RLS for cache operations
 - Structured logging adds minimal overhead
 - Feature flags allow gradual rollout
+
