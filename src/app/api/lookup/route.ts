@@ -562,6 +562,7 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       verification_method: cachedResult.verification_method || null,
       confidence_assessment: cachedResult.confidence_assessment || null,
       verification_notes: cachedResult.verification_notes || null,
+      gemini_debug_metadata: cachedResult.gemini_debug_metadata || null,
       // New narrative fields for engaging storytelling
       headline: narrative.headline,
       tagline: narrative.tagline,
