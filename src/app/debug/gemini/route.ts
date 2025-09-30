@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
+import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable, testGeminiV1Endpoint } from '@/lib/agents/gemini-ownership-analysis-agent.js';
 import { ClaudeVerificationAgent, isClaudeVerificationAvailable } from '@/lib/agents/claude-verification-agent.js';
 
 /**
@@ -28,10 +28,25 @@ export async function GET(request: NextRequest) {
       geminiSafeMode: process.env.GEMINI_SAFE_MODE || 'false',
       geminiApiKey: process.env.GEMINI_API_KEY ? 'Present' : 'Missing',
       googleApiKey: process.env.GOOGLE_API_KEY ? 'Present' : 'Missing',
-      anthropicApiKey: process.env.ANTHROPIC_API_KEY ? 'Present' : 'Missing'
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY ? 'Present' : 'Missing',
+      geminiFlashV1Enabled: process.env.GEMINI_FLASH_V1_ENABLED === 'true'
     };
 
     console.log('[DEBUG_GEMINI] Environment check:', environmentCheck);
+
+    // Test Gemini v1 endpoint first
+    console.log('[DEBUG_GEMINI] Testing Gemini v1 endpoint...');
+    let v1TestResult = null;
+    try {
+      v1TestResult = await testGeminiV1Endpoint();
+      console.log('[DEBUG_GEMINI] V1 endpoint test result:', v1TestResult);
+    } catch (error) {
+      console.error('[DEBUG_GEMINI] V1 endpoint test failed:', error);
+      v1TestResult = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
 
     // Test cases
     const testCases = [
@@ -163,6 +178,7 @@ export async function GET(request: NextRequest) {
     const summary = {
       timestamp: new Date().toISOString(),
       environment: environmentCheck,
+      v1EndpointTest: v1TestResult,
       totalTests: results.length,
       passedTests: results.filter(r => r.success).length,
       failedTests: results.filter(r => !r.success).length,
@@ -171,7 +187,8 @@ export async function GET(request: NextRequest) {
       geminiFallbackSystem: {
         working: results.filter(r => r.actualAgent === 'gemini').length > 0,
         claudeFallbackWorking: results.filter(r => r.actualAgent === 'claude').length > 0,
-        medicalBrandDetection: results.filter(r => r.brand.includes('Sudafed') || r.brand.includes('Boots')).every(r => r.actualAgent === 'claude')
+        medicalBrandDetection: results.filter(r => r.brand.includes('Sudafed') || r.brand.includes('Boots')).every(r => r.actualAgent === 'claude'),
+        v1EndpointWorking: v1TestResult?.success === true
       }
     };
 
@@ -181,6 +198,7 @@ export async function GET(request: NextRequest) {
       success: true,
       summary,
       results,
+      v1EndpointTest: v1TestResult,
       complianceLogs: allComplianceLogs,
       environment: environmentCheck,
       timestamp: new Date().toISOString()

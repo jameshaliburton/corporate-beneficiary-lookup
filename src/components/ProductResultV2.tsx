@@ -313,6 +313,32 @@ export default function ProductResultV2({
         </Button>
       </div>
 
+      {/* Help Improve OwnedBy Section */}
+      <Card className="bg-muted/20 border-border/30">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-3">
+            <h3 className="text-lg font-semibold text-foreground">
+              Help improve OwnedBy
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Found an error or have feedback about this result? Let us know!
+            </p>
+            <Button
+              onClick={() => {
+                const brandName = result.brand_name || result.product_name || 'Unknown Brand';
+                const feedbackUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeJLy4EAQL3QSCkb-Zaf50cdWCWF3dml1Qck_RiBdhan6HbdA/viewform?usp=pp_url&entry.2041528643=${encodeURIComponent(brandName)}`;
+                window.open(feedbackUrl, '_blank', 'noopener,noreferrer');
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Give Feedback
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Debug Info (Development Only) */}
       {process.env.NODE_ENV === 'development' && (
         <Card className="border-dashed">

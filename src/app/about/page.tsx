@@ -2,7 +2,7 @@
 
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AboutPage() {
@@ -98,6 +98,29 @@ export default function AboutPage() {
                   <p>
                     Results may not be 100% accurate for all products, especially for smaller brands or complex corporate structures.
                   </p>
+                </div>
+              </div>
+              
+              {/* Help Improve OwnedBy Section */}
+              <div className="glass rounded-3xl p-6 space-y-4 bg-muted/20 border-border/30">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Help improve OwnedBy
+                </h2>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Found an error or have feedback about our analysis? We'd love to hear from you!
+                  </p>
+                  <Button
+                    onClick={() => {
+                      const feedbackUrl = `https://docs.google.com/forms/d/e/1FAIpQLSeJLy4EAQL3QSCkb-Zaf50cdWCWF3dml1Qck_RiBdhan6HbdA/viewform?usp=pp_url&entry.2041528643=${encodeURIComponent('General Feedback')}`;
+                      window.open(feedbackUrl, '_blank', 'noopener,noreferrer');
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Give Feedback
+                  </Button>
                 </div>
               </div>
             </div>
