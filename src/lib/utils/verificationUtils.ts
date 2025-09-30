@@ -96,6 +96,18 @@ export function getPanelTitle(status: VerificationStatus): string {
   }
 }
 
+export function getSourceAttribution(verificationMethod?: string): string {
+  if (!verificationMethod) return 'AI verification';
+  
+  if (verificationMethod.includes('gemini')) {
+    return 'Verified using Gemini (Google) AI model';
+  } else if (verificationMethod.includes('claude')) {
+    return 'Verified using Claude (Anthropic) AI model';
+  }
+  
+  return 'Verified using AI model';
+}
+
 export function shouldShowEvidencePanel(status: VerificationStatus): boolean {
   return status !== 'unknown';
 }

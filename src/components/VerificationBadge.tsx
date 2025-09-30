@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, HelpCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CheckCircle, AlertTriangle, HelpCircle, TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VerificationBadgeProps {
@@ -68,17 +69,29 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <Badge 
-        variant="outline"
-        className={cn(
-          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-          config.className
-        )}
-        title={confidenceChange ? getConfidenceChangeText() : undefined}
-      >
-        <Icon className={cn("w-4 h-4", config.iconClassName)} />
-        {config.label}
-      </Badge>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge 
+              variant="outline"
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-help",
+                config.className
+              )}
+              title={confidenceChange ? getConfidenceChangeText() : undefined}
+            >
+              <Icon className={cn("w-4 h-4", config.iconClassName)} />
+              {config.label}
+              <Info className="w-3 h-3 ml-1 text-muted-foreground" />
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <p className="text-sm">
+              This result was reviewed by an AI system (either Gemini or Claude) and checked against recent web search results to confirm accuracy. It may still be wrong — please verify sensitive claims manually.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };

@@ -18,6 +18,7 @@ interface VerificationDetailsPanelProps {
   status: "confirmed" | "contradicted" | "mixed_evidence" | "insufficient_evidence";
   evidence?: VerificationEvidence;
   confidenceChange?: "increased" | "decreased" | "unchanged";
+  verificationMethod?: string;
   className?: string;
 }
 
@@ -25,11 +26,26 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
   status, 
   evidence, 
   confidenceChange,
+  verificationMethod,
   className 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!evidence) return null;
+  // Handle missing evidence gracefully
+  if (!evidence || Object.values(evidence).every(arr => Array.isArray(arr) ? arr.length === 0 : !arr)) {
+    return (
+      <div className="w-full max-w-2xl border border-border/20 rounded-lg p-4 bg-muted/10">
+        <div className="text-sm text-muted-foreground text-center">
+          <p className="mb-2">No supporting or contradicting evidence was found during the AI verification process.</p>
+          {verificationMethod && (
+            <p className="text-xs italic">
+              Verified using {verificationMethod.includes('gemini') ? 'Gemini (Google)' : 'Claude (Anthropic)'} AI model
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const getPanelConfig = () => {
     switch (status) {
@@ -95,6 +111,12 @@ export const VerificationDetailsPanel: React.FC<VerificationDetailsPanelProps> =
 
       {isExpanded && (
         <CardContent className="pt-0 space-y-4">
+          {/* Source Attribution */}
+          {verificationMethod && (
+            <div className="text-xs text-muted-foreground italic mb-2 pb-2 border-b border-border/20">
+              Verified using {verificationMethod.includes('gemini') ? 'Gemini (Google)' : 'Claude (Anthropic)'} AI model
+            </div>
+          )}
           {/* Supporting Evidence */}
           {supportingEvidence.length > 0 && (
             <div>

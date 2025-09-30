@@ -205,22 +205,36 @@ export default function ProductResultV2({
                 />
                 
                 {/* Verification Details Panel */}
-                {result.verification_evidence && (
-                  <VerificationDetailsPanel
-                    status={normalizeVerificationStatus(result.verification_status)}
-                    evidence={result.verification_evidence}
-                    confidenceChange={result.verification_confidence_change}
-                  />
-                )}
+                <VerificationDetailsPanel
+                  status={normalizeVerificationStatus(result.verification_status)}
+                  evidence={result.verification_evidence}
+                  confidenceChange={result.verification_confidence_change}
+                  verificationMethod={result.verification_method}
+                />
                 
-                {/* Gemini Attribution - Only show when Gemini was used */}
-                {result.llm_source === 'gemini' && (
-                  <div className="mt-3 text-center">
+                {/* AI Attribution - Show based on source */}
+                <div className="mt-3 text-center">
+                  {result.llm_source === 'gemini' && (
                     <p className="text-xs italic text-gray-400">
                       Powered by Google AI
                     </p>
-                  </div>
-                )}
+                  )}
+                  {result.llm_source === 'claude' && (
+                    <p className="text-xs italic text-gray-400">
+                      Powered by Claude (Anthropic)
+                    </p>
+                  )}
+                  {result.verification_method?.includes('gemini') && !result.llm_source && (
+                    <p className="text-xs italic text-gray-400">
+                      Verified by Google AI
+                    </p>
+                  )}
+                  {result.verification_method?.includes('claude') && !result.llm_source && (
+                    <p className="text-xs italic text-gray-400">
+                      Verified by Claude (Anthropic)
+                    </p>
+                  )}
+                </div>
               </>
             ) : result.verified_at === null || result.verified_at === undefined ? (
               // Only show fallback if we're certain verification hasn't been assessed
