@@ -24,6 +24,8 @@ export interface OwnershipResult {
   confidence_assessment?: any;
   verification_evidence?: any;
   verification_confidence_change?: "increased" | "decreased" | "unchanged";
+  // LLM source tracking
+  llm_source?: "gemini" | "claude" | "fallback";
 }
 
 export interface NarrativeFields {
