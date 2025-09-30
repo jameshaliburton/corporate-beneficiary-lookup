@@ -149,6 +149,18 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
       hasGoogleCseId: !!process.env.GOOGLE_CSE_ID
     });
     
+    // 🧪 DEBUG: Store debug metadata immediately after web search
+    const debugMetadata = {
+      search_queries: searchQueries,
+      snippets_returned: snippetCount,
+      search_timestamp: new Date().toISOString(),
+      api_keys_present: {
+        google_api_key: !!process.env.GOOGLE_API_KEY,
+        google_cse_id: !!process.env.GOOGLE_CSE_ID
+      }
+    };
+    console.log('[GEMINI_DEBUG] Debug metadata created:', debugMetadata);
+    
     // Analyze with Gemini - using feature flag configuration
     console.log('[GEMINI_DEBUG] Initializing model with configuration:', {
       model: GEMINI_MODEL,
@@ -430,15 +442,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       gemini_evidence_analysis: agentExecutionTrace,
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification'],
       // Store debug metadata ONLY (not raw snippets to comply with CSE terms)
-      gemini_debug_metadata: {
-        search_queries: searchQueries,
-        snippets_returned: snippetCount,
-        search_timestamp: new Date().toISOString(),
-        api_keys_present: {
-          google_api_key: !!process.env.GOOGLE_API_KEY,
-          google_cse_id: !!process.env.GOOGLE_CSE_ID
-        }
-      }
+      gemini_debug_metadata: debugMetadata
     };
     
     // Log successful Gemini usage for compliance tracking
@@ -498,13 +502,7 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       agent_path: [...(existingResult.agent_path || []), 'gemini_verification_failed'],
       // Include debug metadata even in error case for troubleshooting
       gemini_debug_metadata: {
-        search_queries: searchQueries || [],
-        snippets_returned: 0,
-        search_timestamp: new Date().toISOString(),
-        api_keys_present: {
-          google_api_key: !!process.env.GOOGLE_API_KEY,
-          google_cse_id: !!process.env.GOOGLE_CSE_ID
-        },
+        ...debugMetadata,
         error: true,
         error_message: error.message
       }
