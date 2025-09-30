@@ -16,7 +16,9 @@ console.log('[GEMINI_CONFIG] Feature flag status:', {
   GEMINI_FLASH_V1_ENABLED,
   GEMINI_MODEL,
   GEMINI_ENDPOINT,
-  API_KEY_PRESENT: !!geminiApiKey
+  API_KEY_PRESENT: !!geminiApiKey,
+  RAW_ENV_VALUE: process.env.GEMINI_FLASH_V1_ENABLED,
+  NODE_ENV: process.env.NODE_ENV
 });
 
 // Medical keywords for compliance tracking
