@@ -198,8 +198,8 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       });
     }
     
-    // Direct HTTP call to Gemini v1 endpoint
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+    // Direct HTTP call to Gemini v1beta endpoint (v1 not available yet)
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -795,12 +795,12 @@ export async function testGeminiV1Endpoint() {
       snippetCount: testPayload.snippetCount
     });
     
-    // Test with direct HTTP call to v1 endpoint
+    // Test with direct HTTP call to v1beta endpoint (v1 not available yet)
     const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     
     // Test 1: Valid snippets
     console.log('[GEMINI_V1_TEST] Test 1: Valid snippets analysis');
-    const validResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+    const validResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -832,7 +832,7 @@ export async function testGeminiV1Endpoint() {
     // Test 2: Empty context to trigger error
     console.log('[GEMINI_V1_TEST] Test 2: Empty context error handling');
     try {
-      const emptyResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+      const emptyResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
