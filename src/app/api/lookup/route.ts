@@ -132,12 +132,6 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   return false;
 }
 
-<<<<<<< HEAD
-// 🧠 NORMALIZED CACHE KEY FUNCTION
-function makeCacheKey(brand: string, product?: string): string {
-  const b = brand.trim().toLowerCase();
-  const p = product ? product.trim().toLowerCase() : "";
-=======
 // 🧠 NORMALIZED CACHE FUNCTION (ownership-por-v1.1)
 function makeCacheKey(brand: string, product?: string): string {
   // [CACHE_NORMALIZATION] Always lowercase brand for consistency (ownership-por-v1.1)
@@ -150,7 +144,6 @@ function makeCacheKey(brand: string, product?: string): string {
     return '';
   }
   
->>>>>>> d2792b7 (feat: Enhanced Gemini verification with admin debug tools)
   return p ? `${b}::${p}` : b;
 }
 

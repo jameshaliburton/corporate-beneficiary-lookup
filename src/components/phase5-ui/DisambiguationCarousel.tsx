@@ -14,3 +14,12 @@ export default function DisambiguationCarousel(props: DisambiguationCarouselProp
     </div>
   );
 }
+
+export function DisambiguationScreen(props: any) {
+  return (
+    <div className="disambiguation-screen">
+      {/* Placeholder component */}
+      <p>Disambiguation Screen Component</p>
+    </div>
+  );
+}

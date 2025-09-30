@@ -21,3 +21,7 @@ export class DatabaseServiceClient {
 }
 
 export default DatabaseServiceClient;
+
+export function getServiceClient(): DatabaseServiceClient {
+  return new DatabaseServiceClient();
+}

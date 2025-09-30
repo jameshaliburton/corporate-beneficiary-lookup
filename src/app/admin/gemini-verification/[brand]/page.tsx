@@ -24,6 +24,8 @@ interface GeminiAnalysis {
   explanations_by_requirement?: ExplanationsByRequirement;
   enhanced_match_enabled?: boolean;
   verification_requirements_analyzed?: string[];
+  prompt?: string;
+  raw_output?: string;
 }
 
 interface PipelineResult {
