@@ -6,6 +6,7 @@ const anthropic = new Anthropic({
 
 export interface OwnershipResult {
   brand_name: string;
+  product_name?: string;
   brand_country?: string;
   ultimate_owner: string;
   ultimate_owner_country?: string;
