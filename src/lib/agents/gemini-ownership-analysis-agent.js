@@ -8,9 +8,9 @@ const genAI = new GoogleGenerativeAI(geminiApiKey);
 // Feature flag for Gemini Flash V1
 const GEMINI_FLASH_V1_ENABLED = process.env.GEMINI_FLASH_V1_ENABLED === 'true';
 
-// Model configuration based on feature flag
-const GEMINI_MODEL = GEMINI_FLASH_V1_ENABLED ? "gemini-1.5-flash" : "gemini-1.5-flash";
-const GEMINI_ENDPOINT = GEMINI_FLASH_V1_ENABLED ? "v1" : "v1beta";
+// TEMPORARY FIX: Force v1 endpoint until environment variable is properly loaded
+const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_ENDPOINT = "v1"; // Force v1 endpoint
 
 console.log('[GEMINI_CONFIG] Feature flag status:', {
   GEMINI_FLASH_V1_ENABLED,
@@ -146,8 +146,7 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
       featureFlagEnabled: GEMINI_FLASH_V1_ENABLED
     });
     
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-    
+    // Use direct HTTP call to v1 endpoint instead of library
     const prompt = `
 You are an expert corporate ownership analyst. Analyze the following web search results to determine the ownership of ${brand}.
 
@@ -199,9 +198,27 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       });
     }
     
-    const geminiResult = await model.generateContent(prompt);
-    const response = await geminiResult.response;
-    const text = response.text();
+    // Direct HTTP call to Gemini v1 endpoint
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      })
+    });
+
+    if (!geminiResponse.ok) {
+      throw new Error(`Gemini API error: ${geminiResponse.status} ${geminiResponse.statusText}`);
+    }
+
+    const geminiData = await geminiResponse.json();
+    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     // Log which endpoint was actually used
     console.log('[GEMINI_DEBUG] API call completed:', {
@@ -778,14 +795,31 @@ export async function testGeminiV1Endpoint() {
       snippetCount: testPayload.snippetCount
     });
     
-    // Test with empty context to trigger known Gemini error
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    // Test with direct HTTP call to v1 endpoint
+    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     
     // Test 1: Valid snippets
     console.log('[GEMINI_V1_TEST] Test 1: Valid snippets analysis');
-    const validResult = await model.generateContent(testPayload.prompt);
-    const validResponse = await validResult.response;
-    const validText = validResponse.text();
+    const validResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: testPayload.prompt
+          }]
+        }]
+      })
+    });
+
+    if (!validResponse.ok) {
+      throw new Error(`Gemini API error: ${validResponse.status} ${validResponse.statusText}`);
+    }
+
+    const validData = await validResponse.json();
+    const validText = validData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     console.log('[GEMINI_V1_TEST] Valid test result:', {
       responseLength: validText.length,
@@ -798,15 +832,32 @@ export async function testGeminiV1Endpoint() {
     // Test 2: Empty context to trigger error
     console.log('[GEMINI_V1_TEST] Test 2: Empty context error handling');
     try {
-      const emptyResult = await model.generateContent('');
-      const emptyResponse = await emptyResult.response;
-      const emptyText = emptyResponse.text();
-      
-      console.log('[GEMINI_V1_TEST] Empty context result:', {
-        responseLength: emptyText.length,
-        model: GEMINI_MODEL,
-        endpoint: GEMINI_ENDPOINT
+      const emptyResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: ''
+            }]
+          }]
+        })
       });
+
+      if (emptyResponse.ok) {
+        const emptyData = await emptyResponse.json();
+        const emptyText = emptyData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        console.log('[GEMINI_V1_TEST] Empty context result:', {
+          responseLength: emptyText.length,
+          model: GEMINI_MODEL,
+          endpoint: GEMINI_ENDPOINT
+        });
+      } else {
+        throw new Error(`Gemini API error: ${emptyResponse.status} ${emptyResponse.statusText}`);
+      }
     } catch (emptyError) {
       console.log('[GEMINI_V1_TEST] Empty context error (expected):', {
         error: emptyError.message,
