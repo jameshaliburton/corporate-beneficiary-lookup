@@ -95,12 +95,8 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
           success: true,
           type: "ownership_verification",
           agent: "GeminiOwnershipVerificationAgent",
-          data: geminiAnalysis.gemini_result,
+          data: geminiAnalysis,
           reasoning: 'Gemini verification completed',
-<<<<<<< HEAD
-          web_snippets_count: geminiAnalysis.web_snippets_count,
-          search_queries_used: geminiAnalysis.search_queries_used
-=======
           web_snippets_count: geminiAnalysis.web_snippets_count || 0,
           search_queries_used: geminiAnalysis.search_queries_used || [],
           // Enhanced explanation fields (only when feature flag is enabled)
@@ -109,7 +105,6 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
             enhanced_match_enabled: geminiAnalysis.gemini_analysis.enhanced_match_enabled,
             verification_requirements_analyzed: geminiAnalysis.gemini_analysis.verification_requirements_analyzed
           })
->>>>>>> d2792b7 (feat: Enhanced Gemini verification with admin debug tools)
         };
         
         // Add agent path tracking
