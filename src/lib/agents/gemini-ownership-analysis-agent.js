@@ -146,7 +146,9 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
       snippetsReturned: snippetCount,
       firstResultTitle: webSnippets?.[0]?.title || 'None',
       hasGoogleApiKey: !!process.env.GOOGLE_API_KEY,
-      hasGoogleCseId: !!process.env.GOOGLE_CSE_ID
+      hasGoogleCseId: !!process.env.GOOGLE_CSE_ID,
+      webSearchStatus: snippetCount > 0 ? 'SUCCESS' : 'FAILED_OR_EMPTY',
+      willUseMockData: snippetCount === 0 && (process.env.NODE_ENV === 'development' || process.env.USE_MOCK_SEARCH === 'true')
     });
     
     // 🧪 DEBUG: Store debug metadata immediately after web search
@@ -154,10 +156,17 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
       search_queries: searchQueries,
       snippets_returned: snippetCount,
       search_timestamp: new Date().toISOString(),
+      web_search_status: snippetCount > 0 ? 'SUCCESS' : 'FAILED_OR_EMPTY',
       api_keys_present: {
         google_api_key: !!process.env.GOOGLE_API_KEY,
         google_cse_id: !!process.env.GOOGLE_CSE_ID
-      }
+      },
+      search_failure_reason: snippetCount === 0 ? (
+        !process.env.GOOGLE_API_KEY || !process.env.GOOGLE_CSE_ID ? 'MISSING_API_KEYS' :
+        'SEARCH_RETURNED_NO_RESULTS'
+      ) : null,
+      first_result_title: webSnippets?.[0]?.title || null,
+      first_result_source: webSnippets?.[0]?.source || null
     };
     console.log('[GEMINI_DEBUG] Debug metadata created:', debugMetadata);
     
@@ -169,6 +178,10 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
     });
     
     // Use direct HTTP call to v1 endpoint instead of library
+    const webSearchResultsText = webSnippets.length > 0 
+      ? webSnippets.map((snippet, i) => `Result ${i + 1} (${snippet.source}): ${snippet.content}`).join('\n\n')
+      : 'No web search results available - search may have failed or returned no results';
+    
     const prompt = `
 You are an expert corporate ownership analyst. Analyze the following web search results to determine the ownership of ${brand}.
 
@@ -176,13 +189,20 @@ EXISTING RESULT:
 ${JSON.stringify(existingResult, null, 2)}
 
 WEB SEARCH RESULTS:
-${webSnippets.map((snippet, i) => `Result ${i + 1} (${snippet.source}): ${snippet.content}`).join('\n\n')}
+${webSearchResultsText}
+
+SEARCH METADATA:
+- Search queries executed: ${searchQueries.length}
+- Results found: ${webSnippets.length}
+- API keys available: ${debugMetadata.api_keys_present.google_api_key && debugMetadata.api_keys_present.google_cse_id ? 'Yes' : 'No'}
 
 TASK:
 1. Determine if the existing ownership result is accurate based on the web search results
 2. Provide a verification status: "confirmed", "contradicted", "mixed_evidence", or "insufficient_evidence"
 3. Analyze the evidence and provide confidence assessment
 4. Provide detailed reasoning
+
+IMPORTANT: If no web search results are available, indicate this in your reasoning and set verification_status to "insufficient_evidence" with appropriate missing_evidence entries.
 
 OUTPUT FORMAT (JSON):
 You MUST respond with ONLY valid JSON inside triple backticks. Do not include any other text, explanations, or markdown formatting outside the JSON block.
@@ -576,10 +596,10 @@ async function performWebSearches(queries) {
     } else {
       console.warn('[GEMINI_DEBUG] Google API keys not available - using mock fallback for development');
       
-      // 🛑 COMPLIANT MOCK FALLBACK - Only for development/testing
+      // 🛑 COMPLIANT MOCK FALLBACK - For development/testing or when CSE is not configured
       // This avoids CSE usage violations while allowing debugging
-      if (process.env.NODE_ENV === 'development' || process.env.USE_MOCK_SEARCH === 'true') {
-        console.log('[GEMINI_DEBUG] Using mock search data for development');
+      if (process.env.NODE_ENV === 'development' || process.env.USE_MOCK_SEARCH === 'true' || process.env.ENABLE_MOCK_SEARCH_IN_PRODUCTION === 'true') {
+        console.log('[GEMINI_DEBUG] Using mock search data for development/testing');
         return getMockResultsForQueries(queries);
       } else {
         console.warn('[GEMINI_DEBUG] Production mode - returning empty results due to missing API keys');
