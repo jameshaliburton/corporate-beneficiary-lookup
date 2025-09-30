@@ -8,8 +8,8 @@ const genAI = new GoogleGenerativeAI(geminiApiKey);
 // Feature flag for Gemini Flash V1
 const GEMINI_FLASH_V1_ENABLED = process.env.GEMINI_FLASH_V1_ENABLED === 'true';
 
-// Use v1beta endpoint (v1 not available yet)
-const GEMINI_MODEL = "gemini-1.5-flash";
+// Use v1beta endpoint with correct model name
+const GEMINI_MODEL = "gemini-2.0-flash";
 const GEMINI_ENDPOINT = "v1beta";
 
 console.log('[GEMINI_CONFIG] Feature flag status:', {
