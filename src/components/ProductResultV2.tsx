@@ -292,6 +292,24 @@ export default function ProductResultV2({
               <p>Confidence: {confidence}%</p>
               <p>Brand Country: {brandCountry || 'Not available'}</p>
               <p>Owner Country: {ownerCountry || 'Not available'}</p>
+              
+              {/* Admin Debug Link */}
+              {process.env.NEXT_PUBLIC_ADMIN_ENABLED === 'true' && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const brandSlug = encodeURIComponent(result.brand_name || 'unknown');
+                      window.open(`/admin/gemini-verification/${brandSlug}`, '_blank');
+                    }}
+                    className="text-xs"
+                  >
+                    <ExternalLink className="w-3 h-3 mr-1" />
+                    Debug Gemini Verification
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

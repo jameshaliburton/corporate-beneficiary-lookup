@@ -97,8 +97,19 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
           agent: "GeminiOwnershipVerificationAgent",
           data: geminiAnalysis.gemini_result,
           reasoning: 'Gemini verification completed',
+<<<<<<< HEAD
           web_snippets_count: geminiAnalysis.web_snippets_count,
           search_queries_used: geminiAnalysis.search_queries_used
+=======
+          web_snippets_count: geminiAnalysis.web_snippets_count || 0,
+          search_queries_used: geminiAnalysis.search_queries_used || [],
+          // Enhanced explanation fields (only when feature flag is enabled)
+          ...(geminiAnalysis.gemini_analysis && {
+            explanations_by_requirement: geminiAnalysis.gemini_analysis.explanations_by_requirement,
+            enhanced_match_enabled: geminiAnalysis.gemini_analysis.enhanced_match_enabled,
+            verification_requirements_analyzed: geminiAnalysis.gemini_analysis.verification_requirements_analyzed
+          })
+>>>>>>> d2792b7 (feat: Enhanced Gemini verification with admin debug tools)
         };
         
         // Add agent path tracking
@@ -126,10 +137,25 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   return false;
 }
 
+<<<<<<< HEAD
 // 🧠 NORMALIZED CACHE KEY FUNCTION
 function makeCacheKey(brand: string, product?: string): string {
   const b = brand.trim().toLowerCase();
   const p = product ? product.trim().toLowerCase() : "";
+=======
+// 🧠 NORMALIZED CACHE FUNCTION (ownership-por-v1.1)
+function makeCacheKey(brand: string, product?: string): string {
+  // [CACHE_NORMALIZATION] Always lowercase brand for consistency (ownership-por-v1.1)
+  const b = brand?.trim().toLowerCase() || '';
+  const p = product?.trim().toLowerCase() || '';
+  
+  // [CACHE_DEFENSIVE] Handle undefined/null product_name safely
+  if (!b) {
+    console.warn('[CACHE_WARNING] Empty brand name provided to makeCacheKey');
+    return '';
+  }
+  
+>>>>>>> d2792b7 (feat: Enhanced Gemini verification with admin debug tools)
   return p ? `${b}::${p}` : b;
 }
 
