@@ -106,6 +106,8 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
         ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment || null;
         ownershipResult.verification_evidence = geminiAnalysis.verification_evidence || null;
         ownershipResult.verification_confidence_change = geminiAnalysis.verification_confidence_change || null;
+        // Include debug metadata for troubleshooting
+        ownershipResult.gemini_debug_metadata = geminiAnalysis.gemini_debug_metadata;
         
         // Add Gemini results to agent_results
         if (!ownershipResult.agent_results) {
@@ -1525,6 +1527,8 @@ export async function POST(request: NextRequest) {
             // Note: verified_owner_entity field doesn't exist in database schema, using financial_beneficiary instead
             ownershipResult.confidence_assessment = geminiAnalysis.confidence_assessment;
             ownershipResult.verification_evidence = geminiAnalysis.verification_evidence;
+            // Include debug metadata for troubleshooting
+            ownershipResult.gemini_debug_metadata = geminiAnalysis.gemini_debug_metadata;
             
             console.log('[GEMINI_FRESH_LOOKUP] Successfully added verification fields:', {
               verification_status: ownershipResult.verification_status,
