@@ -495,7 +495,19 @@ CRITICAL: Your response must be ONLY the JSON block above, wrapped in triple bac
       },
       // Store evidence analysis for pipeline orchestrator to use
       gemini_evidence_analysis: errorAgentExecutionTrace,
-      agent_path: [...(existingResult.agent_path || []), 'gemini_verification_failed']
+      agent_path: [...(existingResult.agent_path || []), 'gemini_verification_failed'],
+      // Include debug metadata even in error case for troubleshooting
+      gemini_debug_metadata: {
+        search_queries: searchQueries || [],
+        snippets_returned: 0,
+        search_timestamp: new Date().toISOString(),
+        api_keys_present: {
+          google_api_key: !!process.env.GOOGLE_API_KEY,
+          google_cse_id: !!process.env.GOOGLE_CSE_ID
+        },
+        error: true,
+        error_message: error.message
+      }
     };
   }
 }
