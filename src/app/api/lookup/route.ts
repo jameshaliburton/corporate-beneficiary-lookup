@@ -5,7 +5,7 @@ import { getOwnershipKnowledge } from '@/lib/agents/knowledge-agent.js';
 import { EnhancedAgentOwnershipResearch } from '@/lib/agents/enhanced-ownership-research-agent.js';
 import { generateQueryId } from '@/lib/agents/ownership-research-agent.js';
 import { QualityAssessmentAgent } from '@/lib/agents/quality-assessment-agent.js';
-import { GeminiOwnershipAnalysisAgent, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
+import { performGeminiOwnershipAnalysis, isGeminiOwnershipAnalysisAvailable } from '@/lib/agents/gemini-ownership-analysis-agent.js';
 
 import { analyzeProductImage } from '@/lib/apis/image-recognition.js';
 import { emitProgress } from '@/lib/utils';
@@ -62,19 +62,17 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   
   if (shouldRunGemini) {
     try {
-      console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
-      const geminiAnalysis = await GeminiOwnershipAnalysisAgent({
-        brand: brand,
-        product_name: product_name,
-        ownershipData: {
-          financial_beneficiary: ownershipResult.financial_beneficiary,
-          confidence_score: ownershipResult.confidence_score,
-          research_method: ownershipResult.result_type,
-          sources: ownershipResult.sources
-        },
-        hints: {},
-        queryId: queryId
+      console.log("[GEMINI_INLINE_CACHE_HIT] Environment check:", {
+        GEMINI_VERIFICATION_ENHANCED_MATCH: process.env.GEMINI_VERIFICATION_ENHANCED_MATCH,
+        NEXT_PUBLIC_ADMIN_ENABLED: process.env.NEXT_PUBLIC_ADMIN_ENABLED,
+        NODE_ENV: process.env.NODE_ENV
       });
+      console.log("[GEMINI_INLINE_CACHE_HIT] Calling Gemini agent for cache hit result");
+      const geminiAnalysis = await performGeminiOwnershipAnalysis(
+        brand,
+        product_name,
+        ownershipResult
+      );
       
       if (geminiAnalysis?.success && geminiAnalysis?.gemini_result) {
         // Add verification fields to top level
@@ -103,9 +101,19 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
           ...(geminiAnalysis.gemini_analysis && {
             explanations_by_requirement: geminiAnalysis.gemini_analysis.explanations_by_requirement,
             enhanced_match_enabled: geminiAnalysis.gemini_analysis.enhanced_match_enabled,
-            verification_requirements_analyzed: geminiAnalysis.gemini_analysis.verification_requirements_analyzed
+            verification_requirements_analyzed: geminiAnalysis.gemini_analysis.verification_requirements_analyzed,
+            prompt: geminiAnalysis.gemini_analysis.prompt,
+            raw_output: geminiAnalysis.gemini_analysis.raw_output
           })
         };
+        
+        console.log("[GEMINI_INLINE_CACHE_HIT] Stored agent_results.gemini_analysis:", {
+          has_enhanced_fields: !!(ownershipResult.agent_results.gemini_analysis.explanations_by_requirement),
+          enhanced_match_enabled: ownershipResult.agent_results.gemini_analysis.enhanced_match_enabled,
+          has_prompt: !!(ownershipResult.agent_results.gemini_analysis.prompt),
+          has_raw_output: !!(ownershipResult.agent_results.gemini_analysis.raw_output),
+          explanations_count: ownershipResult.agent_results.gemini_analysis.explanations_by_requirement ? Object.keys(ownershipResult.agent_results.gemini_analysis.explanations_by_requirement).length : 0
+        });
         
         // Add agent path tracking
         if (!ownershipResult.agent_path) {

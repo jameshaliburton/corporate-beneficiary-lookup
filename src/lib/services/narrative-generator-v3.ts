@@ -11,6 +11,7 @@ export interface OwnershipResult {
   financial_beneficiary_country?: string;
   ownership_type?: string;
   confidence?: number;
+  confidence_score?: number;
   ownership_notes?: string[];
   behind_the_scenes?: string[];
   verification_status?: string;
@@ -19,7 +20,7 @@ export interface OwnershipResult {
   verification_notes?: string;
   confidence_assessment?: any;
   verification_evidence?: any;
-  verification_confidence_change?: string;
+  verification_confidence_change?: "unchanged" | "increased" | "decreased";
 }
 
 export interface NarrativeFields {

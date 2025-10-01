@@ -96,3 +96,4 @@ echo "📊 Test URLs:"
 echo "   https://yourdomain.com/admin/gemini-verification/puma"
 echo "   https://yourdomain.com/admin/gemini-verification/nespresso"
 echo "   https://yourdomain.com/admin/gemini-verification/watkins"
+

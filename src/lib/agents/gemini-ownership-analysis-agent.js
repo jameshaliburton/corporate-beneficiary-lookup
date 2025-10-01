@@ -17,10 +17,12 @@ const GEMINI_ENDPOINT = "v1beta";
 
 console.log('[GEMINI_CONFIG] Feature flag status:', {
   GEMINI_FLASH_V1_ENABLED,
+  GEMINI_VERIFICATION_ENHANCED_MATCH,
   GEMINI_MODEL,
   GEMINI_ENDPOINT,
   API_KEY_PRESENT: !!geminiApiKey,
   RAW_ENV_VALUE: process.env.GEMINI_FLASH_V1_ENABLED,
+  ENHANCED_MATCH_RAW_VALUE: process.env.GEMINI_VERIFICATION_ENHANCED_MATCH,
   NODE_ENV: process.env.NODE_ENV
 });
 
@@ -341,7 +343,9 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
       : 'No web search results available - search may have failed or returned no results';
     
     // Enhanced prompt with better explanation requirements
+    console.log('[GEMINI_VERIFICATION_DEBUG] Using enhanced verification:', GEMINI_VERIFICATION_ENHANCED_MATCH);
     const prompt = GEMINI_VERIFICATION_ENHANCED_MATCH ? buildEnhancedVerificationPrompt(brand, existingResult, webSearchResultsText, searchQueries, webSnippets, debugMetadata) : buildStandardVerificationPrompt(brand, existingResult, webSearchResultsText, searchQueries, webSnippets, debugMetadata);
+    console.log('[GEMINI_VERIFICATION_DEBUG] Prompt function used:', GEMINI_VERIFICATION_ENHANCED_MATCH ? 'buildEnhancedVerificationPrompt' : 'buildStandardVerificationPrompt');
 
     // Generate test payload for debugging (if enabled)
     if (process.env.NODE_ENV === 'development') {
@@ -606,6 +610,16 @@ export async function performGeminiOwnershipAnalysis(brand, productName, existin
         }
       })
     };
+    
+    console.log('[GEMINI_VERIFICATION_DEBUG] Final result structure:', {
+      has_gemini_analysis: !!(result.gemini_analysis),
+      enhanced_match_enabled: result.gemini_analysis?.enhanced_match_enabled,
+      has_explanations: !!(result.gemini_analysis?.explanations_by_requirement),
+      has_prompt: !!(result.gemini_analysis?.prompt),
+      has_raw_output: !!(result.gemini_analysis?.raw_output),
+      feature_flag_enabled: GEMINI_VERIFICATION_ENHANCED_MATCH,
+      explanations_count: result.gemini_analysis?.explanations_by_requirement ? Object.keys(result.gemini_analysis.explanations_by_requirement).length : 0
+    });
     
     // Log successful Gemini usage for compliance tracking
     logComplianceEvent('gemini_analysis_success', {

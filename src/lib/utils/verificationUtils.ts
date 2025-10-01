@@ -2,8 +2,8 @@
  * Verification utility functions
  */
 
-export function normalizeVerificationStatus(status: string | undefined | null): string {
-  if (!status) return 'none';
+export function normalizeVerificationStatus(status: string | undefined | null): "confirmed" | "insufficient_evidence" | "contradicted" | "mixed_evidence" {
+  if (!status) return 'insufficient_evidence';
   
   const normalized = status.toLowerCase().trim();
   
@@ -32,10 +32,10 @@ export function normalizeVerificationStatus(status: string | undefined | null): 
     
     case 'unverified_due_to_parsing_error':
     case 'parsing_error':
-      return 'parsing_error';
+      return 'insufficient_evidence';
     
     default:
-      return 'unknown';
+      return 'insufficient_evidence';
   }
 }
 
@@ -51,8 +51,6 @@ export function getVerificationStatusColor(status: string): string {
       return 'text-yellow-600 bg-yellow-100';
     case 'insufficient_evidence':
       return 'text-gray-600 bg-gray-100';
-    case 'parsing_error':
-      return 'text-orange-600 bg-orange-100';
     default:
       return 'text-gray-600 bg-gray-100';
   }
@@ -70,9 +68,8 @@ export function getVerificationStatusIcon(status: string): string {
       return '⚠️';
     case 'insufficient_evidence':
       return '❓';
-    case 'parsing_error':
-      return '🔧';
     default:
       return '❓';
   }
 }
+

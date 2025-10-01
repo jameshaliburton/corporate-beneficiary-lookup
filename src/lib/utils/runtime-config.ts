@@ -22,8 +22,9 @@ export function getRuntimeConfig(): RuntimeConfig {
 
 export const runtimeConfig = getRuntimeConfig();
 
-export function printMinimalRuntimeConfig() {
+export function printMinimalRuntimeConfig(context?: string) {
   console.log('🔧 Runtime Config:', {
+    context,
     environment: runtimeConfig.environment,
     debugMode: runtimeConfig.debugMode
   });

@@ -166,3 +166,4 @@ Look for these log patterns:
 - `[GEMINI_VERIFICATION]` - Enhanced verification logs
 - `[GEMINI_VERIFICATION] Enhanced explanations extracted` - Successful extraction
 - `[GEMINI_VERIFICATION] Raw Gemini input/output` - Debug information
+

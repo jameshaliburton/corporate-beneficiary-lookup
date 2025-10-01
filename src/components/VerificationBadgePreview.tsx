@@ -66,7 +66,7 @@ export const VerificationBadgePreview: React.FC = () => {
           </div>
                       <VerificationDetailsPanel
               status="mixed_evidence"
-              evidence={verificationTestData.mixed_evidence.verification_evidence}
+              evidence={verificationTestData.mixed.verification_evidence}
             />
         </CardContent>
       </Card>
@@ -85,7 +85,7 @@ export const VerificationBadgePreview: React.FC = () => {
           </div>
                       <VerificationDetailsPanel
               status="insufficient_evidence"
-              evidence={verificationTestData.insufficient_evidence.verification_evidence}
+              evidence={verificationTestData.insufficient.verification_evidence}
             />
         </CardContent>
       </Card>

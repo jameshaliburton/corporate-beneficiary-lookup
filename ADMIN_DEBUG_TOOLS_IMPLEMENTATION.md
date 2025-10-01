@@ -179,3 +179,4 @@ This data can help optimize the verification process and improve overall system 
 ✅ **Collapsible sections** - Both sections default to closed
 ✅ **Copy functionality** - One-click copying implemented
 ✅ **Graceful fallbacks** - Clear messages when data missing
+
