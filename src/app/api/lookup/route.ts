@@ -1450,9 +1450,23 @@ export async function POST(request: NextRequest) {
       logTraceSummary(mergedResult);
 
       if (forceFullTrace) {
+        console.log('[🚨 FINAL MERGED RESULT]', {
+          hasNarrativeFields: !!mergedResult.narrative_fields,
+          headline: mergedResult.narrative_fields?.headline,
+          story: mergedResult.narrative_fields?.story,
+          verificationStatus: mergedResult.verification_status,
+          hasGeminiAnalysis: !!mergedResult.agent_results?.gemini_analysis,
+        });
         return NextResponse.json(mergedResult);
       }
 
+      console.log('[🚨 FINAL MERGED RESULT]', {
+        hasNarrativeFields: !!mergedResult.narrative_fields,
+        headline: mergedResult.narrative_fields?.headline,
+        story: mergedResult.narrative_fields?.story,
+        verificationStatus: mergedResult.verification_status,
+        hasGeminiAnalysis: !!mergedResult.agent_results?.gemini_analysis,
+      });
       return NextResponse.json(mergedResult);
 
     } catch (error) {
