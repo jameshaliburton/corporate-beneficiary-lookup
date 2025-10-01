@@ -419,6 +419,16 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
     });
     console.log('✅ [Shared Cache] Generated fresh narrative:', narrative);
     
+    // 📝 ADD NARRATIVE FIELDS TO CACHED RESULT
+    cachedResult.narrative_fields = narrative;
+    console.log('📝 [Shared Cache] Added narrative_fields to cached result:', {
+      has_headline: !!narrative.headline,
+      has_tagline: !!narrative.tagline,
+      has_story: !!narrative.story,
+      has_ownership_notes: !!narrative.ownership_notes,
+      has_behind_the_scenes: !!narrative.behind_the_scenes
+    });
+    
     // 🔍 GEMINI VERIFICATION FOR CACHE HIT RESULTS
     const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(cachedResult, cachedResult.brand, cachedResult.product_name, queryId);
     
@@ -470,6 +480,8 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       verification_method: cachedResult.verification_method || null,
       confidence_assessment: cachedResult.confidence_assessment || null,
       verification_notes: cachedResult.verification_notes || null,
+      // Narrative content
+      narrative_fields: cachedResult.narrative_fields || null,
       // New narrative fields for engaging storytelling
       headline: narrative.headline,
       tagline: narrative.tagline,
@@ -480,6 +492,21 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
       cache_hit: true,
       agent_path: cachedResult.agent_path || []
     };
+    
+    console.log('🚀 [CACHE_PIPELINE_DEBUG] Final cached result structure:', {
+      hasNarrativeFields: !!cachedResult.narrative_fields,
+      hasHeadline: !!narrative.headline,
+      hasStory: !!narrative.story,
+      hasVerificationStatus: !!cachedResult.verification_status,
+      hasGeminiAnalysis: !!cachedResult.agent_results?.gemini_analysis,
+      hasEnhancedMatch: !!cachedResult.agent_results?.gemini_analysis?.enhanced_match_enabled,
+      narrativeContent: {
+        headline: narrative.headline?.substring(0, 50) + '...',
+        story: narrative.story?.substring(0, 50) + '...',
+        ownershipNotesCount: narrative.ownership_notes?.length || 0,
+        behindTheScenesCount: narrative.behind_the_scenes?.length || 0
+      }
+    });
   } else {
     if (process.env.NODE_ENV === 'production') {
       console.log(`[CACHE_MISS] brand=${brand || 'unknown'}`);
@@ -1326,6 +1353,16 @@ export async function POST(request: NextRequest) {
       });
       console.log('✅ Generated narrative:', narrative);
       
+      // 📝 ADD NARRATIVE FIELDS TO OWNERSHIP RESULT
+      ownershipResult.narrative_fields = narrative;
+      console.log('📝 Added narrative_fields to ownershipResult:', {
+        has_headline: !!narrative.headline,
+        has_tagline: !!narrative.tagline,
+        has_story: !!narrative.story,
+        has_ownership_notes: !!narrative.ownership_notes,
+        has_behind_the_scenes: !!narrative.behind_the_scenes
+      });
+      
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
@@ -1359,6 +1396,8 @@ export async function POST(request: NextRequest) {
         verification_method: ownershipResult.verification_method || null,
         confidence_assessment: ownershipResult.confidence_assessment || null,
         verification_notes: ownershipResult.verification_notes || null,
+        // Narrative content
+        narrative_fields: ownershipResult.narrative_fields || null,
         lookup_trace: currentProductData.lookup_trace, // Include enhanced lookup trace
         // Pass through contextual clues from image analysis if available
         contextual_clues: (currentProductData as any).contextual_clues || null,
@@ -1382,7 +1421,13 @@ export async function POST(request: NextRequest) {
         query_id: queryId
       };
 
-      console.log('[Debug] Final merged result:', {
+      console.log('🚀 [PIPELINE_DEBUG] Final merged result structure:', {
+        hasNarrativeFields: !!mergedResult.narrative_fields,
+        hasHeadline: !!mergedResult.headline,
+        hasStory: !!mergedResult.story,
+        hasVerificationStatus: !!mergedResult.verification_status,
+        hasGeminiAnalysis: !!mergedResult.agent_results?.gemini_analysis,
+        hasEnhancedMatch: !!mergedResult.agent_results?.gemini_analysis?.enhanced_match_enabled,
         hasImageProcessingTrace: !!mergedResult.image_processing_trace,
         hasAgentExecutionTrace: !!mergedResult.agent_execution_trace,
         imageProcessingStages: mergedResult.image_processing_trace?.stages?.length || 0,
