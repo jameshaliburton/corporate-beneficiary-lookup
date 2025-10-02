@@ -69,6 +69,15 @@ export interface PipelineResult {
       mapping: string;
     };
   };
+  // New narrative fields from enhanced pipeline
+  narrative_fields?: {
+    headline?: string;
+    tagline?: string;
+    story?: string;
+    ownership_notes?: string[];
+    behind_the_scenes?: string[];
+    template_used?: string;
+  };
 }
 
 export interface OwnershipNode {
@@ -115,6 +124,13 @@ export interface ProductResultProps {
       mapping: string;
     };
   };
+  // New narrative fields from enhanced pipeline
+  headline?: string;
+  tagline?: string;
+  story?: string;
+  ownership_notes?: string[];
+  behind_the_scenes?: string[];
+  narrative_template_used?: string;
 }
 
 export async function transformPipelineData(pipelineResult: PipelineResult): Promise<ProductResultProps> {
@@ -124,6 +140,14 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     confidence_score: pipelineResult.confidence_score,
     ownership_flow: pipelineResult.ownership_flow?.length || 0,
     agent_execution_trace: pipelineResult.agent_execution_trace ? 'present' : 'missing'
+  });
+
+  console.log('📖 Narrative fields check:', {
+    has_narrative_fields: !!pipelineResult.narrative_fields,
+    has_generated_copy: !!pipelineResult.generated_copy,
+    narrative_headline: pipelineResult.narrative_fields?.headline,
+    narrative_story: pipelineResult.narrative_fields?.story,
+    generated_copy_headline: pipelineResult.generated_copy?.headline
   });
 
   // Transform ownership_flow to OwnershipNode[] without blocking logo fetching
@@ -254,6 +278,13 @@ export async function transformPipelineData(pipelineResult: PipelineResult): Pro
     sources: pipelineResult.sources,
     // LLM-generated copy for engaging storytelling
     generatedCopy: pipelineResult.generated_copy,
+    // New narrative fields from enhanced pipeline (prefer narrative_fields over generated_copy)
+    headline: pipelineResult.narrative_fields?.headline || pipelineResult.generated_copy?.headline,
+    tagline: pipelineResult.narrative_fields?.tagline || pipelineResult.generated_copy?.subheadline,
+    story: pipelineResult.narrative_fields?.story || pipelineResult.generated_copy?.description,
+    ownership_notes: pipelineResult.narrative_fields?.ownership_notes || [],
+    behind_the_scenes: pipelineResult.narrative_fields?.behind_the_scenes || [],
+    narrative_template_used: pipelineResult.narrative_fields?.template_used || 'fallback',
     // Optional props
     acquisitionYear: undefined, // Not available in pipeline
     publicTicker: undefined // Not available in pipeline
