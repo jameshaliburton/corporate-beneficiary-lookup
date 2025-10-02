@@ -132,7 +132,15 @@ export default function ManualPage() {
       verification_notes: result.verification_notes,
       confidence_assessment: result.confidence_assessment,
       verification_evidence: result.verification_evidence,
-      agent_path: result.agent_path
+      agent_path: result.agent_path,
+      // NEW: Enhanced narrative fields from enhanced pipeline
+      narrative_fields: result.narrative_fields,
+      headline: result.headline,
+      tagline: result.tagline,
+      story: result.story,
+      ownership_notes: result.ownership_notes,
+      behind_the_scenes: result.behind_the_scenes,
+      narrative_template_used: result.narrative_template_used
     };
   }
 
