@@ -1363,6 +1363,15 @@ export async function POST(request: NextRequest) {
         has_behind_the_scenes: !!narrative.behind_the_scenes
       });
       
+      // 🔍 GEMINI VERIFICATION FOR FRESH RESULTS
+      console.log('[GEMINI_CALL] Checking if Gemini verification should run for fresh result');
+      const geminiVerificationRan = await maybeRunGeminiVerificationForCacheHit(ownershipResult, currentProductData.brand, currentProductData.product_name, queryId);
+      console.log('[GEMINI_CALL] Gemini verification result:', {
+        ran: geminiVerificationRan,
+        hasGeminiAnalysis: !!ownershipResult.agent_results?.gemini_analysis,
+        verificationStatus: ownershipResult.verification_status
+      });
+      
       const mergedResult = {
         success: true,
         product_name: currentProductData.product_name,
