@@ -15,6 +15,7 @@ import { shouldUseLegacyBarcode, shouldUseVisionFirstPipeline, shouldForceFullTr
 import { generateNarrativeFromResult } from '@/lib/services/narrative-generator-v3';
 import { printMinimalRuntimeConfig } from '@/lib/utils/runtime-config';
 import { ragPopulationAgent } from '@/lib/agents/rag-population-agent.js';
+import { getEnvironmentConfig, logEnvironmentInfo } from '@/lib/utils/environment';
 
 // Use feature flag for force full trace
 const forceFullTrace = shouldForceFullTrace();
@@ -174,9 +175,9 @@ async function maybeRunGeminiVerificationForCacheHit(ownershipResult: any, brand
   return false;
 }
 
-// 🧠 NORMALIZED CACHE KEY FUNCTION (ownership-por-v1.1)
+// 🧠 NORMALIZED CACHE FUNCTION (ownership-por-v1.1)
 function makeCacheKey(brand: string, product?: string): string {
-  // [CACHE_KEY_NORMALIZATION] Always lowercase brand for consistency (ownership-por-v1.1)
+  // [CACHE_NORMALIZATION] Always lowercase brand for consistency (ownership-por-v1.1)
   const b = brand?.trim().toLowerCase() || '';
   const p = product?.trim().toLowerCase() || '';
   
@@ -626,6 +627,13 @@ async function lookupWithCache(brand: string, productName?: string, queryId?: st
 
 // 🧠 NEW CACHE MODULE SAVING FUNCTION
 async function saveToNewCache(brand: string, productName: string, ownershipResult: any) {
+  // 🛡️ STAGING SAFEGUARD: Skip database writes in staging unless explicitly enabled
+  const envConfig = getEnvironmentConfig();
+  if (!envConfig.shouldWriteToDatabase) {
+    console.log('🧪 [STAGING MODE] Skipping new cache write (staging environment)');
+    return;
+  }
+  
   console.log('[NEW_CACHE_SAVE] Starting save:', { 
     brand, 
     productName, 
@@ -666,6 +674,13 @@ async function saveToNewCache(brand: string, productName: string, ownershipResul
 
 // 🧠 SHARED CACHE SAVING FUNCTION (ownership-por-v1.1)
 async function saveToCache(brand: string, productName: string, ownershipResult: any) {
+  // 🛡️ STAGING SAFEGUARD: Skip database writes in staging unless explicitly enabled
+  const envConfig = getEnvironmentConfig();
+  if (!envConfig.shouldWriteToDatabase) {
+    console.log('🧪 [STAGING MODE] Skipping database write (staging environment)');
+    return;
+  }
+  
   console.log('[CACHE_WRITE] Starting dual-save strategy (ownership-por-v1.1):', { 
     brand, 
     productName, 
@@ -881,6 +896,11 @@ async function saveToCache(brand: string, productName: string, ownershipResult: 
 
 export async function POST(request: NextRequest) {
   try {
+    // 🌍 ENVIRONMENT INFO
+    logEnvironmentInfo();
+    const envConfig = getEnvironmentConfig();
+    console.log('🌍 Environment Config:', envConfig);
+    
     // 🔍 COMMIT VERSION DEBUG
     console.log("[GEMINI_DEBUG] Commit version: ac95a419e5fb8f8fbb94f0c80fbed23760a49272");
     console.log('[API_ROUTE_ENTRY] POST /api/lookup called');

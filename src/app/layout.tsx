@@ -1,6 +1,7 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { Toaster } from "@/components/ui/toaster"
+import { StagingBanner } from "@/components/StagingBanner"
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -72,6 +73,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="font-sans">
+        <StagingBanner />
         {children}
         <Toaster />
       </body>
