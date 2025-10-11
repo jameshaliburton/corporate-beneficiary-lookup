@@ -49,46 +49,73 @@ export default function ManualPage() {
 
       const rawPipelineResult = await response.json();
       console.log('📦 Raw pipeline result:', rawPipelineResult);
+      
+      // 🚨 DIAGNOSTIC: Check narrative fields from API
+      console.log('🚨 [DIAGNOSTIC] API Response narrative fields:', {
+        headline: rawPipelineResult.headline,
+        tagline: rawPipelineResult.tagline,
+        story: rawPipelineResult.story,
+        hasStory: !!rawPipelineResult.story,
+        storyLength: rawPipelineResult.story?.length || 0,
+        ownership_notes: rawPipelineResult.ownership_notes?.length || 0,
+        behind_the_scenes: rawPipelineResult.behind_the_scenes?.length || 0
+      });
 
       // Check if the search was successful (confidence > 30)
       if (rawPipelineResult.success && rawPipelineResult.brand && rawPipelineResult.confidence_score > 30) {
         // Successful search - proceed to results
         const pipelineResult = cleanPipelineResult(rawPipelineResult);
         
-        // Store the full API response in sessionStorage for the results page
-        console.log('💾 Storing full API response in sessionStorage:', {
-          hasGeneratedCopy: !!rawPipelineResult.generated_copy,
-          generatedCopyKeys: rawPipelineResult.generated_copy ? Object.keys(rawPipelineResult.generated_copy) : [],
-          brand: rawPipelineResult.brand,
-          confidence: rawPipelineResult.confidence_score,
+        // 🚨 DIAGNOSTIC: Check narrative fields after cleaning
+        console.log('🚨 [DIAGNOSTIC] After cleanPipelineResult:', {
+          headline: pipelineResult.headline,
+          tagline: pipelineResult.tagline,
+          story: pipelineResult.story,
+          hasStory: !!pipelineResult.story,
+          storyLength: pipelineResult.story?.length || 0
+        });
+        
+        // Store the cleaned pipeline result in sessionStorage for the results page
+        console.log('💾 Storing cleaned pipeline result in sessionStorage:', {
+          hasGeneratedCopy: !!pipelineResult.generated_copy,
+          hasHeadline: !!pipelineResult.headline,
+          hasStory: !!pipelineResult.story,
+          hasTagline: !!pipelineResult.tagline,
+          brand: pipelineResult.brand,
+          confidence: pipelineResult.confidence_score,
           threshold: 50
         });
         
-        // Log the actual generated_copy content
-        if (rawPipelineResult.generated_copy) {
-          console.log('🎨 Generated copy content:', JSON.stringify(rawPipelineResult.generated_copy, null, 2));
+        // Log the narrative content being stored
+        if (pipelineResult.story) {
+          console.log('📖 Narrative story (first 100 chars):', pipelineResult.story.substring(0, 100) + '...');
         }
         
-        const sessionData = JSON.stringify(rawPipelineResult);
+        const sessionData = JSON.stringify(pipelineResult);
         console.log('💾 Session data size:', sessionData.length, 'characters');
         console.log('🔍 Manual search - verification fields being stored:', {
-          verification_status: rawPipelineResult.verification_status,
-          verified_at: rawPipelineResult.verified_at,
-          confidence_assessment: rawPipelineResult.confidence_assessment,
-          verification_evidence: rawPipelineResult.verification_evidence
+          verification_status: pipelineResult.verification_status,
+          verified_at: pipelineResult.verified_at,
+          confidence_assessment: pipelineResult.confidence_assessment,
+          verification_evidence: pipelineResult.verification_evidence
         });
         
         sessionStorage.setItem('pipelineResult', sessionData);
         
         // Verify it was stored correctly
         const storedData = sessionStorage.getItem('pipelineResult');
-        console.log('✅ Verification - stored data has generated_copy:', storedData ? JSON.parse(storedData).generated_copy ? 'YES' : 'NO' : 'NO DATA');
+        const parsedStored = storedData ? JSON.parse(storedData) : null;
+        console.log('✅ Verification - stored data check:', {
+          hasStory: !!parsedStored?.story,
+          hasHeadline: !!parsedStored?.headline,
+          hasGeneratedCopy: !!parsedStored?.generated_copy
+        });
         
-        const brandSlug = encodeURIComponent(rawPipelineResult.brand || 'unknown');
+        const brandSlug = encodeURIComponent(pipelineResult.brand || 'unknown');
         const searchParams = new URLSearchParams({
           success: 'true',
-          brand: rawPipelineResult.brand || 'unknown',
-          confidence: rawPipelineResult.confidence_score?.toString() || '0'
+          brand: pipelineResult.brand || 'unknown',
+          confidence: pipelineResult.confidence_score?.toString() || '0'
         });
         
         const resultUrl = `/result/${brandSlug}?${searchParams.toString()}`;
@@ -122,9 +149,16 @@ export default function ManualPage() {
       ultimate_owner: result.ultimate_owner,
       ownership_chain: result.ownership_chain,
       confidence_score: result.confidence_score,
-      generated_copy: result.generated_copy, // Ensure generated_copy is included
+      generated_copy: result.generated_copy, // Legacy field (deprecated)
       traces: result.traces || [],
       ownership_flow: result.ownership_flow || [],
+      // Narrative fields for engaging storytelling
+      headline: result.headline,
+      tagline: result.tagline,
+      story: result.story,
+      ownership_notes: result.ownership_notes,
+      behind_the_scenes: result.behind_the_scenes,
+      narrative_template_used: result.narrative_template_used,
       // Gemini verification fields
       verification_status: result.verification_status,
       verified_at: result.verified_at,
